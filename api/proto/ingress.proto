@@ -2,9 +2,6 @@ syntax = "proto3";
 
 package proto;
 
-option go_package = "github.com/Dimss/cwaf/api/pb";
-
-
 message CreateIngressRequest {
   // ingress object name
   string name = 1;

@@ -4,10 +4,8 @@ build:
       -o bin/cwaf-discovery-agent cmd/agent/discovery/main.go
 
 
-proto:
-	cd api && protoc \
-    --go_out=./proto/pb \
-	--go_opt=paths=source_relative \
-	--go-grpc_out=./proto/pb \
-	--go-grpc_opt=paths=source_relative ./proto/google/api/*.proto \
-	./proto/*.proto
+buf:
+	cd api \
+	&& buf dep update \
+	&& buf export buf.build/googleapis/googleapis --output vendor \
+	&& buf generate

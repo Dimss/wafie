@@ -8,6 +8,7 @@ plugins:
   - remote: buf.build/protocolbuffers/go
     out: gen
     opt: paths=source_relative
+    include_imports: true
   - remote: buf.build/connectrpc/go
     out: gen
     opt: paths=source_relative
