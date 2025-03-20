@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cwaf-test
+  labels:
+    app: cwaf-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cwaf-test
+  template:
+    metadata:
+      labels:
+        app: cwaf-test
+    spec:
+      containers:
+        - name: cwaf
+          command:
+            - /bin/bash
+            - -c
+            - sleep inf
+          image: dimssss/cwaf
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: cwaf-test
+spec:
+  selector:
+    app: cwaf-test
+  ports:
+    - name: http
+      port: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cwaf-test
+spec:
+  rules:
+    - http:
+        paths:
+          - pathType: Prefix
+            path: /
+            backend:
+              service:
+                name: cwaf-test
+                port:
+                  number: 80

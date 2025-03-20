@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package proto;
+
+import "google/api/annotations.proto";
+
+
+message LoginRequest {
+  // ingress object name
+  string username = 1;
+  // ingress object namespace
+  string password = 2;
+}
+
+message LoginResponse {}
+
+service Auth{
+
+  rpc Login(LoginRequest) returns (LoginResponse) {
+    option (google.api.http) = {
+      post: "/v1/cloudaccounts/{cloudAccountId}/iks/clusters"
+      body: "*"
+    };
+  };
+
+}
