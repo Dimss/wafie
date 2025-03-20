@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package cwaf.v1;
+
+message CreateIngressRequest {
+  // ingress object name
+  string name = 1;
+  // ingress object namespace
+  string namespace = 2;
+}
+
+message CreateIngressResponse {}
+
+service IngressService{
+
+  rpc CreateIngress(CreateIngressRequest) returns (CreateIngressResponse);
+
+}
