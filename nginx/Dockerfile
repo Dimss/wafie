@@ -2,6 +2,7 @@ FROM ubuntu:24.04
 WORKDIR /opt/app
 ARG MOD_SECURITY_VERIONS=v3.0.13
 ARG NGINX_VERSION=1.26.2
+ENV PATH=$PATH:/opt/app/nginx/sbin
 RUN apt -y update \
     && apt -y install \
      build-essential \
@@ -18,7 +19,8 @@ RUN apt -y update \
      libgeoip-dev \
      libtool \
      automake \
-     vim
+     vim \
+     libyajl-dev
 ADD nginx-${NGINX_VERSION}.tar.gz ./
 RUN cd nginx-${NGINX_VERSION} \
     && ./configure \
@@ -37,6 +39,7 @@ RUN cd nginx-${NGINX_VERSION} \
         --with-stream_ssl_module \
         --with-stream_realip_module \
         --with-stream_geoip_module \
+        --with-compat \
     && make \
     && make install \
     && rm -fr ../nginx-${NGINX_VERSION}.tar.gz
@@ -62,8 +65,17 @@ RUN git clone \
     && make modules \
     && mkdir -p /opt/app/nginx/modules \
     && mkdir -p /opt/app/nginx/conf/modsec \
-    && cp objs/ngx_http_modsecurity_module.so /opt/app/nginx/modules \
-    && cp ../ModSecurity/modsecurity.conf-recommended /opt/app/nginx/conf/modsec/modsecurity.conf
+    && cp objs/ngx_http_modsecurity_module.so /opt/app/nginx/modules
+# configure modsecutiy and CRS
+ADD modsecurity.conf /opt/app/nginx/conf/modsec
+ADD main.conf /opt/app/nginx/conf/modsec
+ADD unicode.mapping /opt/app/nginx/conf/modsec
+ADD v4.12.0.tar.gz /opt/app/nginx/conf/modsec
+RUN mv \
+     /opt/app/nginx/conf/modsec/coreruleset-4.12.0/crs-setup.conf.example \
+     /opt/app/nginx/conf/modsec/coreruleset-4.12.0/crs-setup.conf
+# configure nginx
+ADD nginx.conf /opt/app/nginx/conf
 
 
 
