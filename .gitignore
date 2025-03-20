@@ -1,8 +1,8 @@
 .idea
-nginx/ModSecurity
-nginx/nginx-1.26.2.tar.gz
+ops/nginx/ModSecurity
+ops/nginx/nginx-1.26.2.tar.gz
 ../.DS_Store
 .DS_Store
-nginx/v4.12.0.tar.gz
-nginx/coreruleset-4.12.0.tar.gz.asc
-nginx/coreruleset-4.12.0
+ops/nginx/v4.12.0.tar.gz
+ops/nginx/coreruleset-4.12.0.tar.gz.asc
+ops/nginx/coreruleset-4.12.0
