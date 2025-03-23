@@ -7,6 +7,16 @@ message CreateIngressRequest {
   string name = 1;
   // ingress object namespace
   string namespace = 2;
+  // ingress port number
+  int32 portNumber = 3;
+  // ingress port name
+  string portName = 4;
+  // ingress URI path
+  string path = 5;
+  // ingress host (dns)
+  string host = 6;
+  // service name
+  string serviceName = 7;
 }
 
 message CreateIngressResponse {}

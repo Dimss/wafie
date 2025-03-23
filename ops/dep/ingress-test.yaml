@@ -1,13 +1,14 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: cwaf-test-2
+  name: cwaf-console
 spec:
   rules:
-    - http:
+    - host: cwaf-console.172.20.10.5.nip.io
+      http:
         paths:
-          - pathType: Prefix
-            path: /test
+          - pathType: ImplementationSpecific
+            path: /
             backend:
               service:
                 name: cwaf-test-1

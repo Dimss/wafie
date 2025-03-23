@@ -3,9 +3,12 @@ package database
 import (
 	"fmt"
 	"github.com/Dimss/cwaf/internal/database/model"
+	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
+
+var db *gorm.DB
 
 type DbCfg struct {
 	host     string
@@ -28,14 +31,25 @@ func (c *DbCfg) dsn() string {
 		c.host, c.user, c.password, c.dbName)
 }
 
-func NewDb(cfg DbCfg) (*gorm.DB, error) {
+func NewDb(cfg *DbCfg) (*gorm.DB, error) {
+	if db != nil {
+		zap.S().Info("db connection already established, reusing connection")
+		return db, nil
+	}
+	zap.S().Info("initiating db connection")
 	db, err := gorm.Open(postgres.Open(cfg.dsn()), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}
-	models := []interface{}{&model.Ingress{}, &model.Ingress2{}}
-	if err := db.AutoMigrate(models); err != nil {
+	if err := migrate(db); err != nil {
 		return nil, err
 	}
+	zap.S().Info("db connection established")
 	return db, nil
+}
+
+func migrate(db *gorm.DB) error {
+	return db.AutoMigrate(
+		&model.Ingress{},
+	)
 }

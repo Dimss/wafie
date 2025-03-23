@@ -1,15 +1,18 @@
 package ingresscache
 
 import (
-	"fmt"
+	"connectrpc.com/connect"
+	cwafv1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
+	"github.com/Dimss/cwaf/api/gen/cwaf/v1/cwafv1connect"
 	"go.uber.org/zap"
+	"golang.org/x/net/context"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/dynamic/dynamicinformer"
 	cache2 "k8s.io/client-go/tools/cache"
+	"net/http"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
-	"sync"
 	"time"
 )
 
@@ -21,12 +24,12 @@ const (
 	RouteIngressType IngressType = "openshift"
 )
 
-type parser interface {
+type normalizer interface {
 	gvr() schema.GroupVersionResource
-	//parse(*unstructured.Unstructured) *DataCache
+	normalize(*unstructured.Unstructured) (*cwafv1.CreateIngressRequest, error)
 }
 
-func newParser(ingressType IngressType) parser {
+func newParser(ingressType IngressType) normalizer {
 	switch ingressType {
 	case K8sIngressType:
 		return &ingress{}
@@ -40,15 +43,12 @@ func newParser(ingressType IngressType) parser {
 }
 
 type IngressCache struct {
-	ingressType IngressType
-	parser      parser
-	//cacheChUpdater chan *DataCache
-	cacheStore *sync.Map
-	notifier   chan struct{}
-	namespace  string
+	ingressType      IngressType
+	normalizer       normalizer
+	notifier         chan struct{}
+	namespace        string
+	ingressSvcClient cwafv1connect.IngressServiceClient
 }
-
-//var ingressCache *IngressCache
 
 func NewIngressCache(ingressType IngressType, ns string) *IngressCache {
 	//if ingressCache != nil {
@@ -56,11 +56,13 @@ func NewIngressCache(ingressType IngressType, ns string) *IngressCache {
 	//}
 	cache := &IngressCache{
 		ingressType: ingressType,
-		//cacheChUpdater: make(chan *DataCache, 1000),
-		cacheStore: &sync.Map{},
-		notifier:   make(chan struct{}, 1000),
-		namespace:  ns,
-		parser:     newParser(ingressType),
+		notifier:    make(chan struct{}, 1000),
+		namespace:   ns,
+		normalizer:  newParser(ingressType),
+		ingressSvcClient: cwafv1connect.NewIngressServiceClient(
+			http.DefaultClient,
+			"http://localhost:8080",
+		),
 	}
 
 	// start cache updater
@@ -106,7 +108,7 @@ func (c *IngressCache) Start() {
 			}
 
 			// about informer period: https://groups.google.com/g/kubernetes-sig-api-machinery/c/PbSCXdLDno0
-			genericInformer, err := dynamicinformer.NewFilteredDynamicInformer(dc, c.parser.gvr(),
+			genericInformer, err := dynamicinformer.NewFilteredDynamicInformer(dc, c.normalizer.gvr(),
 				c.namespace, 1*time.Hour, nil, nil), nil
 			if err != nil {
 				informerStartError = err
@@ -114,9 +116,14 @@ func (c *IngressCache) Start() {
 			}
 			r, err := genericInformer.Informer().AddEventHandler(cache2.ResourceEventHandlerFuncs{
 				AddFunc: func(obj interface{}) {
-					obj.(*unstructured.Unstructured).GetName()
-					obj.(*unstructured.Unstructured).GetNamespace()
-					c.log().Info(fmt.Sprintf("Added ingress object: %v", obj))
+					unstructuredIngress := obj.(*unstructured.Unstructured)
+					l := c.log().
+						With("name", unstructuredIngress.GetName(),
+							"namespace", unstructuredIngress.GetNamespace())
+					if err := c.createIngress(unstructuredIngress); err != nil {
+						l.Error("error creating ingress")
+					}
+
 					//c.cacheChUpdater <- c.parser.parse(obj.(*unstructured.Unstructured))
 				},
 				UpdateFunc: func(oldObj, newObj interface{}) {
@@ -140,6 +147,23 @@ func (c *IngressCache) Start() {
 		}
 
 	}()
+
+}
+
+func (c *IngressCache) createIngress(obj *unstructured.Unstructured) error {
+	req, err := c.
+		normalizer.
+		normalize(obj)
+	if err != nil {
+		return err
+	}
+	_, err = c.
+		ingressSvcClient.
+		CreateIngress(
+			context.Background(),
+			connect.NewRequest(req),
+		)
+	return err
 
 }
 

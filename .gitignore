@@ -8,4 +8,4 @@ ops/nginx/coreruleset-4.12.0.tar.gz.asc
 ops/nginx/coreruleset-4.12.0
 api/gen
 api/vendor
-./bin
+bin
