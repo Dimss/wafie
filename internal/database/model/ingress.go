@@ -6,26 +6,29 @@ import (
 )
 
 type Ingress struct {
-	ID          uint   `gorm:"primaryKey"`
-	Name        string `gorm:"uniqueIndex:idx_name_namespace"`
-	Namespace   string `gorm:"uniqueIndex:idx_name_namespace"`
-	PortNumber  int32
-	PortName    string
-	Path        string
-	Host        string
-	ServiceName string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID            uint   `gorm:"primaryKey"`
+	Name          string `gorm:"uniqueIndex:idx_ing_name_namespace"`
+	Namespace     string `gorm:"uniqueIndex:idx_ing_name_namespace"`
+	PortNumber    int32
+	PortName      string
+	Path          string
+	Host          string
+	ServiceName   string
+	ApplicationID uint
+	Application   Application
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
-func NewIngressFromRequest(req *v1.CreateIngressRequest) *Ingress {
+func NewIngressFromRequest(req *v1.CreateIngressRequest, app *Application) *Ingress {
 	return &Ingress{
-		Name:        req.GetName(),
-		Namespace:   req.GetNamespace(),
-		PortNumber:  req.GetPortNumber(),
-		PortName:    req.GetPortName(),
-		Path:        req.GetPath(),
-		Host:        req.GetHost(),
-		ServiceName: req.GetServiceName(),
+		Name:          req.GetName(),
+		Namespace:     req.GetNamespace(),
+		PortNumber:    req.GetPortNumber(),
+		PortName:      req.GetPortName(),
+		Path:          req.GetPath(),
+		Host:          req.GetHost(),
+		ServiceName:   req.GetServiceName(),
+		ApplicationID: app.ID,
 	}
 }

@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package cwaf.v1;
+
+message CreateApplicationRequest {
+  string name = 1;
+  string namespace = 2;
+  string description = 3;
+  bool protected = 4;
+}
+
+message CreateApplicationResponse {
+  uint32 id = 1;
+}
+
+
+message GetApplicationRequest {
+  oneof nameOrId {
+    string name = 1;
+    uint32 id = 2;
+  }
+}
+
+message GetApplicationResponse {
+  uint32 id = 1;
+  string name = 2;
+  string namespace = 3;
+  bool protected = 4;
+}
+
+service ApplicationService{
+
+  rpc CreateApplication(CreateApplicationRequest) returns (CreateApplicationResponse);
+  rpc GetApplication(GetApplicationRequest) returns (GetApplicationResponse);
+}

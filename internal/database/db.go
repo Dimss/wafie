@@ -50,6 +50,7 @@ func NewDb(cfg *DbCfg) (*gorm.DB, error) {
 
 func migrate(db *gorm.DB) error {
 	return db.AutoMigrate(
+		&model.Application{},
 		&model.Ingress{},
 	)
 }

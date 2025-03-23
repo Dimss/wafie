@@ -8,7 +8,7 @@ build:
       -o bin/api-server cmd/apiserver/main.go
 
 
-buf:
+proto:
 	cd api \
 	&& buf dep update \
 	&& buf export buf.build/googleapis/googleapis --output vendor \

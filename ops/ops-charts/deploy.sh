@@ -7,5 +7,5 @@ helm install cwaf-pg oci://registry-1.docker.io/bitnamicharts/postgresql \
 
 helm install wp oci://registry-1.docker.io/bitnamicharts/wordpress \
   --set ingress.enabled=true \
-  --set ingress.hostname=wp.172.20.10.5.nip.io \
+  --set ingress.hostname=wp.10.100.102.84.nip.io \
   --set service.type=ClusterIP
