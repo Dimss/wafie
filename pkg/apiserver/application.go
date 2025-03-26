@@ -37,19 +37,33 @@ func (s *ApplicationService) GetApplication(
 	req *connect.Request[cwafv1.GetApplicationRequest]) (
 	*connect.Response[cwafv1.GetApplicationResponse], error) {
 	app, err := database.GetApplicationByNameOrId(req.Msg)
+	if err != nil {
+		return connect.NewResponse(&cwafv1.GetApplicationResponse{}), err
+	}
 	return connect.NewResponse(&cwafv1.GetApplicationResponse{
-		Application: &cwafv1.Application{
-			Id:        uint32(app.ID),
-			Name:      app.Name,
-			Namespace: app.Namespace,
-			Protected: app.Protected,
-		},
+		Application: app.ToCwafV1App(),
 	}), err
 }
 
 func (s *ApplicationService) ListApplications(ctx context.Context,
 	req *connect.Request[cwafv1.ListApplicationsRequest]) (
 	*connect.Response[cwafv1.ListApplicationResponse], error) {
+	apps, err := database.ListApplications(req.Msg.Options)
+	if err != nil {
+		return nil, err
+	}
+	var cwafv1Apps []*cwafv1.Application
+	for _, app := range apps {
+		cwafv1Apps = append(cwafv1Apps, app.ToCwafV1App())
+	}
+	return connect.NewResponse(&cwafv1.ListApplicationResponse{Applications: cwafv1Apps}), nil
+}
 
-	return nil, nil
+func (s *ApplicationService) PutApplication(ctx context.Context,
+	req *connect.Request[cwafv1.PutApplicationRequest]) (
+	*connect.Response[cwafv1.PutApplicationResponse], error) {
+	if err := database.UpdateApplication(req.Msg.Application); err != nil {
+		return connect.NewResponse(&cwafv1.PutApplicationResponse{}), err
+	}
+	return connect.NewResponse(&cwafv1.PutApplicationResponse{}), nil
 }
