@@ -1,4 +1,4 @@
-package model
+package database
 
 import (
 	v1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"

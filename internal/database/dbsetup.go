@@ -2,13 +2,12 @@ package database
 
 import (
 	"fmt"
-	"github.com/Dimss/cwaf/internal/database/model"
 	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-var db *gorm.DB
+var dbConn *gorm.DB
 
 type DbCfg struct {
 	host     string
@@ -32,11 +31,11 @@ func (c *DbCfg) dsn() string {
 }
 
 func NewDb(cfg *DbCfg) (*gorm.DB, error) {
-	if db != nil {
-		zap.S().Info("db connection already established, reusing connection")
-		return db, nil
+	if dbConn != nil {
+		zap.S().Info("dbConn connection already established, reusing connection")
+		return dbConn, nil
 	}
-	zap.S().Info("initiating db connection")
+	zap.S().Info("initiating dbConn connection")
 	db, err := gorm.Open(postgres.Open(cfg.dsn()), &gorm.Config{})
 	if err != nil {
 		return nil, err
@@ -44,13 +43,20 @@ func NewDb(cfg *DbCfg) (*gorm.DB, error) {
 	if err := migrate(db); err != nil {
 		return nil, err
 	}
-	zap.S().Info("db connection established")
+	zap.S().Info("dbConn connection established")
 	return db, nil
 }
 
 func migrate(db *gorm.DB) error {
 	return db.AutoMigrate(
-		&model.Application{},
-		&model.Ingress{},
+		&Application{},
+		&Ingress{},
 	)
+}
+
+func db() *gorm.DB {
+	if dbConn == nil {
+		zap.S().Fatal("database connection not initialized, you must call NewDb(dbCfg) first")
+	}
+	return dbConn
 }

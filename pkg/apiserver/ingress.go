@@ -5,7 +5,7 @@ import (
 	"context"
 	cwafv1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
 	"github.com/Dimss/cwaf/api/gen/cwaf/v1/cwafv1connect"
-	"github.com/Dimss/cwaf/internal/database/model"
+	"github.com/Dimss/cwaf/internal/database"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -36,13 +36,13 @@ func (s *IngressService) CreateIngress(
 		l.Error("creating new ingress entry", err)
 		return nil, err
 	}
-	dbRes := s.db.Create(model.NewIngressFromRequest(req.Msg, app))
+	dbRes := s.db.Create(database.NewIngressFromRequest(req.Msg, app))
 	return connect.NewResponse(&cwafv1.CreateIngressResponse{}), dbRes.Error
 }
 
 func (s *IngressService) getApplicationForIngress(
 	ctx context.Context, name, namespace string) (
-	*model.Application, error) {
+	*database.Application, error) {
 
 	// if application already exists,
 	// use the app id for ingress creation
@@ -58,7 +58,7 @@ func (s *IngressService) getApplicationForIngress(
 	)
 	// all good return found application
 	if err == nil {
-		return &model.Application{ID: uint(getAppResp.Msg.GetId())}, nil
+		return &database.Application{ID: uint(getAppResp.Msg.GetId())}, nil
 	}
 	// unexpected code, return error
 	if connect.CodeOf(err) != connect.CodeNotFound {
@@ -74,8 +74,8 @@ func (s *IngressService) getApplicationForIngress(
 			}),
 	)
 	if err != nil {
-		return &model.Application{ID: uint(createAppResp.Msg.GetId())}, err
+		return &database.Application{ID: uint(createAppResp.Msg.GetId())}, err
 	}
-	return &model.Application{ID: uint(createAppResp.Msg.GetId())}, nil
+	return &database.Application{ID: uint(createAppResp.Msg.GetId())}, nil
 
 }

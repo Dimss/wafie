@@ -2,6 +2,14 @@ syntax = "proto3";
 
 package cwaf.v1;
 
+message Application {
+  uint32 id = 1;
+  string name = 2;
+  string namespace = 3;
+  bool protected = 4;
+}
+
+
 message CreateApplicationRequest {
   string name = 1;
   string namespace = 2;
@@ -22,14 +30,23 @@ message GetApplicationRequest {
 }
 
 message GetApplicationResponse {
-  uint32 id = 1;
-  string name = 2;
-  string namespace = 3;
-  bool protected = 4;
+  Application application = 1;
+}
+
+message ListApplicationsOptions {
+  bool protected = 1;
+}
+
+message ListApplicationsRequest {
+  ListApplicationsOptions options = 1;
+}
+
+message ListApplicationResponse {
+  repeated Application applications = 1;
 }
 
 service ApplicationService{
-
   rpc CreateApplication(CreateApplicationRequest) returns (CreateApplicationResponse);
   rpc GetApplication(GetApplicationRequest) returns (GetApplicationResponse);
+  rpc ListApplications(ListApplicationsRequest) returns (ListApplicationResponse);
 }
