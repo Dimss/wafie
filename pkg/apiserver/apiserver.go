@@ -33,12 +33,12 @@ func (s *ApiServer) Start() {
 func (s *ApiServer) registerHandlers(mux *http.ServeMux) {
 	mux.Handle(
 		cwafv1connect.NewIngressServiceHandler(
-			NewIngressService(s.db),
+			NewIngressService(),
 		),
 	)
 	mux.Handle(
 		cwafv1connect.NewApplicationServiceHandler(
-			NewApplicationService(s.db),
+			NewApplicationService(),
 		),
 	)
 }

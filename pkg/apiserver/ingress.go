@@ -7,19 +7,16 @@ import (
 	"github.com/Dimss/cwaf/api/gen/cwaf/v1/cwafv1connect"
 	"github.com/Dimss/cwaf/internal/database"
 	"go.uber.org/zap"
-	"gorm.io/gorm"
 )
 
 type IngressService struct {
 	cwafv1connect.UnimplementedIngressServiceHandler
-	db     *gorm.DB
 	appSvc *ApplicationService
 }
 
-func NewIngressService(db *gorm.DB) *IngressService {
+func NewIngressService() *IngressService {
 	return &IngressService{
-		db:     db,
-		appSvc: NewApplicationService(db),
+		appSvc: NewApplicationService(),
 	}
 }
 
@@ -36,14 +33,13 @@ func (s *IngressService) CreateIngress(
 		l.Error("creating new ingress entry", err)
 		return nil, err
 	}
-	dbRes := s.db.Create(database.NewIngressFromRequest(req.Msg, app))
-	return connect.NewResponse(&cwafv1.CreateIngressResponse{}), dbRes.Error
+	return connect.NewResponse(&cwafv1.CreateIngressResponse{}),
+		database.NewIngressFromRequest(req.Msg, app)
 }
 
 func (s *IngressService) getApplicationForIngress(
 	ctx context.Context, name, namespace string) (
 	*database.Application, error) {
-
 	// if application already exists,
 	// use the app id for ingress creation
 	getAppResp, err := s.appSvc.GetApplication(
@@ -58,7 +54,7 @@ func (s *IngressService) getApplicationForIngress(
 	)
 	// all good return found application
 	if err == nil {
-		return &database.Application{ID: uint(getAppResp.Msg.GetId())}, nil
+		return &database.Application{ID: uint(getAppResp.Msg.Application.GetId())}, nil
 	}
 	// unexpected code, return error
 	if connect.CodeOf(err) != connect.CodeNotFound {
@@ -77,5 +73,4 @@ func (s *IngressService) getApplicationForIngress(
 		return &database.Application{ID: uint(createAppResp.Msg.GetId())}, err
 	}
 	return &database.Application{ID: uint(createAppResp.Msg.GetId())}, nil
-
 }

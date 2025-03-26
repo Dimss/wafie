@@ -1,6 +1,7 @@
 package database
 
 import (
+	"connectrpc.com/connect"
 	v1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
 	"time"
 )
@@ -20,8 +21,8 @@ type Ingress struct {
 	UpdatedAt     time.Time
 }
 
-func NewIngressFromRequest(req *v1.CreateIngressRequest, app *Application) *Ingress {
-	return &Ingress{
+func NewIngressFromRequest(req *v1.CreateIngressRequest, app *Application) error {
+	ingress := &Ingress{
 		Name:          req.GetName(),
 		Namespace:     req.GetNamespace(),
 		PortNumber:    req.GetPortNumber(),
@@ -31,4 +32,9 @@ func NewIngressFromRequest(req *v1.CreateIngressRequest, app *Application) *Ingr
 		ServiceName:   req.GetServiceName(),
 		ApplicationID: app.ID,
 	}
+	if res := db().Create(ingress); res.Error != nil {
+		return connect.NewError(connect.CodeUnknown, res.Error)
+	}
+
+	return nil
 }

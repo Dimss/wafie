@@ -35,16 +35,17 @@ func NewDb(cfg *DbCfg) (*gorm.DB, error) {
 		zap.S().Info("dbConn connection already established, reusing connection")
 		return dbConn, nil
 	}
-	zap.S().Info("initiating dbConn connection")
-	db, err := gorm.Open(postgres.Open(cfg.dsn()), &gorm.Config{})
+	zap.S().Info("initiating db connection")
+	var err error
+	dbConn, err = gorm.Open(postgres.Open(cfg.dsn()), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}
-	if err := migrate(db); err != nil {
+	if err := migrate(dbConn); err != nil {
 		return nil, err
 	}
-	zap.S().Info("dbConn connection established")
-	return db, nil
+	zap.S().Info("db connection established")
+	return dbConn, nil
 }
 
 func migrate(db *gorm.DB) error {
