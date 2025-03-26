@@ -38,7 +38,6 @@ func (s *IngressService) CreateIngress(
 	}
 	dbRes := s.db.Create(model.NewIngressFromRequest(req.Msg, app))
 	return connect.NewResponse(&cwafv1.CreateIngressResponse{}), dbRes.Error
-
 }
 
 func (s *IngressService) getApplicationForIngress(

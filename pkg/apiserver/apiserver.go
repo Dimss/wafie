@@ -20,7 +20,6 @@ func NewApiServer(db *gorm.DB) *ApiServer {
 }
 
 func (s *ApiServer) Start() {
-
 	zap.S().Info("starting API server")
 	mux := http.NewServeMux()
 	s.enableReflection(mux)
