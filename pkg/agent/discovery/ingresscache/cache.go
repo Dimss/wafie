@@ -50,19 +50,17 @@ type IngressCache struct {
 	ingressSvcClient cwafv1connect.IngressServiceClient
 }
 
-func NewIngressCache(ingressType IngressType, ns string) *IngressCache {
+func NewIngressCache(ingressType IngressType, apiAddr string) *IngressCache {
 	//if ingressCache != nil {
 	//	return ingressCache
 	//}
 	cache := &IngressCache{
 		ingressType: ingressType,
 		notifier:    make(chan struct{}, 1000),
-		namespace:   ns,
+		namespace:   "",
 		normalizer:  newParser(ingressType),
 		ingressSvcClient: cwafv1connect.NewIngressServiceClient(
-			http.DefaultClient,
-			"http://localhost:8080",
-		),
+			http.DefaultClient, apiAddr),
 	}
 
 	// start cache updater
