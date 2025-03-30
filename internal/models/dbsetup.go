@@ -1,4 +1,4 @@
-package database
+package models
 
 import (
 	"fmt"
@@ -14,14 +14,16 @@ type DbCfg struct {
 	user     string
 	password string
 	dbName   string
+	logger   *zap.Logger
 }
 
-func NewDbCfg(host, user, pass, dbName string) *DbCfg {
+func NewDbCfg(host, user, pass, dbName string, log *zap.Logger) *DbCfg {
 	return &DbCfg{
 		host:     host,
 		user:     user,
 		password: pass,
 		dbName:   dbName,
+		logger:   log,
 	}
 }
 
@@ -32,10 +34,10 @@ func (c *DbCfg) dsn() string {
 
 func NewDb(cfg *DbCfg) (*gorm.DB, error) {
 	if dbConn != nil {
-		zap.S().Info("dbConn connection already established, reusing connection")
+		cfg.logger.Info("dbConn connection already established, reusing connection")
 		return dbConn, nil
 	}
-	zap.S().Info("initiating db connection")
+	cfg.logger.Info("initiating db connection")
 	var err error
 	dbConn, err = gorm.Open(postgres.Open(cfg.dsn()), &gorm.Config{})
 	if err != nil {
@@ -44,7 +46,7 @@ func NewDb(cfg *DbCfg) (*gorm.DB, error) {
 	if err := migrate(dbConn); err != nil {
 		return nil, err
 	}
-	zap.S().Info("db connection established")
+	cfg.logger.Info("db connection established")
 	return dbConn, nil
 }
 
@@ -52,6 +54,8 @@ func migrate(db *gorm.DB) error {
 	return db.AutoMigrate(
 		&Application{},
 		&Ingress{},
+		&Protection{},
+		&WafProtectionConfig{},
 	)
 }
 

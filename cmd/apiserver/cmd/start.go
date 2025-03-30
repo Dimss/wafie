@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/Dimss/cwaf/internal/database"
+	"github.com/Dimss/cwaf/internal/models"
 	"github.com/Dimss/cwaf/pkg/apiserver"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -29,28 +29,36 @@ var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "start api server",
 	Run: func(cmd *cobra.Command, args []string) {
-		zap.S().Info("starting api server")
-		db, err := database.NewDb(
-			database.NewDbCfg(
+		logger, err := zap.NewProduction()
+		if err != nil {
+			panic(err)
+		}
+		defer logger.Sync()
+
+		logger.Info("starting api server")
+		db, err := models.NewDb(
+			models.NewDbCfg(
 				viper.GetString("db-host"),
 				viper.GetString("db-user"),
 				viper.GetString("db-password"),
 				viper.GetString("db-name"),
+				logger,
 			),
 		)
 		if err != nil {
-			zap.S().Fatalw("error during database connection initialization", "error", err)
+			logger.Fatal("error during database connection initialization", zap.Error(err))
 		}
-		srv := apiserver.NewApiServer(db)
+		srv := apiserver.NewApiServer(db, logger)
 		srv.Start()
+
 		// handle interrupts
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 		for {
 			select {
 			case s := <-sigCh:
-				zap.S().Infof("signal: %s, shutting down", s)
-				zap.S().Info("bye bye 👋")
+				logger.Info("signal received, shutting down", zap.String("signal", s.String()))
+				logger.Info("bye bye 👋")
 				os.Exit(0)
 			}
 		}

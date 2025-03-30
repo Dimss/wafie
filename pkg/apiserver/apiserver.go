@@ -11,23 +11,24 @@ import (
 )
 
 type ApiServer struct {
-	db *gorm.DB
+	db     *gorm.DB
+	logger *zap.Logger
 }
 
-func NewApiServer(db *gorm.DB) *ApiServer {
+func NewApiServer(db *gorm.DB, log *zap.Logger) *ApiServer {
 
-	return &ApiServer{db: db}
+	return &ApiServer{db: db, logger: log}
 }
 
 func (s *ApiServer) Start() {
-	zap.S().Info("starting API server")
+	s.logger.Info("starting API server")
 	mux := http.NewServeMux()
 	s.enableReflection(mux)
 	s.registerHandlers(mux)
 	go func() {
 		http.ListenAndServe(":8080", h2c.NewHandler(mux, &http2.Server{}))
 	}()
-	zap.S().Info("server running on 0.0.0.0:8080")
+	s.logger.Info("server running on 0.0.0.0:8080")
 }
 
 func (s *ApiServer) registerHandlers(mux *http.ServeMux) {

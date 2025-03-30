@@ -1,38 +1,95 @@
 syntax = "proto3";
+import "google/protobuf/timestamp.proto";
 
 package cwaf.v1;
-
-enum AppProtected {
-  UNSPECIFIED = 0;
-  NO = 1;
-  YES = 2;
-}
 
 message Application {
   uint32 id = 1;
   string name = 2;
   string namespace = 3;
-  AppProtected protected = 4;
+
+  repeated Protection protections = 4;
+}
+
+message Protection {
+  uint32 id = 1;
+  uint32 application_id = 2;
+
+  ProtectionType type = 3;
+  ProtectionStatus status = 4;
+
+  oneof config {
+    WafProtectionConfig waf = 5;
+    // Future: AuthProtectionConfig auth = 6;
+  }
+}
+
+enum ProtectionType {
+  NONE = 0;
+  WAF = 1;
+  // AUTH = 2;
+}
+
+message ProtectionStatus {
+  ProtectionState desired = 1;
+  ProtectionState actual = 2;
+  google.protobuf.Timestamp last_updated = 3;
+  string reason = 4;
+}
+
+enum ProtectionState {
+  UNSPECIFIED = 0;
+  UNPROTECTED = 1;
+  PROTECTED = 2;
+  ERROR = 3;
+}
+
+message WafProtectionConfig {
+  string rule_set = 1;
+  repeated string allow_list_ips = 2;
 }
 
 
 message CreateApplicationRequest {
   string name = 1;
   string namespace = 2;
-  string description = 3;
-  AppProtected protected = 4;
+
+  repeated CreateProtection protections = 3;
 }
+
+message CreateProtection {
+  ProtectionType type = 1;
+  ProtectionStatusInput status = 2;
+
+  oneof config {
+    WafProtectionInput waf = 3;
+    // Future types: AuthProtectionInput auth = 4;
+  }
+}
+
+// Only user-settable fields (desired state)
+message ProtectionStatusInput {
+  ProtectionState desired = 1;
+}
+
+// Input config for WAF protection
+message WafProtectionInput {
+  string rule_set = 1;
+  repeated string allow_list_ips = 2;
+}
+
 
 message CreateApplicationResponse {
   uint32 id = 1;
 }
 
-
 message GetApplicationRequest {
-  oneof nameOrId {
-    string name = 1;
-    uint32 id = 2;
-  }
+  uint32 id = 1;
+}
+
+message GetApplicationByNameRequest {
+  string name = 1;
+  string namespace = 2;
 }
 
 message GetApplicationResponse {
@@ -40,7 +97,7 @@ message GetApplicationResponse {
 }
 
 message ListApplicationsOptions {
-  AppProtected protected = 1;
+  ProtectionStatus protection = 1;
 }
 
 message ListApplicationsRequest {
@@ -61,6 +118,7 @@ message PutApplicationResponse {
 service ApplicationService{
   rpc CreateApplication(CreateApplicationRequest) returns (CreateApplicationResponse);
   rpc GetApplication(GetApplicationRequest) returns (GetApplicationResponse);
+  rpc GetApplicationByName(GetApplicationByNameRequest) returns (GetApplicationResponse);
   rpc ListApplications(ListApplicationsRequest) returns (ListApplicationResponse);
   rpc PutApplication(PutApplicationRequest) returns (PutApplicationResponse);
 }

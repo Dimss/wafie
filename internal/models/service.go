@@ -1,4 +1,4 @@
-package database
+package models
 
 type Service struct {
 	ID uint `gorm:"primaryKey"`

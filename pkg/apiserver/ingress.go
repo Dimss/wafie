@@ -5,7 +5,7 @@ import (
 	"context"
 	cwafv1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
 	"github.com/Dimss/cwaf/api/gen/cwaf/v1/cwafv1connect"
-	"github.com/Dimss/cwaf/internal/database"
+	"github.com/Dimss/cwaf/internal/models"
 	"go.uber.org/zap"
 )
 
@@ -34,12 +34,12 @@ func (s *IngressService) CreateIngress(
 		return nil, err
 	}
 	return connect.NewResponse(&cwafv1.CreateIngressResponse{}),
-		database.NewIngressFromRequest(req.Msg, app)
+		models.NewIngressFromRequest(req.Msg, app)
 }
 
 func (s *IngressService) getApplicationForIngress(
 	ctx context.Context, name, namespace string) (
-	*database.Application, error) {
+	*models.Application, error) {
 	// if application already exists,
 	// use the app id for ingress creation
 	getAppResp, err := s.appSvc.GetApplication(
@@ -54,7 +54,7 @@ func (s *IngressService) getApplicationForIngress(
 	)
 	// all good return found application
 	if err == nil {
-		return &database.Application{ID: uint(getAppResp.Msg.Application.GetId())}, nil
+		return &models.Application{ID: uint(getAppResp.Msg.Application.GetId())}, nil
 	}
 	// unexpected code, return error
 	if connect.CodeOf(err) != connect.CodeNotFound {
@@ -66,11 +66,11 @@ func (s *IngressService) getApplicationForIngress(
 			&cwafv1.CreateApplicationRequest{
 				Name:        name,
 				Namespace:   namespace,
-				Description: "created automatically by discovery agent",
+				Protections: nil,
 			}),
 	)
 	if err != nil {
-		return &database.Application{ID: uint(createAppResp.Msg.GetId())}, err
+		return &models.Application{ID: uint(createAppResp.Msg.GetId())}, err
 	}
-	return &database.Application{ID: uint(createAppResp.Msg.GetId())}, nil
+	return &models.Application{ID: uint(createAppResp.Msg.GetId())}, nil
 }

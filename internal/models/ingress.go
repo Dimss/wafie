@@ -1,4 +1,4 @@
-package database
+package models
 
 import (
 	"connectrpc.com/connect"
