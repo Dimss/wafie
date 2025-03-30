@@ -94,6 +94,8 @@ message GetApplicationResponse {
 
 message ListApplicationsOptions {
   ProtectionStatus protection = 1;
+  bool includeIngress = 2;
+
 }
 
 message ListApplicationsRequest {

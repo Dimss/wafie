@@ -34,8 +34,7 @@ var startCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		cache := ingresscache.NewIngressCache(
 			viper.GetString("ingress-type"),
-			viper.GetString("api-addr"),
-		)
+			viper.GetString("api-addr"))
 		cache.Start()
 		svcRouter := router.NewRouteService(viper.GetString("api-addr"))
 		svcRouter.Start()
