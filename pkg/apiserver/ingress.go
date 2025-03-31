@@ -12,11 +12,12 @@ import (
 type IngressService struct {
 	cwafv1connect.UnimplementedIngressServiceHandler
 	appSvc *ApplicationService
+	logger *zap.Logger
 }
 
-func NewIngressService() *IngressService {
+func NewIngressService(log *zap.Logger) *IngressService {
 	return &IngressService{
-		appSvc: NewApplicationService(),
+		appSvc: NewApplicationService(log),
 	}
 }
 
@@ -45,10 +46,10 @@ func (s *IngressService) getApplicationForIngress(
 	getAppResp, err := s.appSvc.GetApplication(
 		ctx,
 		connect.NewRequest(
-			&cwafv1.GetApplicationRequest{
-				NameOrId: &cwafv1.GetApplicationRequest_Name{
-					Name: name,
-				},
+			&cwafv1.GetApplicationRequest{ // ToDo: implement
+				//NameOrId: &cwafv1.GetApplicationRequest_Name{
+				//	Name: name,
+				//},
 			},
 		),
 	)

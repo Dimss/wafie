@@ -3,7 +3,7 @@ package models
 import (
 	"database/sql/driver"
 	"encoding/json"
-	"errors"
+	"fmt"
 )
 
 type GormStringArray []string
@@ -13,9 +13,12 @@ func (a GormStringArray) Value() (driver.Value, error) {
 }
 
 func (a *GormStringArray) Scan(value interface{}) error {
-	bytes, ok := value.([]byte)
-	if !ok {
-		return errors.New("failed to convert value to byte slice")
+	switch v := value.(type) {
+	case []byte:
+		return json.Unmarshal(v, a)
+	case string:
+		return json.Unmarshal([]byte(v), a)
+	default:
+		return fmt.Errorf("unsupported type for GormStringArray: %T", value)
 	}
-	return json.Unmarshal(bytes, a)
 }

@@ -2,28 +2,28 @@ package apiserver
 
 import (
 	"connectrpc.com/connect"
-	"context"
 	cwafv1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
 	"github.com/Dimss/cwaf/api/gen/cwaf/v1/cwafv1connect"
 	"github.com/Dimss/cwaf/internal/models"
 	"go.uber.org/zap"
+	"golang.org/x/net/context"
 )
 
 type ApplicationService struct {
 	cwafv1connect.UnimplementedApplicationServiceHandler
+	logger *zap.Logger
 }
 
-func NewApplicationService() *ApplicationService {
-	return &ApplicationService{}
+func NewApplicationService(log *zap.Logger) *ApplicationService {
+	return &ApplicationService{
+		logger: log,
+	}
 }
 
-func (s *ApplicationService) CreateApplication(
-	ctx context.Context,
-	req *connect.Request[cwafv1.CreateApplicationRequest]) (
-	*connect.Response[cwafv1.CreateApplicationResponse], error) {
-	zap.S().With(
-		"name", req.Msg.GetName(),
-		"namespace", req.Msg.GetNamespace()).
+func (s *ApplicationService) CreateApplication(ctx context.Context, req *connect.Request[cwafv1.CreateApplicationRequest]) (*connect.Response[cwafv1.CreateApplicationResponse], error) {
+	s.logger.With(
+		zap.String("name", req.Msg.GetName()),
+		zap.String("namespace", req.Msg.GetNamespace())).
 		Info("creating new application entry")
 	if app, err := models.CreateApplication(req.Msg); err != nil {
 		// ToDo: verify if the application already exists
@@ -33,10 +33,10 @@ func (s *ApplicationService) CreateApplication(
 	}
 }
 
-func (s *ApplicationService) GetApplication(
-	ctx context.Context,
-	req *connect.Request[cwafv1.GetApplicationRequest]) (
-	*connect.Response[cwafv1.GetApplicationResponse], error) {
+func (s *ApplicationService) GetApplication(ctx context.Context, req *connect.Request[cwafv1.GetApplicationRequest]) (*connect.Response[cwafv1.GetApplicationResponse], error) {
+	s.logger.With(
+		zap.Uint32("id", req.Msg.GetId())).
+		Info("getting application entry")
 	app, err := models.GetApplication(req.Msg)
 	if err != nil {
 		return connect.NewResponse(&cwafv1.GetApplicationResponse{}), err
@@ -46,25 +46,28 @@ func (s *ApplicationService) GetApplication(
 	}), err
 }
 
-//func (s *ApplicationService) ListApplications(ctx context.Context,
-//	req *connect.Request[cwafv1.ListApplicationsRequest]) (
-//	*connect.Response[cwafv1.ListApplicationResponse], error) {
-//	apps, err := models.ListApplications(req.Msg.Options)
-//	if err != nil {
-//		return nil, err
-//	}
-//	var cwafv1Apps []*cwafv1.Application
-//	for _, app := range apps {
-//		cwafv1Apps = append(cwafv1Apps, app.ToCwafV1App())
-//	}
-//	return connect.NewResponse(&cwafv1.ListApplicationResponse{Applications: cwafv1Apps}), nil
-//}
-//
-//func (s *ApplicationService) PutApplication(ctx context.Context,
-//	req *connect.Request[cwafv1.PutApplicationRequest]) (
-//	*connect.Response[cwafv1.PutApplicationResponse], error) {
-//	if err := models.UpdateApplication(req.Msg.Application); err != nil {
-//		return connect.NewResponse(&cwafv1.PutApplicationResponse{}), err
-//	}
-//	return connect.NewResponse(&cwafv1.PutApplicationResponse{}), nil
-//}
+func (s *ApplicationService) ListApplications(ctx context.Context, req *connect.Request[cwafv1.ListApplicationsRequest]) (*connect.Response[cwafv1.ListApplicationResponse], error) {
+	s.logger.Info("listing applications")
+
+	apps, err := models.ListApplications(req.Msg.Options)
+	if err != nil {
+		return nil, err
+	}
+	var cwafv1Apps []*cwafv1.Application
+	for _, app := range apps {
+		cwafv1Apps = append(cwafv1Apps, models.ToProtoApplication(*app))
+	}
+	return connect.NewResponse(&cwafv1.ListApplicationResponse{Applications: cwafv1Apps}), nil
+}
+
+func (s *ApplicationService) PutApplication(ctx context.Context, req *connect.Request[cwafv1.PutApplicationRequest]) (*connect.Response[cwafv1.PutApplicationResponse], error) {
+	var updated *models.Application
+	var err error
+
+	if updated, err = models.UpdateApplication(req.Msg.Application); err != nil {
+		return connect.NewResponse(&cwafv1.PutApplicationResponse{}), err
+	}
+	return connect.NewResponse(&cwafv1.PutApplicationResponse{
+		Application: models.ToProtoApplication(*updated),
+	}), nil
+}

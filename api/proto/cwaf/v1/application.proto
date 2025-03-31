@@ -12,15 +12,11 @@ message Application {
 }
 
 message Protection {
-  uint32 id = 1;
-  uint32 application_id = 2;
-
-  ProtectionType type = 3;
-  ProtectionStatus status = 4;
+  ProtectionType type = 1;
+  ProtectionStatus status = 2;
 
   oneof config {
-    WafProtectionConfig waf = 5;
-    // Future: AuthProtectionConfig auth = 6;
+    WafProtectionConfig waf = 3;
   }
 }
 
@@ -115,6 +111,7 @@ message PutApplicationRequest {
 message PutApplicationResponse {
   Application application = 1;
 }
+
 service ApplicationService{
   rpc CreateApplication(CreateApplicationRequest) returns (CreateApplicationResponse);
   rpc GetApplication(GetApplicationRequest) returns (GetApplicationResponse);

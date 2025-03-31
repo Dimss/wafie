@@ -5,17 +5,16 @@ import (
 )
 
 type Protection struct {
-	ID            uint           `gorm:"primaryKey"`
-	ApplicationID uint           `gorm:"index"`
-	Type          ProtectionType `gorm:"index"`
+	ID            uint
+	ApplicationID uint
 
 	DesiredState ProtectionState
 	ActualState  ProtectionState
 	LastUpdated  time.Time
 	Reason       string
 
+	Type      ProtectionType       // Still useful for querying
 	WAFConfig *WafProtectionConfig `gorm:"foreignKey:ProtectionID"`
-	// Future types: AuthConfig, etc.
 }
 
 type ProtectionType string
