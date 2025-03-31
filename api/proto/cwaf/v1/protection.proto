@@ -1,0 +1,60 @@
+syntax = "proto3";
+import "google/protobuf/timestamp.proto";
+
+package cwaf.v1;
+
+enum ProtectionType {
+  NONE = 0;
+  WAF = 1;
+  // AUTH = 2;
+}
+
+enum ProtectionState {
+  UNSPECIFIED = 0;
+  UNPROTECTED = 1;
+  PROTECTED = 2;
+  ERROR = 3;
+}
+
+message Protection {
+  ProtectionType type = 1;
+  ProtectionStatus status = 2;
+
+  oneof config {
+    WafProtectionConfig waf = 3;
+  }
+}
+
+message ProtectionStatus {
+  ProtectionState desired = 1;
+  ProtectionState actual = 2;
+  google.protobuf.Timestamp last_updated = 3;
+  string reason = 4;
+}
+
+message WafProtectionConfig {
+  string rule_set = 1;
+  repeated string allow_list_ips = 2;
+}
+
+message CreateProtection {
+  ProtectionType type = 1;
+  ProtectionStatusInput status = 2;
+
+  oneof config {
+    WafProtectionInput waf = 3;
+    // Future types: AuthProtectionInput auth = 4;
+  }
+}
+
+// Only user-settable fields (desired state)
+message ProtectionStatusInput {
+  ProtectionState desired = 1;
+}
+
+// Input config for WAF protection
+message WafProtectionInput {
+  string rule_set = 1;
+  repeated string allow_list_ips = 2;
+}
+

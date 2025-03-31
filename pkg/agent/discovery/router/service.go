@@ -41,9 +41,7 @@ func (s *Service) Start() {
 
 func (s *Service) getProtectedIngresses() ([]*cwafv1.Application, error) {
 	req := &cwafv1.ListApplicationsRequest{
-		Options: &cwafv1.ListApplicationsOptions{
-			Protected: cwafv1.AppProtected_YES,
-		},
+		Options: &cwafv1.ListApplicationsOptions{},
 	}
 	apps, err := s.appSvcClient.ListApplications(
 		context.Background(), connect.NewRequest(req))

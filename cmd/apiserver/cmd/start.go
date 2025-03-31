@@ -1,11 +1,16 @@
 package cmd
 
 import (
+	"github.com/Dimss/cwaf/internal/logger"
 	"github.com/Dimss/cwaf/internal/models"
 	"github.com/Dimss/cwaf/pkg/apiserver"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
+
+	//"go.uber.org/zap"
+	//"go.uber.org/zap/zapcore"
+	//"gorm.io/gorm/logger"
 	"os"
 	"os/signal"
 	"syscall"
@@ -29,12 +34,8 @@ var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "start api server",
 	Run: func(cmd *cobra.Command, args []string) {
-		logger, err := zap.NewProduction()
-		if err != nil {
-			panic(err)
-		}
+		logger := logger.NewLogger()
 		defer logger.Sync()
-
 		logger.Info("starting api server")
 		db, err := models.NewDb(
 			models.NewDbCfg(

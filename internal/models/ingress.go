@@ -15,7 +15,7 @@ type Ingress struct {
 	Path          string
 	Host          string
 	ServiceName   string
-	ApplicationID uint
+	ApplicationID uint `gorm:"not null"`
 	Application   Application
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
