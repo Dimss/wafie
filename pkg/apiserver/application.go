@@ -20,7 +20,9 @@ func NewApplicationService(log *zap.Logger) *ApplicationService {
 	}
 }
 
-func (s *ApplicationService) CreateApplication(ctx context.Context, req *connect.Request[cwafv1.CreateApplicationRequest]) (*connect.Response[cwafv1.CreateApplicationResponse], error) {
+func (s *ApplicationService) CreateApplication(
+	ctx context.Context, req *connect.Request[cwafv1.CreateApplicationRequest]) (
+	*connect.Response[cwafv1.CreateApplicationResponse], error) {
 	s.logger.With(
 		zap.String("name", req.Msg.GetName()),
 		zap.String("namespace", req.Msg.GetNamespace())).
@@ -33,7 +35,9 @@ func (s *ApplicationService) CreateApplication(ctx context.Context, req *connect
 	}
 }
 
-func (s *ApplicationService) GetApplication(ctx context.Context, req *connect.Request[cwafv1.GetApplicationRequest]) (*connect.Response[cwafv1.GetApplicationResponse], error) {
+func (s *ApplicationService) GetApplication(
+	ctx context.Context, req *connect.Request[cwafv1.GetApplicationRequest]) (
+	*connect.Response[cwafv1.GetApplicationResponse], error) {
 	s.logger.With(
 		zap.Uint32("id", req.Msg.GetId())).
 		Info("getting application entry")
@@ -42,11 +46,13 @@ func (s *ApplicationService) GetApplication(ctx context.Context, req *connect.Re
 		return connect.NewResponse(&cwafv1.GetApplicationResponse{}), err
 	}
 	return connect.NewResponse(&cwafv1.GetApplicationResponse{
-		Application: models.ToProtoApplication(*app),
+		Application: app.ToProto(),
 	}), err
 }
 
-func (s *ApplicationService) ListApplications(ctx context.Context, req *connect.Request[cwafv1.ListApplicationsRequest]) (*connect.Response[cwafv1.ListApplicationResponse], error) {
+func (s *ApplicationService) ListApplications(
+	ctx context.Context, req *connect.Request[cwafv1.ListApplicationsRequest]) (
+	*connect.Response[cwafv1.ListApplicationsResponse], error) {
 	s.logger.Info("listing applications")
 
 	apps, err := models.ListApplications(req.Msg.Options)
@@ -55,19 +61,21 @@ func (s *ApplicationService) ListApplications(ctx context.Context, req *connect.
 	}
 	var cwafv1Apps []*cwafv1.Application
 	for _, app := range apps {
-		cwafv1Apps = append(cwafv1Apps, models.ToProtoApplication(*app))
+		cwafv1Apps = append(cwafv1Apps, app.ToProto())
 	}
-	return connect.NewResponse(&cwafv1.ListApplicationResponse{Applications: cwafv1Apps}), nil
+	return connect.NewResponse(&cwafv1.ListApplicationsResponse{Applications: cwafv1Apps}), nil
 }
 
-func (s *ApplicationService) PutApplication(ctx context.Context, req *connect.Request[cwafv1.PutApplicationRequest]) (*connect.Response[cwafv1.PutApplicationResponse], error) {
-	var updated *models.Application
+func (s *ApplicationService) PutApplication(
+	ctx context.Context, req *connect.Request[cwafv1.PutApplicationRequest]) (
+	*connect.Response[cwafv1.PutApplicationResponse], error) {
+	var app *models.Application
 	var err error
 
-	if updated, err = models.UpdateApplication(req.Msg.Application); err != nil {
+	if app, err = models.UpdateApplication(req.Msg.Application); err != nil {
 		return connect.NewResponse(&cwafv1.PutApplicationResponse{}), err
 	}
 	return connect.NewResponse(&cwafv1.PutApplicationResponse{
-		Application: models.ToProtoApplication(*updated),
+		Application: app.ToProto(),
 	}), nil
 }

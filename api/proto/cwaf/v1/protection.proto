@@ -1,60 +1,60 @@
 syntax = "proto3";
-import "google/protobuf/timestamp.proto";
 
 package cwaf.v1;
 
-enum ProtectionType {
-  NONE = 0;
-  WAF = 1;
-  // AUTH = 2;
-}
 
-enum ProtectionState {
-  UNSPECIFIED = 0;
-  UNPROTECTED = 1;
-  PROTECTED = 2;
-  ERROR = 3;
+enum ProtectionType {
+  PROTECTION_TYPE_UNSPECIFIED = 0;
+  PROTECTION_TYPE_WAF = 1;
 }
 
 message Protection {
   ProtectionType type = 1;
-  ProtectionStatus status = 2;
-
-  oneof config {
-    WafProtectionConfig waf = 3;
+  oneof protection_options {
+    ModSecProtection modsec_protection = 3;
   }
 }
 
-message ProtectionStatus {
-  ProtectionState desired = 1;
-  ProtectionState actual = 2;
-  google.protobuf.Timestamp last_updated = 3;
-  string reason = 4;
+message ModSecProtection {
+  optional uint32 id = 1;
+  optional uint32 application_id = 2;
 }
 
-message WafProtectionConfig {
-  string rule_set = 1;
-  repeated string allow_list_ips = 2;
+message CreateProtectionRequest {
+  Protection protection = 1;
 }
 
-message CreateProtection {
-  ProtectionType type = 1;
-  ProtectionStatusInput status = 2;
-
-  oneof config {
-    WafProtectionInput waf = 3;
-    // Future types: AuthProtectionInput auth = 4;
-  }
+message CreateProtectionResponse {
+  uint32 id = 1;
 }
 
-// Only user-settable fields (desired state)
-message ProtectionStatusInput {
-  ProtectionState desired = 1;
+message GetProtectionRequest {
+  uint32 id = 1;
 }
 
-// Input config for WAF protection
-message WafProtectionInput {
-  string rule_set = 1;
-  repeated string allow_list_ips = 2;
+message GetProtectionResponse {
+  Protection protection = 1;
 }
 
+message ListProtectionsRequest {
+  uint32 application_id = 1;
+}
+
+message ListProtectionsResponse {
+  repeated Protection protections = 1;
+}
+
+message PutProtectionRequest {
+  Protection protection = 1;
+}
+
+message PutProtectionResponse {
+  uint32 id = 1;
+}
+
+service ProtectionService {
+  rpc CreateProtection(CreateProtectionRequest) returns (CreateProtectionResponse);
+  rpc GetProtection(GetProtectionRequest) returns (GetProtectionResponse);
+  rpc ListProtections(ListProtectionsRequest) returns (ListProtectionsResponse);
+  rpc PutProtection(PutProtectionRequest) returns (PutProtectionResponse);
+}

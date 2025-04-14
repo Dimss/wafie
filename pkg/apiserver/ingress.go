@@ -26,10 +26,10 @@ func (s *IngressService) CreateIngress(
 	req *connect.Request[cwafv1.CreateIngressRequest]) (
 	*connect.Response[cwafv1.CreateIngressResponse], error) {
 	l := zap.S().With(
-		"name", req.Msg.GetName(),
-		"namespace", req.Msg.GetNamespace())
+		"name", req.Msg.Ingress.GetName(),
+		"namespace", req.Msg.Ingress.GetNamespace())
 	l.Info("creating new ingress entry")
-	app, err := s.getApplicationForIngress(ctx, req.Msg.GetName(), req.Msg.GetNamespace())
+	app, err := s.getApplicationForIngress(ctx, req.Msg.Ingress.GetName(), req.Msg.Ingress.GetNamespace())
 	if err != nil {
 		l.Error("creating new ingress entry", err)
 		return nil, err
@@ -65,9 +65,8 @@ func (s *IngressService) getApplicationForIngress(
 	createAppResp, err := s.appSvc.CreateApplication(ctx,
 		connect.NewRequest(
 			&cwafv1.CreateApplicationRequest{
-				Name:        name,
-				Namespace:   namespace,
-				Protections: nil,
+				Name:      name,
+				Namespace: namespace,
 			}),
 	)
 	if err != nil {

@@ -54,8 +54,7 @@ func migrate(db *gorm.DB) error {
 	return db.AutoMigrate(
 		&Application{},
 		&Ingress{},
-		&Protection{},
-		&WafProtectionConfig{},
+		&ModSecProtectionConfig{},
 	)
 }
 

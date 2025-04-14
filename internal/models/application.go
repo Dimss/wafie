@@ -10,11 +10,35 @@ import (
 )
 
 type Application struct {
-	ID        uint   `gorm:"primaryKey"`
-	Name      string `gorm:"uniqueIndex:idx_name_namespace"`
-	Namespace string `gorm:"uniqueIndex:idx_name_namespace"`
+	ID        uint      `gorm:"primaryKey"`
+	Name      string    `gorm:"uniqueIndex:idx_name_namespace"`
+	Namespace string    `gorm:"uniqueIndex:idx_name_namespace"`
+	Ingress   []Ingress `gorm:"foreignKey:ApplicationID"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+func (a *Application) FromProto(req *v1.CreateApplicationRequest) error {
+	if req.Name == "" || req.Namespace == "" {
+		return errors.New("name and namespace are required")
+	}
+	a.Name = req.Name
+	a.Namespace = req.Namespace
+	return nil
+}
+
+func (a *Application) ToProto() *v1.Application {
+	applicationIngresses := make([]*v1.Ingress, len(a.Ingress))
+	for idx, ingress := range a.Ingress {
+		applicationIngresses[idx] = ingress.ToProto()
+	}
+	return &v1.Application{
+		Id:          uint32(a.ID),
+		Name:        a.Name,
+		Namespace:   a.Namespace,
+		Protections: []*v1.Protection{},
+		Ingress:     applicationIngresses,
+	}
 }
 
 func GetApplication(req *v1.GetApplicationRequest) (*Application, error) {
@@ -31,9 +55,9 @@ func GetApplication(req *v1.GetApplicationRequest) (*Application, error) {
 }
 
 func CreateApplication(req *v1.CreateApplicationRequest) (*Application, error) {
-	app, err := FromProtoCreateApplicationRequest(req)
-	if err != nil {
-		return nil, err
+	app := &Application{}
+	if err := app.FromProto(req); err != nil {
+		return app, err
 	}
 
 	if err := db().Create(app).Error; err != nil {
@@ -44,13 +68,15 @@ func CreateApplication(req *v1.CreateApplicationRequest) (*Application, error) {
 }
 
 func ListApplications(options *v1.ListApplicationsOptions) ([]*Application, error) {
+	var err error
 	var apps []*Application
-	whereMap := map[string]interface{}{}
-	// ToDo: add filters for application
-
-	res := db().Preload("Protections.WAFConfig").Where(whereMap).Find(&apps)
-	if res.Error != nil {
-		return nil, connect.NewError(connect.CodeUnknown, res.Error)
+	if options.IncludeIngress {
+		err = db().Preload("Ingress").Find(&apps).Error
+	} else {
+		err = db().Find(&apps).Error
+	}
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnknown, err)
 	}
 	return apps, nil
 }
@@ -107,7 +133,7 @@ func UpdateApplication(req *v1.Application) (*Application, error) {
 	//		switch cfg := update.Config.(type) {
 	//		case *v1.Protection_Waf:
 	//			if existing.WAFConfig == nil {
-	//				existing.WAFConfig = &WafProtectionConfig{}
+	//				existing.WAFConfig = &ModSecProtectionConfig{}
 	//				configChanged = true
 	//			}
 	//			if existing.WAFConfig.RuleSet != cfg.Waf.RuleSet {
@@ -146,7 +172,7 @@ func UpdateApplication(req *v1.Application) (*Application, error) {
 	//
 	//		switch cfg := update.Config.(type) {
 	//		case *v1.Protection_Waf:
-	//			newProtection.WAFConfig = &WafProtectionConfig{
+	//			newProtection.WAFConfig = &ModSecProtectionConfig{
 	//				RuleSet:      cfg.Waf.RuleSet,
 	//				AllowListIPs: cfg.Waf.AllowListIps,
 	//			}
@@ -159,7 +185,7 @@ func UpdateApplication(req *v1.Application) (*Application, error) {
 	//// Delete any protections not included in update
 	//for _, existing := range app.Protections {
 	//	if !seenTypes[existing.Type] {
-	//		if err := db().Where("protection_id = ?", existing.ID).Delete(&WafProtectionConfig{}).Error; err != nil {
+	//		if err := db().Where("protection_id = ?", existing.ID).Delete(&ModSecProtectionConfig{}).Error; err != nil {
 	//			return nil, fmt.Errorf("failed to delete WAF config for protection %d: %w", existing.ID, err)
 	//		}
 	//		if err := db().Delete(&existing).Error; err != nil {

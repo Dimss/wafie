@@ -1,6 +1,7 @@
 syntax = "proto3";
-import "google/protobuf/timestamp.proto";
-import "protection.proto";
+
+import "cwaf/v1/protection.proto";
+import "cwaf/v1/ingress.proto";
 
 package cwaf.v1;
 
@@ -8,16 +9,14 @@ message Application {
   uint32 id = 1;
   string name = 2;
   string namespace = 3;
-
   repeated Protection protections = 4;
+  repeated Ingress ingress = 5;
 }
 
 
 message CreateApplicationRequest {
   string name = 1;
   string namespace = 2;
-
-//  repeated CreateProtection protections = 3;
 }
 
 
@@ -39,8 +38,7 @@ message GetApplicationResponse {
 }
 
 message ListApplicationsOptions {
-  ProtectionStatus protection = 1;
-  bool includeIngress = 2;
+  bool include_ingress = 1;
 
 }
 
@@ -48,7 +46,7 @@ message ListApplicationsRequest {
   ListApplicationsOptions options = 1;
 }
 
-message ListApplicationResponse {
+message ListApplicationsResponse {
   repeated Application applications = 1;
 }
 
@@ -63,7 +61,6 @@ message PutApplicationResponse {
 service ApplicationService{
   rpc CreateApplication(CreateApplicationRequest) returns (CreateApplicationResponse);
   rpc GetApplication(GetApplicationRequest) returns (GetApplicationResponse);
-  rpc GetApplicationByName(GetApplicationByNameRequest) returns (GetApplicationResponse);
-  rpc ListApplications(ListApplicationsRequest) returns (ListApplicationResponse);
+  rpc ListApplications(ListApplicationsRequest) returns (ListApplicationsResponse);
   rpc PutApplication(PutApplicationRequest) returns (PutApplicationResponse);
 }

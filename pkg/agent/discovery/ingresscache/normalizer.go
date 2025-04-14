@@ -29,13 +29,13 @@ func (i *ingress) normalize(obj *unstructured.Unstructured) (*cwafv1.CreateIngre
 	}
 	ingressRequest := cwafv1.CreateIngressRequest{}
 	if len(ingObj.Spec.Rules) > 0 && len(ingObj.Spec.Rules[0].HTTP.Paths) > 0 {
-		ingressRequest.Name = ingObj.Name
-		ingressRequest.Namespace = ingObj.Namespace
-		ingressRequest.PortNumber = ingObj.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number
-		ingressRequest.PortName = ingObj.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Name
-		ingressRequest.Path = ingObj.Spec.Rules[0].HTTP.Paths[0].Path
-		ingressRequest.Host = ingObj.Spec.Rules[0].Host
-		ingressRequest.ServiceName = ingObj.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name
+		ingressRequest.Ingress.Name = ingObj.Name
+		ingressRequest.Ingress.Namespace = ingObj.Namespace
+		ingressRequest.Ingress.PortNumber = ingObj.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number
+		ingressRequest.Ingress.PortName = ingObj.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Name
+		ingressRequest.Ingress.Path = ingObj.Spec.Rules[0].HTTP.Paths[0].Path
+		ingressRequest.Ingress.Host = ingObj.Spec.Rules[0].Host
+		ingressRequest.Ingress.ServiceName = ingObj.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name
 		return &ingressRequest, nil
 	}
 

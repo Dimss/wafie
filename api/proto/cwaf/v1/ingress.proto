@@ -2,21 +2,25 @@ syntax = "proto3";
 
 package cwaf.v1;
 
-message CreateIngressRequest {
+message Ingress {
   // ingress object name
   string name = 1;
   // ingress object namespace
   string namespace = 2;
   // ingress port number
-  int32 portNumber = 3;
+  int32 port_number = 3;
   // ingress port name
-  string portName = 4;
+  string port_name = 4;
   // ingress URI path
   string path = 5;
   // ingress host (dns)
   string host = 6;
   // service name
-  string serviceName = 7;
+  string service_name = 7;
+}
+
+message CreateIngressRequest {
+  Ingress ingress = 1;
 }
 
 message CreateIngressResponse {}

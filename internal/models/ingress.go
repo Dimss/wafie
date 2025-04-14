@@ -23,13 +23,13 @@ type Ingress struct {
 
 func NewIngressFromRequest(req *v1.CreateIngressRequest, app *Application) error {
 	ingress := &Ingress{
-		Name:          req.GetName(),
-		Namespace:     req.GetNamespace(),
-		PortNumber:    req.GetPortNumber(),
-		PortName:      req.GetPortName(),
-		Path:          req.GetPath(),
-		Host:          req.GetHost(),
-		ServiceName:   req.GetServiceName(),
+		Name:          req.Ingress.GetName(),
+		Namespace:     req.Ingress.GetNamespace(),
+		PortNumber:    req.Ingress.GetPortNumber(),
+		PortName:      req.Ingress.GetPortName(),
+		Path:          req.Ingress.GetPath(),
+		Host:          req.Ingress.GetHost(),
+		ServiceName:   req.Ingress.GetServiceName(),
 		ApplicationID: app.ID,
 	}
 	if res := db().Create(ingress); res.Error != nil {
@@ -37,4 +37,15 @@ func NewIngressFromRequest(req *v1.CreateIngressRequest, app *Application) error
 	}
 
 	return nil
+}
+func (i *Ingress) ToProto() *v1.Ingress {
+	return &v1.Ingress{
+		Name:        i.Name,
+		Namespace:   i.Namespace,
+		PortNumber:  i.PortNumber,
+		PortName:    i.PortName,
+		Path:        i.Path,
+		Host:        i.Host,
+		ServiceName: i.ServiceName,
+	}
 }
