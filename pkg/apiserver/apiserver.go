@@ -30,6 +30,7 @@ func (s *ApiServer) Start() {
 }
 
 func (s *ApiServer) registerHandlers(mux *http.ServeMux) {
+	s.logger.Info("registering handlers")
 	mux.Handle(
 		cwafv1connect.NewApplicationServiceHandler(
 			NewApplicationService(s.logger),

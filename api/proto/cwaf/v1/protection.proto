@@ -3,10 +3,12 @@ syntax = "proto3";
 package cwaf.v1;
 
 
-enum ModSecProtectionMode {
-  MOD_SEC_PROTECTION_MODE_UNSPECIFIED = 0;
-  MOD_SEC_PROTECTION_MODE_ON = 1;
-  MOD_SEC_PROTECTION_MODE_OFF = 2;
+enum ParanoiaLevel {
+  PARANOIA_LEVEL_UNSPECIFIED = 0;
+  PARANOIA_LEVEL_1 = 1;
+  PARANOIA_LEVEL_2 = 2;
+  PARANOIA_LEVEL_3 = 3;
+  PARANOIA_LEVEL_4 = 4;
 }
 
 enum ProtectionMode {
@@ -15,19 +17,20 @@ enum ProtectionMode {
   PROTECTION_MODE_OFF = 2;
 }
 
-message ModSecProtection {
-  ModSecProtectionMode protection_mode = 1;
-  string paranoia_level = 2;
+message ModSec {
+  ProtectionMode protection_mode = 1;
+  ParanoiaLevel paranoia_level = 2;
 }
 
 message ProtectionDesiredState {
-  ModSecProtection mode_sec_protection = 1;
+  ModSec mode_sec = 1;
 }
 
 message Protection {
-  ProtectionMode protection_mode = 1;
+  uint32 id = 1;
   uint32 application_id = 2;
-  ProtectionDesiredState desired_state = 3;
+  ProtectionMode protection_mode = 3;
+  ProtectionDesiredState desired_state = 4;
 }
 
 message CreateProtectionRequest {
@@ -35,12 +38,30 @@ message CreateProtectionRequest {
 }
 
 message CreateProtectionResponse {
+  Protection protection = 1;
+}
+
+message GetProtectionRequest {
   uint32 id = 1;
+}
+
+message GetProtectionResponse {
+  Protection protection = 1;
+}
+
+message PutProtectionRequest {
+  uint32 id = 1;
+  ProtectionMode protection_mode = 3;
+  ProtectionDesiredState desired_state = 4;
+}
+
+message PutProtectionResponse {
+  Protection protection = 1;
 }
 
 service ProtectionService {
   rpc CreateProtection(CreateProtectionRequest) returns (CreateProtectionResponse);
-  //  rpc GetProtection(GetProtectionRequest) returns (GetProtectionResponse);
+  rpc GetProtection(GetProtectionRequest) returns (GetProtectionResponse);
   //  rpc ListProtections(ListProtectionsRequest) returns (ListProtectionsResponse);
-  //  rpc PutProtection(PutProtectionRequest) returns (PutProtectionResponse);
+  rpc PutProtection(PutProtectionRequest) returns (PutProtectionResponse);
 }

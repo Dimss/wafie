@@ -12,11 +12,13 @@ import (
 type ApplicationService struct {
 	cwafv1connect.UnimplementedApplicationServiceHandler
 	logger *zap.Logger
+	foo    string
 }
 
 func NewApplicationService(log *zap.Logger) *ApplicationService {
 	return &ApplicationService{
 		logger: log,
+		foo:    "bar",
 	}
 }
 
