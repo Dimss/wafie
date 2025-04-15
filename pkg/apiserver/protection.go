@@ -69,5 +69,25 @@ func (s *ProtectionService) PutProtection(
 	return connect.NewResponse(&cwafv1.PutProtectionResponse{
 		Protection: protection.ToProto(),
 	}), nil
+}
 
+func (s *ProtectionService) ListProtections(
+	ctx context.Context,
+	req *connect.Request[cwafv1.ListProtectionsRequest]) (
+	*connect.Response[cwafv1.ListProtectionsResponse], error) {
+
+	s.logger.Info("listing protections")
+	defer s.logger.Info("protections listed")
+	protections, err := models.ListProtections(req.Msg.Options)
+	if err != nil {
+		s.logger.Error("failed to list protections", zap.Error(err))
+		return connect.NewResponse(&cwafv1.ListProtectionsResponse{}), err
+	}
+	var cwafv1Protections []*cwafv1.Protection
+	for _, protection := range protections {
+		cwafv1Protections = append(cwafv1Protections, protection.ToProto())
+	}
+	return connect.NewResponse(&cwafv1.ListProtectionsResponse{
+		Protections: cwafv1Protections,
+	}), nil
 }

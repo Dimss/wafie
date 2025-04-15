@@ -108,21 +108,55 @@ func UpdateProtection(req *v1.PutProtectionRequest) (*Protection, error) {
 	return protection, nil
 }
 
+func ListProtections(options *v1.ListProtectionsOptions) ([]*Protection, error) {
+	//var err error
+	var protections []*Protection
+
+	//if options.IncludeApplication {
+	//	err = db().Preload("Application").Find(&protections).Error
+	//} else {
+	//	err = db().Find(&protections).Error
+	//}
+	//if err != nil {
+	//	return nil, connect.NewError(connect.CodeUnknown, err)
+	//}
+	query := db().Model(&Protection{})
+	if options.ProtectedMode != nil {
+		query = query.Where("protections.mode = ?", uint32(*options.ProtectedMode))
+	}
+
+	if options.ModSecMode != nil {
+		query = query.Where(
+			fmt.Sprintf(
+				"protections.desired_state -> 'modSec' ->> 'protectionMode' = '%d'",
+				uint32(*options.ModSecMode),
+			),
+		)
+	}
+
+	res := query.Find(&protections)
+
+	//res := db().
+	//	Find(&protections).
+	//	Where("protections.desired_state -> 'modSec' ->> 'protectionMode' = '?'", uint32(*options.ProtectedMode)).
+
+	//res := db().
+	//	Joins("JOIN applications ON protections.application_id = applications.id").
+	//	Joins("JOIN ingresses ON ingresses.application_id = applications.id").
+	//	Preload("Application").
+	//	Preload("Application.Ingress").
+	//	Find(&protections)
+
+	return protections, res.Error
+}
+
 func (p *Protection) FromProto(protectionv1 *v1.Protection) error {
 	if protectionv1 == nil {
 		return fmt.Errorf("protection is required")
 	}
 	p.Mode = uint32(protectionv1.ProtectionMode)
 	p.ApplicationID = uint(protectionv1.ApplicationId)
-	if protectionv1.DesiredState != nil {
-		p.DesiredState = ProtectionDesiredState{
-			ModSec: &ModSec{
-				ParanoiaLevel: uint32(protectionv1.DesiredState.ModeSec.ParanoiaLevel),
-				Mode:          uint32(protectionv1.DesiredState.ModeSec.ProtectionMode),
-			},
-		}
-
-	}
+	p.DesiredState.FromProto(protectionv1.DesiredState)
 	return nil
 }
 
@@ -138,34 +172,4 @@ func (p *Protection) ToProto() *v1.Protection {
 		}},
 	}
 	return protection
-
 }
-
-//
-//func CreateAnProtection() {
-//	// Create a new protection
-//	protection := Protection{
-//		ApplicationID: 1,
-//		DesiredState: ProtectionDesiredState{
-//			ModSec: &ModSec{
-//				Mode:       true,
-//				ParanoiaLevel: "p4",
-//			},
-//		},
-//	}
-//
-//	mlog().Info("Creating protection", zap.Any("protection", protection))
-//
-//	// Save the protection to the database
-//	if err := db().Create(&protection).Error; err != nil {
-//		fmt.Println("Error creating protection:", err)
-//	} else {
-//		fmt.Println("Protection created successfully")
-//	}
-//	p := &Protection{}
-//	res := db().First(p, 1)
-//	if res.Error != nil {
-//		fmt.Println("Error fetching protection:", res.Error)
-//	}
-//	fmt.Println("Fetched protection:", p)
-//}
