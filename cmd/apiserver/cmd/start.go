@@ -37,7 +37,7 @@ var startCmd = &cobra.Command{
 		logger := logger.NewLogger()
 		defer logger.Sync()
 		logger.Info("starting api server")
-		db, err := models.NewDb(
+		_, err := models.NewDb(
 			models.NewDbCfg(
 				viper.GetString("db-host"),
 				viper.GetString("db-user"),
@@ -49,7 +49,7 @@ var startCmd = &cobra.Command{
 		if err != nil {
 			logger.Fatal("error during database connection initialization", zap.Error(err))
 		}
-		srv := apiserver.NewApiServer(db, logger)
+		srv := apiserver.NewApiServer(logger)
 		srv.Start()
 
 		// handle interrupts

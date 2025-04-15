@@ -73,7 +73,8 @@ ADD unicode.mapping /opt/app/nginx/conf/modsec
 ADD v4.12.0.tar.gz /opt/app/nginx/conf/modsec
 RUN mv \
      /opt/app/nginx/conf/modsec/coreruleset-4.12.0/crs-setup.conf.example \
-     /opt/app/nginx/conf/modsec/coreruleset-4.12.0/crs-setup.conf
+     /opt/app/nginx/conf/modsec/coreruleset-4.12.0/crs-setup.conf \
+    && mkdir "/opt/app/nginx/conf/protected-services"
 # configure nginx
 ADD nginx.conf /opt/app/nginx/conf
 

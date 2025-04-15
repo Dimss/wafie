@@ -26,14 +26,14 @@ func (s *Service) Start() {
 	go func() {
 		for {
 			zap.S().Info("fetching protected ingresses from api... ")
-			apps, err := s.getProtectedIngresses()
-			if err != nil {
-				zap.S().Warn("failed to fetch protected ingresses", zap.Error(err))
-			}
-			for _, app := range apps {
-				zap.S().Info(app.Name)
-				//s.getSvcSpec()
-			}
+			//apps, err := s.getProtectedIngresses()
+			//if err != nil {
+			//	zap.S().Warn("failed to fetch protected ingresses", zap.Error(err))
+			//}
+			//for _, app := range apps {
+			//	zap.S().Info(app.Name)
+			//	//s.getSvcSpec()
+			//}
 			time.Sleep(1 * time.Second)
 		}
 	}()

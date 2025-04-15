@@ -53,8 +53,8 @@ func (s *ApplicationService) GetApplication(
 func (s *ApplicationService) ListApplications(
 	ctx context.Context, req *connect.Request[cwafv1.ListApplicationsRequest]) (
 	*connect.Response[cwafv1.ListApplicationsResponse], error) {
-	s.logger.Info("listing applications")
-
+	s.logger.Info("start applications listing")
+	defer s.logger.Info("end applications listing")
 	apps, err := models.ListApplications(req.Msg.Options)
 	if err != nil {
 		return nil, err

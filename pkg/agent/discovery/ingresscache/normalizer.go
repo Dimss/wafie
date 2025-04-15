@@ -27,7 +27,7 @@ func (i *ingress) normalize(obj *unstructured.Unstructured) (*cwafv1.CreateIngre
 		FromUnstructured(obj.Object, ingObj); err != nil {
 		return nil, err
 	}
-	ingressRequest := cwafv1.CreateIngressRequest{}
+	ingressRequest := cwafv1.CreateIngressRequest{Ingress: &cwafv1.Ingress{}}
 	if len(ingObj.Spec.Rules) > 0 && len(ingObj.Spec.Rules[0].HTTP.Paths) > 0 {
 		ingressRequest.Ingress.Name = ingObj.Name
 		ingressRequest.Ingress.Namespace = ingObj.Namespace

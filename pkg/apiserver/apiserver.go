@@ -6,18 +6,16 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
-	"gorm.io/gorm"
 	"net/http"
 )
 
 type ApiServer struct {
-	db     *gorm.DB
 	logger *zap.Logger
 }
 
-func NewApiServer(db *gorm.DB, log *zap.Logger) *ApiServer {
+func NewApiServer(log *zap.Logger) *ApiServer {
 
-	return &ApiServer{db: db, logger: log}
+	return &ApiServer{logger: log}
 }
 
 func (s *ApiServer) Start() {
@@ -33,13 +31,18 @@ func (s *ApiServer) Start() {
 
 func (s *ApiServer) registerHandlers(mux *http.ServeMux) {
 	mux.Handle(
+		cwafv1connect.NewApplicationServiceHandler(
+			NewApplicationService(s.logger),
+		),
+	)
+	mux.Handle(
 		cwafv1connect.NewIngressServiceHandler(
 			NewIngressService(s.logger),
 		),
 	)
 	mux.Handle(
-		cwafv1connect.NewApplicationServiceHandler(
-			NewApplicationService(s.logger),
+		cwafv1connect.NewProtectionServiceHandler(
+			NewProtectionService(s.logger),
 		),
 	)
 }
@@ -49,6 +52,7 @@ func (s *ApiServer) enableReflection(mux *http.ServeMux) {
 		cwafv1connect.IngressServiceName,
 		cwafv1connect.AuthServiceName,
 		cwafv1connect.ApplicationServiceName,
+		cwafv1connect.ProtectionServiceName,
 	)
 	mux.Handle(grpcreflect.NewHandlerV1(reflector))
 	mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))

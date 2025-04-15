@@ -33,19 +33,17 @@ func (a *Application) ToProto() *v1.Application {
 		applicationIngresses[idx] = ingress.ToProto()
 	}
 	return &v1.Application{
-		Id:          uint32(a.ID),
-		Name:        a.Name,
-		Namespace:   a.Namespace,
-		Protections: []*v1.Protection{},
-		Ingress:     applicationIngresses,
+		Id:        uint32(a.ID),
+		Name:      a.Name,
+		Namespace: a.Namespace,
+		//Protections: []*v1.Protection{},
+		Ingress: applicationIngresses,
 	}
 }
 
 func GetApplication(req *v1.GetApplicationRequest) (*Application, error) {
-	app := &Application{
-		ID: uint(req.GetId()),
-	}
-	err := db().Preload("Protections.WAFConfig").First(&app, req.GetId()).Error
+	app := &Application{ID: uint(req.GetId())}
+	err := db().First(&app, req.GetId()).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("application not found"))
 	} else if err != nil {

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-import "cwaf/v1/protection.proto";
+//import "cwaf/v1/protection.proto";
 import "cwaf/v1/ingress.proto";
 
 package cwaf.v1;
@@ -9,8 +9,7 @@ message Application {
   uint32 id = 1;
   string name = 2;
   string namespace = 3;
-  repeated Protection protections = 4;
-  repeated Ingress ingress = 5;
+  repeated Ingress ingress = 4;
 }
 
 

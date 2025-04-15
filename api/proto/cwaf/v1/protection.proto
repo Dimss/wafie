@@ -3,21 +3,31 @@ syntax = "proto3";
 package cwaf.v1;
 
 
-enum ProtectionType {
-  PROTECTION_TYPE_UNSPECIFIED = 0;
-  PROTECTION_TYPE_WAF = 1;
+enum ModSecProtectionMode {
+  MOD_SEC_PROTECTION_MODE_UNSPECIFIED = 0;
+  MOD_SEC_PROTECTION_MODE_ON = 1;
+  MOD_SEC_PROTECTION_MODE_OFF = 2;
 }
 
-message Protection {
-  ProtectionType type = 1;
-  oneof protection_options {
-    ModSecProtection modsec_protection = 3;
-  }
+enum ProtectionMode {
+  PROTECTION_MODE_UNSPECIFIED = 0;
+  PROTECTION_MODE_ON = 1;
+  PROTECTION_MODE_OFF = 2;
 }
 
 message ModSecProtection {
-  optional uint32 id = 1;
-  optional uint32 application_id = 2;
+  ModSecProtectionMode protection_mode = 1;
+  string paranoia_level = 2;
+}
+
+message ProtectionDesiredState {
+  ModSecProtection mode_sec_protection = 1;
+}
+
+message Protection {
+  ProtectionMode protection_mode = 1;
+  uint32 application_id = 2;
+  ProtectionDesiredState desired_state = 3;
 }
 
 message CreateProtectionRequest {
@@ -28,33 +38,9 @@ message CreateProtectionResponse {
   uint32 id = 1;
 }
 
-message GetProtectionRequest {
-  uint32 id = 1;
-}
-
-message GetProtectionResponse {
-  Protection protection = 1;
-}
-
-message ListProtectionsRequest {
-  uint32 application_id = 1;
-}
-
-message ListProtectionsResponse {
-  repeated Protection protections = 1;
-}
-
-message PutProtectionRequest {
-  Protection protection = 1;
-}
-
-message PutProtectionResponse {
-  uint32 id = 1;
-}
-
 service ProtectionService {
   rpc CreateProtection(CreateProtectionRequest) returns (CreateProtectionResponse);
-  rpc GetProtection(GetProtectionRequest) returns (GetProtectionResponse);
-  rpc ListProtections(ListProtectionsRequest) returns (ListProtectionsResponse);
-  rpc PutProtection(PutProtectionRequest) returns (PutProtectionResponse);
+  //  rpc GetProtection(GetProtectionRequest) returns (GetProtectionResponse);
+  //  rpc ListProtections(ListProtectionsRequest) returns (ListProtectionsResponse);
+  //  rpc PutProtection(PutProtectionRequest) returns (PutProtectionResponse);
 }
