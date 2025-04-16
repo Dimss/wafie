@@ -53,6 +53,31 @@ func (s *ProtectionDesiredState) ToProto() *v1.ProtectionDesiredState {
 	return nil
 }
 
+func (p *Protection) FromProto(protectionv1 *v1.Protection) error {
+	if protectionv1 == nil {
+		return fmt.Errorf("protection is required")
+	}
+	p.Mode = uint32(protectionv1.ProtectionMode)
+	p.ApplicationID = uint(protectionv1.ApplicationId)
+	p.DesiredState.FromProto(protectionv1.DesiredState)
+	return nil
+}
+
+func (p *Protection) ToProto() *v1.Protection {
+
+	protection := &v1.Protection{
+		Id:             uint32(p.ID),
+		ApplicationId:  uint32(p.ApplicationID),
+		Application:    p.Application.ToProto(),
+		ProtectionMode: v1.ProtectionMode(p.Mode),
+		DesiredState: &v1.ProtectionDesiredState{ModeSec: &v1.ModSec{
+			ProtectionMode: v1.ProtectionMode(p.DesiredState.ModSec.Mode),
+			ParanoiaLevel:  v1.ParanoiaLevel(p.DesiredState.ModSec.ParanoiaLevel),
+		}},
+	}
+	return protection
+}
+
 func CreateProtection(req *v1.CreateProtectionRequest) (*Protection, error) {
 	protection := &Protection{}
 	if err := protection.FromProto(req.Protection); err != nil {
@@ -109,22 +134,11 @@ func UpdateProtection(req *v1.PutProtectionRequest) (*Protection, error) {
 }
 
 func ListProtections(options *v1.ListProtectionsOptions) ([]*Protection, error) {
-	//var err error
 	var protections []*Protection
-
-	//if options.IncludeApplication {
-	//	err = db().Preload("Application").Find(&protections).Error
-	//} else {
-	//	err = db().Find(&protections).Error
-	//}
-	//if err != nil {
-	//	return nil, connect.NewError(connect.CodeUnknown, err)
-	//}
 	query := db().Model(&Protection{})
 	if options.ProtectedMode != nil {
 		query = query.Where("protections.mode = ?", uint32(*options.ProtectedMode))
 	}
-
 	if options.ModSecMode != nil {
 		query = query.Where(
 			fmt.Sprintf(
@@ -133,43 +147,11 @@ func ListProtections(options *v1.ListProtectionsOptions) ([]*Protection, error) 
 			),
 		)
 	}
-
+	if options.IncludeApps != nil && *options.IncludeApps {
+		query = query.
+			Joins("JOIN applications ON protections.application_id = applications.id").
+			Preload("Application")
+	}
 	res := query.Find(&protections)
-
-	//res := db().
-	//	Find(&protections).
-	//	Where("protections.desired_state -> 'modSec' ->> 'protectionMode' = '?'", uint32(*options.ProtectedMode)).
-
-	//res := db().
-	//	Joins("JOIN applications ON protections.application_id = applications.id").
-	//	Joins("JOIN ingresses ON ingresses.application_id = applications.id").
-	//	Preload("Application").
-	//	Preload("Application.Ingress").
-	//	Find(&protections)
-
 	return protections, res.Error
-}
-
-func (p *Protection) FromProto(protectionv1 *v1.Protection) error {
-	if protectionv1 == nil {
-		return fmt.Errorf("protection is required")
-	}
-	p.Mode = uint32(protectionv1.ProtectionMode)
-	p.ApplicationID = uint(protectionv1.ApplicationId)
-	p.DesiredState.FromProto(protectionv1.DesiredState)
-	return nil
-}
-
-func (p *Protection) ToProto() *v1.Protection {
-
-	protection := &v1.Protection{
-		Id:             uint32(p.ID),
-		ApplicationId:  uint32(p.ApplicationID),
-		ProtectionMode: v1.ProtectionMode(p.Mode),
-		DesiredState: &v1.ProtectionDesiredState{ModeSec: &v1.ModSec{
-			ProtectionMode: v1.ProtectionMode(p.DesiredState.ModSec.Mode),
-			ParanoiaLevel:  v1.ParanoiaLevel(p.DesiredState.ModSec.ParanoiaLevel),
-		}},
-	}
-	return protection
 }

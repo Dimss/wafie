@@ -75,7 +75,6 @@ func (s *ProtectionService) ListProtections(
 	ctx context.Context,
 	req *connect.Request[cwafv1.ListProtectionsRequest]) (
 	*connect.Response[cwafv1.ListProtectionsResponse], error) {
-
 	s.logger.Info("listing protections")
 	defer s.logger.Info("protections listed")
 	protections, err := models.ListProtections(req.Msg.Options)

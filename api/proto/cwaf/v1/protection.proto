@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+import "cwaf/v1/application.proto";
+
 package cwaf.v1;
 
 
@@ -31,6 +33,7 @@ message Protection {
   uint32 application_id = 2;
   ProtectionMode protection_mode = 3;
   ProtectionDesiredState desired_state = 4;
+  optional Application application = 5;
 }
 
 message CreateProtectionRequest {
