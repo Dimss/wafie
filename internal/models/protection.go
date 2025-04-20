@@ -8,6 +8,7 @@ import (
 	"fmt"
 	v1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
 	"gorm.io/gorm"
+	"time"
 )
 
 type ModSec struct {
@@ -25,6 +26,8 @@ type Protection struct {
 	ApplicationID uint                   `gorm:"not null;uniqueIndex:idx_protection_app_id"`
 	Application   Application            `gorm:"foreignKey:ApplicationID"`
 	DesiredState  ProtectionDesiredState `gorm:"type:jsonb"`
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 func (s *ProtectionDesiredState) Scan(value interface{}) error {
@@ -150,7 +153,9 @@ func ListProtections(options *v1.ListProtectionsOptions) ([]*Protection, error) 
 	if options.IncludeApps != nil && *options.IncludeApps {
 		query = query.
 			Joins("JOIN applications ON protections.application_id = applications.id").
-			Preload("Application")
+			Joins("JOIN ingresses ON ingresses.application_id = applications.id").
+			Preload("Application").
+			Preload("Application.Ingress")
 	}
 	res := query.Find(&protections)
 	return protections, res.Error

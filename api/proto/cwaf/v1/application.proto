@@ -8,14 +8,12 @@ package cwaf.v1;
 message Application {
   uint32 id = 1;
   string name = 2;
-  string namespace = 3;
-  repeated Ingress ingress = 4;
+  repeated Ingress ingress = 3;
 }
 
 
 message CreateApplicationRequest {
   string name = 1;
-  string namespace = 2;
 }
 
 

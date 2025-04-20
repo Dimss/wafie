@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package cwaf.v1;
+
+message VirtualHost {
+  string spec = 1;
+}
+
+message GetVirtualHostRequest {
+  uint32 protection_id = 1;
+  VirtualHost virtual_host = 2;
+}
+
+message GetVirtualHostResponse {
+  uint32 protection_id = 1;
+  VirtualHost virtual_host = 2;
+}
+
+message CreateVirtualHostRequest {
+  uint32 protection_id = 1;
+}
+
+message CreateVirtualHostResponse {
+  uint32 id = 1;
+  VirtualHost virtual_host = 2;
+}
+
+service VirtualHostService {
+  rpc CreateVirtualHost(CreateVirtualHostRequest) returns (CreateVirtualHostResponse);
+  rpc GetVirtualHost(GetVirtualHostRequest) returns (GetVirtualHostResponse);
+}

@@ -57,6 +57,7 @@ func migrate(db *gorm.DB) error {
 		&Application{},
 		&Ingress{},
 		&Protection{},
+		&VirtualHost{},
 	)
 }
 

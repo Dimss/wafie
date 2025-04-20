@@ -26,8 +26,7 @@ func (s *ApplicationService) CreateApplication(
 	ctx context.Context, req *connect.Request[cwafv1.CreateApplicationRequest]) (
 	*connect.Response[cwafv1.CreateApplicationResponse], error) {
 	s.logger.With(
-		zap.String("name", req.Msg.GetName()),
-		zap.String("namespace", req.Msg.GetNamespace())).
+		zap.String("name", req.Msg.Name)).
 		Info("creating new application entry")
 	if app, err := models.CreateApplication(req.Msg); err != nil {
 		// ToDo: verify if the application already exists

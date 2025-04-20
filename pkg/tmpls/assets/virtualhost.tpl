@@ -1,16 +1,18 @@
-upstream wp-1 {
-  server {{.InternalSvc}}:{{.UpstreamPort}};
+upstream {{.UpstreamName}} {
+  server {{.InternalSvc}}:{{.InternalPort}};
 }
 
 server {
-  listen {{.ListPort}};
+  listen {{.ListenPort}};
   server_name {{.Hostname}};
 
-  modsecurity {{.ModSecOn}};
+  {{- if .ModSecEnabled }}
+  modsecurity on;
   modsecurity_rules_file /opt/app/nginx/conf/modsec/main.conf;
+  {{- end }}
 
   location / {
-    proxy_pass {{.Upstream}};
+    proxy_pass http://{{.UpstreamName}};
     proxy_http_version 1.1;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;

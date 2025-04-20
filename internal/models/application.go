@@ -11,19 +11,17 @@ import (
 
 type Application struct {
 	ID        uint      `gorm:"primaryKey"`
-	Name      string    `gorm:"uniqueIndex:idx_name_namespace"`
-	Namespace string    `gorm:"uniqueIndex:idx_name_namespace"`
+	Name      string    `gorm:"uniqueIndex:idx_application_name"`
 	Ingress   []Ingress `gorm:"foreignKey:ApplicationID"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
 func (a *Application) FromProto(req *v1.CreateApplicationRequest) error {
-	if req.Name == "" || req.Namespace == "" {
+	if req.Name == "" {
 		return errors.New("name and namespace are required")
 	}
 	a.Name = req.Name
-	a.Namespace = req.Namespace
 	return nil
 }
 
@@ -33,10 +31,8 @@ func (a *Application) ToProto() *v1.Application {
 		applicationIngresses[idx] = ingress.ToProto()
 	}
 	return &v1.Application{
-		Id:        uint32(a.ID),
-		Name:      a.Name,
-		Namespace: a.Namespace,
-		//Protections: []*v1.Protection{},
+		Id:      uint32(a.ID),
+		Name:    a.Name,
 		Ingress: applicationIngresses,
 	}
 }
@@ -84,9 +80,6 @@ func UpdateApplication(req *v1.Application) (*Application, error) {
 	// Prevent changing immutable fields
 	if req.GetName() != "" && app.Name != req.GetName() {
 		return nil, errors.New("cannot change application name")
-	}
-	if req.GetNamespace() != "" && app.Namespace != req.GetNamespace() {
-		return nil, errors.New("cannot change application namespace")
 	}
 	return &app, nil
 	//
