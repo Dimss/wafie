@@ -3,16 +3,16 @@ syntax = "proto3";
 package cwaf.v1;
 
 message VirtualHost {
-  string spec = 1;
+  uint32 id = 1;
+  string spec = 2;
+  string checksum = 3;
 }
 
 message GetVirtualHostRequest {
-  uint32 protection_id = 1;
-  VirtualHost virtual_host = 2;
+  uint32 id = 1;
 }
 
 message GetVirtualHostResponse {
-  uint32 protection_id = 1;
   VirtualHost virtual_host = 2;
 }
 
@@ -22,10 +22,16 @@ message CreateVirtualHostRequest {
 
 message CreateVirtualHostResponse {
   uint32 id = 1;
-  VirtualHost virtual_host = 2;
+}
+
+message ListVirtualHostsRequest {}
+
+message ListVirtualHostsResponse {
+  repeated VirtualHost virtual_hosts = 1;
 }
 
 service VirtualHostService {
   rpc CreateVirtualHost(CreateVirtualHostRequest) returns (CreateVirtualHostResponse);
   rpc GetVirtualHost(GetVirtualHostRequest) returns (GetVirtualHostResponse);
+  rpc ListVirtualHosts(ListVirtualHostsRequest) returns (ListVirtualHostsResponse);
 }

@@ -1,10 +1,10 @@
 upstream {{.UpstreamName}} {
-  server {{.InternalSvc}}:{{.InternalPort}};
+  server {{.UpstreamHost}}:{{.UpstreamPort}};
 }
 
 server {
-  listen {{.ListenPort}};
-  server_name {{.Hostname}};
+  listen {{.IngressPort}};
+  server_name {{.IngressHost}};
 
   {{- if .ModSecEnabled }}
   modsecurity on;
