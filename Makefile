@@ -4,8 +4,13 @@ build:
       -o bin/discovery-agent cmd/agent/discovery/main.go
 
 	go build \
+      -ldflags="-X 'github.com/Dimss/cwaf/cmd/agent/control/cmd.Build=$$(git rev-parse --short HEAD)'" \
+      -o bin/control-agent cmd/agent/control/main.go
+
+	go build \
       -ldflags="-X 'github.com/Dimss/cwaf/cmd/apiserver/cmd.Build=$$(git rev-parse --short HEAD)'" \
       -o bin/api-server cmd/apiserver/main.go
+
 
 .PHONY: proto
 proto:
