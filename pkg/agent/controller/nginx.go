@@ -6,6 +6,7 @@ import (
 	"fmt"
 	cwafv1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
 	"github.com/Dimss/cwaf/api/gen/cwaf/v1/cwafv1connect"
+	"os/exec"
 
 	//"github.com/Dimss/cwaf/api/gen/cwaf/v1/cwafv1connect"
 	"go.uber.org/zap"
@@ -13,6 +14,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
+)
+
+const (
+	cycleTime     = 1 * time.Second
+	nginxBinPatch = "/opt/homebrew/bin/nginx"
 )
 
 type CycleStats struct {
@@ -80,7 +86,7 @@ func NewNginxController(
 
 func (n *Nginx) Start() {
 	for {
-		time.Sleep(5 * time.Second)
+		time.Sleep(cycleTime)
 		// reset cycle stats
 		n.CycleStats.reset()
 		// set actual state
@@ -151,10 +157,6 @@ func (n *Nginx) desiredState() error {
 	return nil
 }
 
-func (n *Nginx) applyVirtualHost(vs *cwafv1.VirtualHost) bool {
-	return false
-}
-
 func (n *Nginx) resetActualState() {
 	n.ActualState = nil
 }
@@ -207,7 +209,23 @@ func (n *Nginx) shouldReload() bool {
 }
 
 func (n *Nginx) reload() error {
-	//reload here
+	cmd := exec.Command(nginxBinPatch, "-t")
+	output, err := cmd.Output()
+	if err != nil {
+		return err
+	}
+	n.logger.
+		With(zap.String("output", string(output))).
+		Info("nginx configs tested successfully")
+	cmd = exec.Command(nginxBinPatch, "-s", "reload")
+	output, err = cmd.Output()
+	if err != nil {
+		return err
+	}
+	n.logger.
+		With(zap.String("output", string(output))).
+		Info("nginx configs reloaded successfully")
+
 	return nil
 }
 
