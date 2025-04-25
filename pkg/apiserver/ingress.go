@@ -25,15 +25,16 @@ func (s *IngressService) CreateIngress(
 	ctx context.Context,
 	req *connect.Request[cwafv1.CreateIngressRequest]) (
 	*connect.Response[cwafv1.CreateIngressResponse], error) {
-	l := zap.S().With("name", req.Msg.Ingress.Name)
+	l := s.logger.With(zap.String("name", req.Msg.Ingress.Name))
 	l.Info("creating new ingress entry")
 	app, err := s.getApplicationForIngress(ctx, req.Msg.Ingress.Name)
 	if err != nil {
-		l.Error("creating new ingress entry", err)
+		l.Error("creating new ingress entry", zap.Error(err))
 		return nil, err
 	}
+	ingressModelSvc := models.NewIngressModelSvc(nil, l)
 	return connect.NewResponse(&cwafv1.CreateIngressResponse{}),
-		models.NewIngressFromRequest(req.Msg, app)
+		ingressModelSvc.NewIngressFromRequest(req.Msg, app)
 }
 
 func (s *IngressService) getApplicationForIngress(ctx context.Context, name string) (

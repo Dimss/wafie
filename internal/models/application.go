@@ -5,9 +5,17 @@ import (
 	"errors"
 	"fmt"
 	v1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
+	"github.com/Dimss/cwaf/internal/applogger"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"time"
 )
+
+type ApplicationModelSvc struct {
+	db          *gorm.DB
+	logger      *zap.Logger
+	Application Application
+}
 
 type Application struct {
 	ID        uint      `gorm:"primaryKey"`
@@ -15,6 +23,19 @@ type Application struct {
 	Ingress   []Ingress `gorm:"foreignKey:ApplicationID"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+func NewApplicationModelSvc(tx *gorm.DB, logger *zap.Logger) *ApplicationModelSvc {
+	modelSvc := &ApplicationModelSvc{db: tx, logger: logger}
+
+	if tx == nil {
+		modelSvc.db = db()
+	}
+	if logger == nil {
+		modelSvc.logger = applogger.NewLogger()
+	}
+
+	return modelSvc
 }
 
 func (a *Application) FromProto(req *v1.CreateApplicationRequest) error {
@@ -37,9 +58,9 @@ func (a *Application) ToProto() *v1.Application {
 	}
 }
 
-func GetApplication(req *v1.GetApplicationRequest) (*Application, error) {
+func (s *ApplicationModelSvc) GetApplication(req *v1.GetApplicationRequest) (*Application, error) {
 	app := &Application{ID: uint(req.GetId())}
-	err := db().First(&app, req.GetId()).Error
+	err := s.db.First(&app, req.GetId()).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("application not found"))
 	} else if err != nil {
@@ -48,26 +69,26 @@ func GetApplication(req *v1.GetApplicationRequest) (*Application, error) {
 	return app, nil
 }
 
-func CreateApplication(req *v1.CreateApplicationRequest) (*Application, error) {
+func (s *ApplicationModelSvc) CreateApplication(req *v1.CreateApplicationRequest) (*Application, error) {
 	app := &Application{}
 	if err := app.FromProto(req); err != nil {
 		return app, err
 	}
 
-	if err := db().Create(app).Error; err != nil {
+	if err := s.db.Create(app).Error; err != nil {
 		return nil, fmt.Errorf("failed to create application: %w", err)
 	}
 
 	return app, nil
 }
 
-func ListApplications(options *v1.ListApplicationsOptions) ([]*Application, error) {
+func (s *ApplicationModelSvc) ListApplications(options *v1.ListApplicationsOptions) ([]*Application, error) {
 	var err error
 	var apps []*Application
 	if options.IncludeIngress {
-		err = db().Preload("Ingress").Find(&apps).Error
+		err = s.db.Preload("Ingress").Find(&apps).Error
 	} else {
-		err = db().Find(&apps).Error
+		err = s.db.Find(&apps).Error
 	}
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnknown, err)
@@ -75,7 +96,7 @@ func ListApplications(options *v1.ListApplicationsOptions) ([]*Application, erro
 	return apps, nil
 }
 
-func UpdateApplication(req *v1.Application) (*Application, error) {
+func (s *ApplicationModelSvc) UpdateApplication(req *v1.Application) (*Application, error) {
 	var app Application
 	// Prevent changing immutable fields
 	if req.GetName() != "" && app.Name != req.GetName() {
@@ -84,7 +105,7 @@ func UpdateApplication(req *v1.Application) (*Application, error) {
 	return &app, nil
 	//
 	//// Load app and protections
-	//if err := db().Preload("Protections.WAFConfig").First(&app, req.GetId()).Error; err != nil {
+	//if err := s.dbPreload("Protections.WAFConfig").First(&app, req.GetId()).Error; err != nil {
 	//	if errors.Is(err, gorm.ErrRecordNotFound) {
 	//		return nil, connect.NewError(connect.CodeNotFound, errors.New("application not found"))
 	//	}
@@ -176,17 +197,17 @@ func UpdateApplication(req *v1.Application) (*Application, error) {
 	//// Delete any protections not included in update
 	//for _, existing := range app.Protections {
 	//	if !seenTypes[existing.Type] {
-	//		if err := db().Where("protection_id = ?", existing.ID).Delete(&ModSecProtectionConfig{}).Error; err != nil {
+	//		if err := s.dbWhere("protection_id = ?", existing.ID).Delete(&ModSecProtectionConfig{}).Error; err != nil {
 	//			return nil, fmt.Errorf("failed to delete WAF config for protection %d: %w", existing.ID, err)
 	//		}
-	//		if err := db().Delete(&existing).Error; err != nil {
+	//		if err := s.dbDelete(&existing).Error; err != nil {
 	//			return nil, fmt.Errorf("failed to delete protection %d: %w", existing.ID, err)
 	//		}
 	//	}
 	//}
 	//
 	//// Save updated app
-	//if err := db().Session(&gorm.Session{FullSaveAssociations: true}).Save(&app).Error; err != nil {
+	//if err := s.dbSession(&gorm.Session{FullSaveAssociations: true}).Save(&app).Error; err != nil {
 	//	return nil, connect.NewError(connect.CodeInternal, err)
 	//}
 	//

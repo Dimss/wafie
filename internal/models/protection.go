@@ -7,9 +7,17 @@ import (
 	"errors"
 	"fmt"
 	v1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
+	"github.com/Dimss/cwaf/internal/applogger"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"time"
 )
+
+type ProtectionModelSvc struct {
+	db         *gorm.DB
+	logger     *zap.Logger
+	Protection Protection
+}
 
 type ModSec struct {
 	Mode          uint32 `json:"protectionMode"`
@@ -28,6 +36,19 @@ type Protection struct {
 	DesiredState  ProtectionDesiredState `gorm:"type:jsonb"`
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
+}
+
+func NewProtectionModelSvc(tx *gorm.DB, logger *zap.Logger) *ProtectionModelSvc {
+	modelSvc := &ProtectionModelSvc{db: tx, logger: logger}
+
+	if tx == nil {
+		modelSvc.db = db()
+	}
+	if logger == nil {
+		modelSvc.logger = applogger.NewLogger()
+	}
+
+	return modelSvc
 }
 
 func (s *ProtectionDesiredState) Scan(value interface{}) error {
@@ -81,20 +102,21 @@ func (p *Protection) ToProto() *v1.Protection {
 	return protection
 }
 
-func CreateProtection(req *v1.CreateProtectionRequest) (*Protection, error) {
-	protection := &Protection{}
-	if err := protection.FromProto(req.Protection); err != nil {
-		return nil, err
+func (s *ProtectionModelSvc) CreateProtection(req *v1.CreateProtectionRequest) (*Protection, error) {
+	protection := &Protection{
+		ApplicationID: uint(req.ApplicationId),
+		Mode:          uint32(req.ProtectionMode),
 	}
-	if err := db().Create(protection).Error; err != nil {
+	protection.DesiredState.FromProto(req.DesiredState)
+	if err := s.db.Create(protection).Error; err != nil {
 		return nil, err
 	}
 	return protection, nil
 }
 
-func GetProtection(req *v1.GetProtectionRequest) (*Protection, error) {
+func (s *ProtectionModelSvc) GetProtection(req *v1.GetProtectionRequest) (*Protection, error) {
 	protection := &Protection{ID: uint(req.GetId())}
-	err := db().First(protection).Error
+	err := s.db.First(protection).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("protection not found"))
 	} else if err != nil {
@@ -103,7 +125,7 @@ func GetProtection(req *v1.GetProtectionRequest) (*Protection, error) {
 	return protection, nil
 }
 
-func UpdateProtection(req *v1.PutProtectionRequest) (*Protection, error) {
+func (s *ProtectionModelSvc) UpdateProtection(req *v1.PutProtectionRequest) (*Protection, error) {
 	desiredState := &ProtectionDesiredState{}
 	desiredState.FromProto(req.DesiredState)
 	protection := &Protection{
@@ -113,7 +135,7 @@ func UpdateProtection(req *v1.PutProtectionRequest) (*Protection, error) {
 	}
 
 	// fetch the application id for the given protection
-	if res := db().Model(&Protection{}).
+	if res := s.db.Model(&Protection{}).
 		Select("application_id").
 		Where("id = ?", protection.ID).
 		Scan(&protection.ApplicationID); res.Error != nil {
@@ -123,7 +145,7 @@ func UpdateProtection(req *v1.PutProtectionRequest) (*Protection, error) {
 		return nil, connect.NewError(connect.CodeInternal, res.Error)
 	}
 
-	res := db().
+	res := s.db.
 		Model(protection).
 		Where("id = ?", protection.ID).
 		Updates(protection)
@@ -136,9 +158,9 @@ func UpdateProtection(req *v1.PutProtectionRequest) (*Protection, error) {
 	return protection, nil
 }
 
-func ListProtections(options *v1.ListProtectionsOptions) ([]*Protection, error) {
+func (s *ProtectionModelSvc) ListProtections(options *v1.ListProtectionsOptions) ([]*Protection, error) {
 	var protections []*Protection
-	query := db().Model(&Protection{})
+	query := s.db.Model(&Protection{})
 	if options.ProtectedMode != nil {
 		query = query.Where("protections.mode = ?", uint32(*options.ProtectedMode))
 	}
@@ -159,4 +181,12 @@ func ListProtections(options *v1.ListProtectionsOptions) ([]*Protection, error) 
 	}
 	res := query.Find(&protections)
 	return protections, res.Error
+}
+
+func (p *Protection) AfterSave(tx *gorm.DB) error {
+	if p.Mode == uint32(v1.ProtectionMode_PROTECTION_MODE_ON) {
+		_, err := NewVirtualHostModelSvc(tx, nil).CreateVirtualHost(p.ID)
+		return err
+	}
+	return nil
 }

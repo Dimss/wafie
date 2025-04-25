@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"github.com/Dimss/cwaf/api/gen/cwaf/v1/cwafv1connect"
-	"github.com/Dimss/cwaf/internal/logger"
+	"github.com/Dimss/cwaf/internal/applogger"
 	"github.com/Dimss/cwaf/pkg/agent/controller"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -26,19 +26,18 @@ func init() {
 
 var startCmd = &cobra.Command{
 	Use:   "start",
-	Short: "Start the agent",
+	Short: "StartCycleLoop the agent",
 	Run: func(cmd *cobra.Command, args []string) {
-
 		nginxController := controller.NewNginxController(
 			viper.GetString("nginx-vs-path"),
-			logger.NewLogger(),
+			applogger.NewLogger(),
 			cwafv1connect.NewVirtualHostServiceClient(
 				&http.Client{},
 				viper.GetString("api-addr"),
 			))
 
 		go func() {
-			nginxController.Start()
+			nginxController.StartCycleLoop()
 		}()
 
 		// handle interrupts

@@ -6,8 +6,11 @@ import (
 	"encoding/hex"
 	"errors"
 	v1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
+	"github.com/Dimss/cwaf/internal/applogger"
 	assets "github.com/Dimss/cwaf/pkg/tmpls"
 	"github.com/jackc/pgx/v5/pgconn"
+	"go.uber.org/zap"
+	"gorm.io/gorm"
 	"time"
 )
 
@@ -21,23 +24,45 @@ type VirtualHost struct {
 	UpdatedAt    time.Time
 }
 
-func CreateVirtualHost(protectionId uint) (*VirtualHost, error) {
+type VirtualHostModelSvc struct {
+	db          *gorm.DB
+	logger      *zap.Logger
+	VirtualHost VirtualHost
+}
+
+func NewVirtualHostModelSvc(tx *gorm.DB, logger *zap.Logger) *VirtualHostModelSvc {
+	modelSvc := &VirtualHostModelSvc{db: tx, logger: logger}
+
+	if tx == nil {
+		modelSvc.db = db()
+	}
+	if logger == nil {
+		modelSvc.logger = applogger.NewLogger()
+	}
+
+	return modelSvc
+
+}
+
+func (s *VirtualHostModelSvc) CreateVirtualHost(protectionId uint) (*VirtualHost, error) {
 
 	vh := &VirtualHost{ProtectionID: protectionId}
+	protectionModelSvc := NewProtectionModelSvc(s.db, s.logger)
 	// get protection
-	if protection, err := GetProtection(&v1.GetProtectionRequest{Id: uint32(vh.ProtectionID)}); err != nil {
+	if protection, err := protectionModelSvc.
+		GetProtection(&v1.GetProtectionRequest{Id: uint32(vh.ProtectionID)}); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	} else {
 		vh.Protection = *protection
 	}
 	// parse template
-	if err := vh.parseTemplate(); err != nil {
+	if err := vh.parseTemplate(s.db); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	// set spec checksum
 	vh.specChecksum()
 	// save virtual host
-	if err := db().Create(vh).Error; err != nil {
+	if err := s.db.Create(vh).Error; err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("virtual host already exists"))
@@ -48,9 +73,9 @@ func CreateVirtualHost(protectionId uint) (*VirtualHost, error) {
 	return vh, nil
 }
 
-func GetVirtualHost(id uint) (*VirtualHost, error) {
+func (s *VirtualHostModelSvc) GetVirtualHost(id uint) (*VirtualHost, error) {
 	vh := &VirtualHost{ID: id}
-	res := db().First(vh)
+	res := s.db.First(vh)
 	if res.RowsAffected == 0 {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("virtual host not found"))
 	}
@@ -60,9 +85,9 @@ func GetVirtualHost(id uint) (*VirtualHost, error) {
 	return vh, nil
 }
 
-func ListVirtualHosts() ([]*VirtualHost, error) {
+func (s *VirtualHostModelSvc) ListVirtualHosts() ([]*VirtualHost, error) {
 	var vhs []*VirtualHost
-	res := db().Find(&vhs)
+	res := s.db.Find(&vhs)
 	if res.Error != nil {
 		return nil, connect.NewError(connect.CodeInternal, res.Error)
 	}
@@ -77,11 +102,11 @@ func (h *VirtualHost) ToProto() *v1.VirtualHost {
 	}
 }
 
-func (h *VirtualHost) loadTemplateData() error {
+func (h *VirtualHost) loadTemplateData(db *gorm.DB) error {
 	if h.Protection.ID == 0 || h.ProtectionID == 0 {
 		return errors.New("invalid protection id")
 	}
-	return db().
+	return db.
 		Joins("JOIN applications ON protections.application_id = applications.id").
 		Joins("JOIN ingresses on ingresses.application_id = applications.id").
 		Preload("Application").
@@ -89,8 +114,8 @@ func (h *VirtualHost) loadTemplateData() error {
 		Find(&h.Protection).Error
 }
 
-func (h *VirtualHost) parseTemplate() (err error) {
-	if err := h.loadTemplateData(); err != nil {
+func (h *VirtualHost) parseTemplate(db *gorm.DB) (err error) {
+	if err := h.loadTemplateData(db); err != nil {
 		return err
 	}
 	if len(h.Protection.Application.Ingress) == 0 {
@@ -118,4 +143,13 @@ func (h *VirtualHost) parseTemplate() (err error) {
 func (h *VirtualHost) specChecksum() {
 	hash := md5.Sum([]byte(h.Spec))
 	h.SpecChecksum = hex.EncodeToString(hash[:])
+}
+
+func (h *VirtualHost) BeforeSave(tx *gorm.DB) error {
+	// set empty protection, otherwise gorm
+	// will try to create all the relations
+	// such as application and ingress
+	// and will fail b/c they already exists in the db
+	h.Protection = Protection{}
+	return nil
 }

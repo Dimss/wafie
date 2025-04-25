@@ -16,10 +16,12 @@ spec:
     spec:
       containers:
         - name: cwaf
+          env:
+            - name: CWAF_CONTROL_AGENT_API_ADDR
+              value: http://10.100.102.84:8080
           command:
-            - /bin/bash
-            - -c
-            - sleep inf
+            - /opt/app/nginx/control-agent
+            - start
           image: dimssss/cwaf
           imagePullPolicy: Always
           ports:

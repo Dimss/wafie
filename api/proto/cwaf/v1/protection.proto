@@ -37,7 +37,9 @@ message Protection {
 }
 
 message CreateProtectionRequest {
-  Protection protection = 1;
+  uint32 application_id = 1;
+  ProtectionMode protection_mode = 2;
+  ProtectionDesiredState desired_state = 3;
 }
 
 message CreateProtectionResponse {

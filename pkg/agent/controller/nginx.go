@@ -18,7 +18,7 @@ import (
 
 const (
 	cycleTime     = 1 * time.Second
-	nginxBinPatch = "/opt/homebrew/bin/nginx"
+	nginxBinPatch = "/opt/app/nginx/sbin/nginx"
 )
 
 type CycleStats struct {
@@ -77,14 +77,20 @@ func NewNginxController(
 	virtualHostSvcClient cwafv1connect.VirtualHostServiceClient) *Nginx {
 
 	return &Nginx{
-		VirtualHostsConfigPath: "/tmp/vs",
+		VirtualHostsConfigPath: configPath,
 		logger:                 logger,
 		VirtualHostSvcClient:   virtualHostSvcClient,
 		CycleStats:             &CycleStats{},
 	}
 }
 
-func (n *Nginx) Start() {
+func (n *Nginx) StartCycleLoop() {
+	// start nginx
+	if err := n.start(); err != nil {
+		n.logger.Error("error starting nginx", zap.Error(err))
+		return
+	}
+	// start reconcile loop
 	for {
 		time.Sleep(cycleTime)
 		// reset cycle stats
@@ -104,6 +110,7 @@ func (n *Nginx) Start() {
 			n.logger.Error("error applying desired state", zap.Error(err))
 			continue
 		}
+		// reload nginx if needed
 		if n.shouldReload() {
 			l := n.logger.
 				With(zap.Uint32("created", n.CycleStats.Created)).
@@ -166,17 +173,17 @@ func (n *Nginx) resetDesiredState() {
 }
 
 func (n *Nginx) apply() error {
-	if err := n.remove(); err != nil {
+	if err := n.removeVirtualServer(); err != nil {
 		return err
 	}
-	if err := n.add(); err != nil {
+	if err := n.addVirtualServer(); err != nil {
 		return err
 	}
 	return nil
 }
 
-// remove: removes not existing virtual hosts files
-func (n *Nginx) remove() error {
+// removeVirtualServer: removes not existing virtual hosts files
+func (n *Nginx) removeVirtualServer() error {
 	for _, actualVs := range n.ActualState {
 		if !actualVs.exists(n.DesiredState) {
 			if err := actualVs.remove(); err != nil {
@@ -189,8 +196,8 @@ func (n *Nginx) remove() error {
 	return nil
 }
 
-// add: add new virtual hosts files
-func (n *Nginx) add() error {
+// addVirtualServer: addVirtualServer new virtual hosts files
+func (n *Nginx) addVirtualServer() error {
 	for _, desiredVs := range n.DesiredState {
 		if !desiredVs.exists(n.ActualState) {
 			if err := desiredVs.create(); err != nil {
@@ -206,6 +213,18 @@ func (n *Nginx) add() error {
 
 func (n *Nginx) shouldReload() bool {
 	return n.CycleStats.Created > 0 || n.CycleStats.Deleted > 0
+}
+
+func (n *Nginx) start() error {
+	cmd := exec.Command(nginxBinPatch)
+	output, err := cmd.Output()
+	if err != nil {
+		return err
+	}
+	n.logger.
+		With(zap.String("output", string(output))).
+		Info("nginx started successfully")
+	return nil
 }
 
 func (n *Nginx) reload() error {

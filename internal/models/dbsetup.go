@@ -45,6 +45,7 @@ func NewDb(cfg *DbCfg) (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
+	dbConn = dbConn.Debug()
 	if err := migrate(dbConn); err != nil {
 		return nil, err
 	}
@@ -65,6 +66,7 @@ func db() *gorm.DB {
 	if dbConn == nil {
 		zap.S().Fatal("database connection not initialized, you must call NewDb(dbCfg) first")
 	}
+
 	return dbConn
 }
 

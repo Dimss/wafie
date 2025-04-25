@@ -1,6 +1,14 @@
-#FROM golang:1.24.2 as agent
-#WORKDIR /opt/app
-#COPY ../../internal ./internal
+FROM golang:1.24.2 AS agent-builder
+WORKDIR /opt/app
+COPY api ./api
+COPY internal ./internal
+COPY cmd ./cmd
+COPY pkg ./pkg
+COPY go.mod ./go.mod
+RUN go mod tidy \
+    && go build \
+          -ldflags="-X 'github.com/Dimss/cwaf/cmd/agent/control/cmd.Build=$$(git rev-parse --short HEAD)'" \
+          -o control-agent cmd/agent/control/main.go
 
 FROM ubuntu:24.04
 WORKDIR /opt/app
@@ -25,7 +33,7 @@ RUN apt -y update \
      automake \
      vim \
      libyajl-dev
-ADD nginx-${NGINX_VERSION}.tar.gz ./
+ADD ops/nginx/nginx-${NGINX_VERSION}.tar.gz ./
 RUN cd nginx-${NGINX_VERSION} \
     && ./configure \
         --prefix=/opt/app/nginx \
@@ -71,16 +79,14 @@ RUN git clone \
     && mkdir -p /opt/app/nginx/conf/modsec \
     && cp objs/ngx_http_modsecurity_module.so /opt/app/nginx/modules
 # configure modsecutiy and CRS
-ADD modsecurity.conf /opt/app/nginx/conf/modsec
-ADD main.conf /opt/app/nginx/conf/modsec
-ADD unicode.mapping /opt/app/nginx/conf/modsec
-ADD v4.12.0.tar.gz /opt/app/nginx/conf/modsec
+ADD ops/nginx/modsecurity.conf /opt/app/nginx/conf/modsec
+ADD ops/nginx/main.conf /opt/app/nginx/conf/modsec
+ADD ops/nginx/unicode.mapping /opt/app/nginx/conf/modsec
+ADD ops/nginx/v4.12.0.tar.gz /opt/app/nginx/conf/modsec
 RUN mv \
      /opt/app/nginx/conf/modsec/coreruleset-4.12.0/crs-setup.conf.example \
      /opt/app/nginx/conf/modsec/coreruleset-4.12.0/crs-setup.conf \
     && mkdir "/opt/app/nginx/conf/protected-services"
 # configure nginx
-ADD nginx.conf /opt/app/nginx/conf
-
-
-
+ADD ops/nginx/nginx.conf /opt/app/nginx/conf
+COPY --from=agent-builder /opt/app/control-agent /opt/app/nginx/control-agent

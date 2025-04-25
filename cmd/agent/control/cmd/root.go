@@ -26,6 +26,6 @@ func init() {
 		// setup viper
 		viper.AutomaticEnv()
 		viper.SetEnvPrefix("CWAF_CONTROL_AGENT")
-		viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+		viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	})
 }

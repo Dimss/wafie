@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/Dimss/cwaf/internal/logger"
+	"github.com/Dimss/cwaf/internal/applogger"
 	"github.com/Dimss/cwaf/internal/models"
 	"github.com/Dimss/cwaf/pkg/apiserver"
 	"github.com/spf13/cobra"
@@ -34,7 +34,7 @@ var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "start api server",
 	Run: func(cmd *cobra.Command, args []string) {
-		logger := logger.NewLogger()
+		logger := applogger.NewLogger()
 		defer logger.Sync()
 		logger.Info("starting api server")
 		_, err := models.NewDb(

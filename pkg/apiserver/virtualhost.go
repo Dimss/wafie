@@ -26,7 +26,8 @@ func (s *VirtualHostService) CreateVirtualHost(ctx context.Context,
 	l := s.logger.With(zap.Uint32("protection_id", req.Msg.ProtectionId))
 	l.Info("create virtual host entry")
 	defer l.Info("virtual host entry created")
-	vh, err := models.CreateVirtualHost(uint(req.Msg.ProtectionId))
+	vh, err := models.NewVirtualHostModelSvc(nil, l).
+		CreateVirtualHost(uint(req.Msg.ProtectionId))
 	if err != nil {
 		l.Error("failed to create virtual host entry", zap.Error(err))
 		return connect.NewResponse(&cwafv1.CreateVirtualHostResponse{}), err
@@ -44,7 +45,8 @@ func (s *VirtualHostService) GetVirtualHost(
 	l := s.logger.With(zap.Uint32("id", req.Msg.Id))
 	l.Info("getting virtual host entry")
 	defer l.Info("virtual host entry retrieved")
-	vh, err := models.GetVirtualHost(uint(req.Msg.Id))
+	vh, err := models.NewVirtualHostModelSvc(nil, l).
+		GetVirtualHost(uint(req.Msg.Id))
 	if err != nil {
 		return connect.NewResponse(&cwafv1.GetVirtualHostResponse{}), err
 	}
@@ -61,7 +63,8 @@ func (s *VirtualHostService) ListVirtualHosts(
 	*connect.Response[cwafv1.ListVirtualHostsResponse], error) {
 	s.logger.Info("listing virtual host entries")
 	defer s.logger.Info("virtual host entries listed")
-	vhs, err := models.ListVirtualHosts()
+	vhs, err := models.NewVirtualHostModelSvc(nil, s.logger).
+		ListVirtualHosts()
 	if err != nil {
 		return connect.NewResponse(&cwafv1.ListVirtualHostsResponse{}), err
 	}

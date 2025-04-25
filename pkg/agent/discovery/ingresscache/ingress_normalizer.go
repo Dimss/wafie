@@ -3,7 +3,7 @@ package ingresscache
 import (
 	"fmt"
 	cwafv1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
-	"github.com/Dimss/cwaf/internal/logger"
+	"github.com/Dimss/cwaf/internal/applogger"
 	"go.uber.org/zap"
 	v1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -17,7 +17,7 @@ type ingress struct {
 
 func newIngress() *ingress {
 	return &ingress{
-		logger: logger.NewLogger().With(zap.String("type", "ingressNormalizer")),
+		logger: applogger.NewLogger().With(zap.String("type", "ingressNormalizer")),
 	}
 }
 
