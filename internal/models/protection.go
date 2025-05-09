@@ -90,9 +90,9 @@ func (p *Protection) FromProto(protectionv1 *v1.Protection) error {
 func (p *Protection) ToProto() *v1.Protection {
 
 	protection := &v1.Protection{
-		Id:             uint32(p.ID),
-		ApplicationId:  uint32(p.ApplicationID),
-		Application:    p.Application.ToProto(),
+		Id:            uint32(p.ID),
+		ApplicationId: uint32(p.ApplicationID),
+		//Application:    p.Application.ToProto(),
 		ProtectionMode: v1.ProtectionMode(p.Mode),
 		DesiredState: &v1.ProtectionDesiredState{ModeSec: &v1.ModSec{
 			ProtectionMode: v1.ProtectionMode(p.DesiredState.ModSec.Mode),
@@ -133,21 +133,22 @@ func (s *ProtectionModelSvc) UpdateProtection(req *v1.PutProtectionRequest) (*Pr
 		Mode:         uint32(req.ProtectionMode),
 		DesiredState: *desiredState,
 	}
-
 	// fetch the application id for the given protection
-	if res := s.db.Model(&Protection{}).
+	res := s.db.Model(&Protection{}).
 		Select("application_id").
 		Where("id = ?", protection.ID).
-		Scan(&protection.ApplicationID); res.Error != nil {
-		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
+		Scan(&protection.ApplicationID)
+	if res.Error != nil {
+		if errors.Is(res.Error, gorm.ErrRecordNotFound) || res.RowsAffected == 0 {
 			return nil, connect.NewError(connect.CodeNotFound, res.Error)
 		}
 		return nil, connect.NewError(connect.CodeInternal, res.Error)
 	}
-
-	res := s.db.
+	if res.RowsAffected == 0 {
+		return nil, connect.NewError(connect.CodeNotFound, res.Error)
+	}
+	res = s.db.
 		Model(protection).
-		Where("id = ?", protection.ID).
 		Updates(protection)
 	if res.Error != nil {
 		return nil, connect.NewError(connect.CodeInternal, res.Error)
@@ -159,6 +160,9 @@ func (s *ProtectionModelSvc) UpdateProtection(req *v1.PutProtectionRequest) (*Pr
 }
 
 func (s *ProtectionModelSvc) ListProtections(options *v1.ListProtectionsOptions) ([]*Protection, error) {
+	if options == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("options are required"))
+	}
 	var protections []*Protection
 	query := s.db.Model(&Protection{})
 	if options.ProtectedMode != nil {
@@ -183,9 +187,24 @@ func (s *ProtectionModelSvc) ListProtections(options *v1.ListProtectionsOptions)
 	return protections, res.Error
 }
 
-func (p *Protection) AfterSave(tx *gorm.DB) error {
-	if p.Mode == uint32(v1.ProtectionMode_PROTECTION_MODE_ON) {
-		_, err := NewVirtualHostModelSvc(tx, nil).CreateVirtualHost(p.ID)
+func (p *Protection) AfterCreate(tx *gorm.DB) error {
+	vhModelSvc := NewVirtualHostModelSvc(tx, nil)
+	_, err := vhModelSvc.CreateVirtualHost(p.ID)
+	return err
+}
+
+func (p *Protection) AfterUpdate(tx *gorm.DB) error {
+	vhModelSvc := NewVirtualHostModelSvc(tx, nil)
+	virtualHost, err := vhModelSvc.GetVirtualHostByProtectionId(p.ID)
+	if connect.CodeOf(err) == connect.CodeNotFound {
+		if _, err := vhModelSvc.CreateVirtualHost(p.ID); err != nil {
+			return err
+		}
+		return nil
+	} else if err != nil {
+		return err // unexpected error, rollback transaction and return an error
+	}
+	if _, err := vhModelSvc.UpdateVirtualHost(virtualHost.ID); err != nil {
 		return err
 	}
 	return nil

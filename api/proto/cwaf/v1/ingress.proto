@@ -10,7 +10,6 @@ message Ingress {
   string upstream_host = 5;
   int32 upstream_port = 6;
   int32 application_id = 8;
-
 }
 
 message CreateIngressRequest {

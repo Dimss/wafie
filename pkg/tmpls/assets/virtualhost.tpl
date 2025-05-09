@@ -1,3 +1,4 @@
+{{- if .ProtectionEnabled }}
 upstream {{.UpstreamName}} {
   server {{.UpstreamHost}}:{{.UpstreamPort}};
 }
@@ -22,3 +23,4 @@ server {
     proxy_cache_bypass $http_upgrade;
   }
 }
+{{- end }}

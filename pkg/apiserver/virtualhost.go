@@ -46,7 +46,7 @@ func (s *VirtualHostService) GetVirtualHost(
 	l.Info("getting virtual host entry")
 	defer l.Info("virtual host entry retrieved")
 	vh, err := models.NewVirtualHostModelSvc(nil, l).
-		GetVirtualHost(uint(req.Msg.Id))
+		GetVirtualHostById(uint(req.Msg.Id))
 	if err != nil {
 		return connect.NewResponse(&cwafv1.GetVirtualHostResponse{}), err
 	}

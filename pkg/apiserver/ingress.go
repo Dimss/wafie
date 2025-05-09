@@ -17,6 +17,7 @@ type IngressService struct {
 
 func NewIngressService(log *zap.Logger) *IngressService {
 	return &IngressService{
+		logger: log,
 		appSvc: NewApplicationService(log),
 	}
 }
@@ -25,16 +26,17 @@ func (s *IngressService) CreateIngress(
 	ctx context.Context,
 	req *connect.Request[cwafv1.CreateIngressRequest]) (
 	*connect.Response[cwafv1.CreateIngressResponse], error) {
+	//setup logger with request context
 	l := s.logger.With(zap.String("name", req.Msg.Ingress.Name))
 	l.Info("creating new ingress entry")
-	app, err := s.getApplicationForIngress(ctx, req.Msg.Ingress.Name)
-	if err != nil {
-		l.Error("creating new ingress entry", zap.Error(err))
-		return nil, err
-	}
+	//app, err := s.getApplicationForIngress(ctx, req.Msg.Ingress.Name)
+	//if err != nil {
+	//	l.Error("creating new ingress entry", zap.Error(err))
+	//	return nil, err
+	//}
 	ingressModelSvc := models.NewIngressModelSvc(nil, l)
 	return connect.NewResponse(&cwafv1.CreateIngressResponse{}),
-		ingressModelSvc.NewIngressFromRequest(req.Msg, app)
+		ingressModelSvc.NewIngressFromRequest(req.Msg)
 }
 
 func (s *IngressService) getApplicationForIngress(ctx context.Context, name string) (

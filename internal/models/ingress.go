@@ -42,14 +42,14 @@ type Ingress struct {
 	UpdatedAt     time.Time
 }
 
-func (s *IngressModelSvc) NewIngressFromRequest(req *v1.CreateIngressRequest, app *Application) error {
+func (s *IngressModelSvc) NewIngressFromRequest(req *v1.CreateIngressRequest) error {
 	ingress := &Ingress{
 		Name:          req.Ingress.Name,
 		Path:          req.Ingress.Path,
 		Host:          req.Ingress.Host,
 		UpstreamHost:  req.Ingress.UpstreamHost,
 		UpstreamPort:  req.Ingress.UpstreamPort,
-		ApplicationID: app.ID,
+		ApplicationID: uint(req.Ingress.ApplicationId),
 	}
 	if res := s.db.Create(ingress); res.Error != nil {
 		return connect.NewError(connect.CodeUnknown, res.Error)
@@ -65,4 +65,18 @@ func (i *Ingress) ToProto() *v1.Ingress {
 		UpstreamHost: i.UpstreamHost,
 		UpstreamPort: i.UpstreamPort,
 	}
+}
+
+func (i *Ingress) BeforeCreate(tx *gorm.DB) error {
+	if i.ApplicationID != 0 {
+		return nil
+	}
+	appModelSvc := NewApplicationModelSvc(tx, nil)
+	newAppReq := &v1.CreateApplicationRequest{Name: i.Name}
+	appId, err := appModelSvc.CreateApplication(newAppReq)
+	if err != nil {
+		return err
+	}
+	i.ApplicationID = appId.ID
+	return nil
 }

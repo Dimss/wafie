@@ -6,7 +6,6 @@ import (
 	cwafv1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
 	"github.com/Dimss/cwaf/api/gen/cwaf/v1/cwafv1connect"
 	"github.com/Dimss/cwaf/internal/models"
-
 	"go.uber.org/zap"
 )
 

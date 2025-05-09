@@ -14,15 +14,17 @@ var (
 
 type DbCfg struct {
 	host     string
+	port     int
 	user     string
 	password string
 	dbName   string
 }
 
-func NewDbCfg(host, user, pass, dbName string, log *zap.Logger) *DbCfg {
+func NewDbCfg(host string, port int, user, pass, dbName string, log *zap.Logger) *DbCfg {
 	logger = log
 	return &DbCfg{
 		host:     host,
+		port:     port,
 		user:     user,
 		password: pass,
 		dbName:   dbName,
@@ -30,8 +32,8 @@ func NewDbCfg(host, user, pass, dbName string, log *zap.Logger) *DbCfg {
 }
 
 func (c *DbCfg) dsn() string {
-	return fmt.Sprintf("host=%s user=%s password=%s dbname=%s sslmode=disable",
-		c.host, c.user, c.password, c.dbName)
+	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+		c.host, c.port, c.user, c.password, c.dbName)
 }
 
 func NewDb(cfg *DbCfg) (*gorm.DB, error) {

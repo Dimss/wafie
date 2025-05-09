@@ -44,9 +44,9 @@ func NewVirtualHostModelSvc(tx *gorm.DB, logger *zap.Logger) *VirtualHostModelSv
 
 }
 
-func (s *VirtualHostModelSvc) CreateVirtualHost(protectionId uint) (*VirtualHost, error) {
+func (s *VirtualHostModelSvc) CreateVirtualHost(protectionId uint) (vh *VirtualHost, err error) {
 
-	vh := &VirtualHost{ProtectionID: protectionId}
+	vh = &VirtualHost{ProtectionID: protectionId}
 	protectionModelSvc := NewProtectionModelSvc(s.db, s.logger)
 	// get protection
 	if protection, err := protectionModelSvc.
@@ -56,7 +56,7 @@ func (s *VirtualHostModelSvc) CreateVirtualHost(protectionId uint) (*VirtualHost
 		vh.Protection = *protection
 	}
 	// parse template
-	if err := vh.parseTemplate(s.db); err != nil {
+	if vh.Spec, err = vh.parseTemplate(s.db); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	// set spec checksum
@@ -73,13 +73,47 @@ func (s *VirtualHostModelSvc) CreateVirtualHost(protectionId uint) (*VirtualHost
 	return vh, nil
 }
 
-func (s *VirtualHostModelSvc) GetVirtualHost(id uint) (*VirtualHost, error) {
+func (s *VirtualHostModelSvc) GetVirtualHostById(id uint) (*VirtualHost, error) {
 	vh := &VirtualHost{ID: id}
 	res := s.db.First(vh)
 	if res.RowsAffected == 0 {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("virtual host not found"))
 	}
 	if res.Error != nil {
+		return nil, connect.NewError(connect.CodeInternal, res.Error)
+	}
+	return vh, nil
+}
+
+func (s *VirtualHostModelSvc) GetVirtualHostByProtectionId(id uint) (*VirtualHost, error) {
+	vh := &VirtualHost{ProtectionID: id}
+	res := s.db.First(vh)
+	if res.RowsAffected == 0 {
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("virtual host not found"))
+	}
+	if res.Error != nil {
+		return nil, connect.NewError(connect.CodeInternal, res.Error)
+	}
+	return vh, nil
+}
+
+func (s *VirtualHostModelSvc) UpdateVirtualHost(id uint) (vh *VirtualHost, err error) {
+	vh = &VirtualHost{ID: id}
+	//res := s.db.First(vh)
+	res := s.db.
+		Preload("Protection").
+		First(vh)
+	if res.RowsAffected == 0 {
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("virtual host not found"))
+	}
+	if res.Error != nil {
+		return nil, connect.NewError(connect.CodeInternal, res.Error)
+	}
+	// parse template
+	if vh.Spec, err = vh.parseTemplate(s.db); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if err := s.db.Save(vh).Error; err != nil {
 		return nil, connect.NewError(connect.CodeInternal, res.Error)
 	}
 	return vh, nil
@@ -104,7 +138,7 @@ func (h *VirtualHost) ToProto() *v1.VirtualHost {
 
 func (h *VirtualHost) loadTemplateData(db *gorm.DB) error {
 	if h.Protection.ID == 0 || h.ProtectionID == 0 {
-		return errors.New("invalid protection id")
+		return errors.New("invalid protection id or protection is not set")
 	}
 	return db.
 		Joins("JOIN applications ON protections.application_id = applications.id").
@@ -114,30 +148,34 @@ func (h *VirtualHost) loadTemplateData(db *gorm.DB) error {
 		Find(&h.Protection).Error
 }
 
-func (h *VirtualHost) parseTemplate(db *gorm.DB) (err error) {
+func (h *VirtualHost) parseTemplate(db *gorm.DB) (spec string, err error) {
 	if err := h.loadTemplateData(db); err != nil {
-		return err
+		return "", err
 	}
 	if len(h.Protection.Application.Ingress) == 0 {
-		return errors.New("no ingress found for application")
+		return "", errors.New("no ingress found for application")
 	}
 	a := assets.NewAssets()
 	templateData := map[string]interface{}{
-		"UpstreamName":  h.Protection.Application.Name,
-		"UpstreamHost":  h.Protection.Application.Ingress[0].UpstreamHost,
-		"UpstreamPort":  h.Protection.Application.Ingress[0].UpstreamPort,
-		"IngressPort":   80,
-		"IngressHost":   h.Protection.Application.Ingress[0].Host,
-		"ModSecEnabled": false,
+		"ProtectionEnabled": false,
+		"UpstreamName":      h.Protection.Application.Name,
+		"UpstreamHost":      h.Protection.Application.Ingress[0].UpstreamHost,
+		"UpstreamPort":      h.Protection.Application.Ingress[0].UpstreamPort,
+		"IngressPort":       80,
+		"IngressHost":       h.Protection.Application.Ingress[0].Host,
+		"ModSecEnabled":     false,
 	}
 	if h.Protection.DesiredState.ModSec.Mode == uint32(v1.ProtectionMode_PROTECTION_MODE_ON) {
 		templateData["ModSecEnabled"] = true
 	}
-	h.Spec, err = a.RenderVirtualHost(templateData)
-	if err != nil {
-		return err
+	if h.Protection.Mode == uint32(v1.ProtectionMode_PROTECTION_MODE_ON) {
+		templateData["ProtectionEnabled"] = true
 	}
-	return nil
+	spec, err = a.RenderVirtualHost(templateData)
+	if err != nil {
+		return "", err
+	}
+	return spec, nil
 }
 
 func (h *VirtualHost) specChecksum() {
@@ -151,5 +189,7 @@ func (h *VirtualHost) BeforeSave(tx *gorm.DB) error {
 	// such as application and ingress
 	// and will fail b/c they already exists in the db
 	h.Protection = Protection{}
+	// calculate spec checksum
+	h.specChecksum()
 	return nil
 }
