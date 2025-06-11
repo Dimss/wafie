@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: envoy
+  labels:
+    app: envoy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: envoy
+  template:
+    metadata:
+      labels:
+        app: envoy
+    spec:
+      containers:
+        - name: cwaf
+          command:
+            - /bin/bash
+            - -c
+            - sleep inf
+          image: envoyproxy/envoy:contrib-v1.34.1
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80

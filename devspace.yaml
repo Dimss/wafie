@@ -1,0 +1,29 @@
+version: v2beta1
+name: devspace
+
+dev:
+  app:
+    workingDir: /go/src/github.com/Dimss/cwaf
+    labelSelector:
+      app: "cwaf-test"
+    container: cwaf
+    devImage: dimssss/kubeguard-agent:latest
+    sync:
+     - path: ./:./
+       waitInitialSync: true
+       printLogs: true
+       polling: true
+       disableDownload: true
+     - path: ./devspace_start.sh
+       printLogs: true
+       waitInitialSync: true
+       polling: true
+    terminal:
+      command: ./devspace_start.sh
+    ssh:
+      enabled: true
+    ports:
+      - port: "2345"
+      - port: "10000"
+
+

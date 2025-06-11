@@ -1,12 +1,13 @@
 module github.com/Dimss/cwaf
 
-go 1.23.5
+go 1.24.3
 
 require (
 	connectrpc.com/connect v1.18.1
 	connectrpc.com/grpcreflect v1.3.0
 	github.com/docker/docker v28.0.1+incompatible
 	github.com/docker/go-connections v0.5.0
+	github.com/envoyproxy/envoy v1.34.1
 	github.com/jackc/pgx/v5 v5.5.5
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.20.0
@@ -14,7 +15,7 @@ require (
 	github.com/testcontainers/testcontainers-go v0.37.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/net v0.33.0
-	google.golang.org/protobuf v1.36.1
+	google.golang.org/protobuf v1.36.6
 	gorm.io/driver/postgres v1.5.11
 	gorm.io/gorm v1.25.12
 	k8s.io/api v0.32.3
