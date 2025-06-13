@@ -26,6 +26,7 @@ static_resources:
                       routes:
                         - match: { prefix: "/" }
                           route: { cluster: wp_service }
+                use_remote_address: true
                 http_filters:
                   - name: envoy.filters.http.golang
                     typed_config:

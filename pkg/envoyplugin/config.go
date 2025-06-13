@@ -1,5 +1,11 @@
 package main
 
+/*
+#cgo LDFLAGS: -lkubeguard
+#include <stdlib.h>
+#include <kubeguard/kubeguardlib.h>
+*/
+import "C"
 import (
 	"github.com/envoyproxy/envoy/contrib/golang/common/go/api"
 	"github.com/envoyproxy/envoy/contrib/golang/filters/http/source/go/pkg/http"
@@ -7,6 +13,9 @@ import (
 )
 
 func init() {
+	path := "/example.conf"
+	rulesPath := C.CString(path)
+	C.kg_library_init(rulesPath)
 	c := config{}
 	http.RegisterHttpFilterFactoryAndConfigParser("kubeguard", myFactory, c)
 
