@@ -7,8 +7,8 @@ package main
 */
 import "C"
 import (
-	"fmt"
 	"github.com/envoyproxy/envoy/contrib/golang/common/go/api"
+	"go.uber.org/zap"
 	"strings"
 	"unsafe"
 )
@@ -16,6 +16,8 @@ import (
 type filter struct {
 	callbacks   api.FilterCallbackHandler
 	evalRequest C.EvaluationRequest
+	logger      *zap.Logger
+	logCtx      []zap.Field
 	//conf      configuration
 }
 
@@ -37,7 +39,7 @@ func (f *filter) evaluationRequestHeaders(allHeaders map[string][]string) *C.Eva
 	return headers
 }
 
-func (f *filter) evaluationRequest(headerMap api.RequestHeaderMap) {
+func (f *filter) newEvaluationRequest(headerMap api.RequestHeaderMap) {
 	var clientIp, httpVersion string
 	clientIp, _ = headerMap.Get("X-Forwarded-For")
 	httpVersion, _ = f.callbacks.StreamInfo().Protocol()
@@ -66,28 +68,37 @@ func (f *filter) freeEvaluationRequest() {
 	C.free(unsafe.Pointer(f.evalRequest.headers))
 }
 
+func (f *filter) newLogCtx(headerMap api.RequestHeaderMap) {
+	requestId := ""
+	requestId, _ = headerMap.Get("X-Request-ID")
+	f.logCtx = []zap.Field{zap.String("x-request-id", requestId)}
+}
+
 func (f *filter) DecodeHeaders(headerMap api.RequestHeaderMap, b bool) api.StatusType {
-	fmt.Println(">>>>>>>>>>>>>>>>>> RUNNING CWAF HTTP FILTER <<<<<<<<<<<<<<<<<<<")
-	f.evaluationRequest(headerMap)
+	// set new logger context
+	f.newLogCtx(headerMap)
+	f.logger.With(f.logCtx...).Info("processing request headers")
+	defer f.logger.With(f.logCtx...).Info("processing request headers done")
+	// create new evaluation request
+	f.newEvaluationRequest(headerMap)
 	//C.kg_add_rule(C.CString("SecRule REMOTE_ADDR \"@ipMatch 10.244.0.31\" \"id:203948180384," +
 	//	"phase:0,deny,status:403,msg:'Blocking connection from specific IP'\""))
+	// evaluate request headers and connection (modsecurity: phase0, phase1)
 	if C.kg_process_request_headers(&f.evalRequest) != 0 {
 		f.callbacks.DecoderFilterCallbacks().SendLocalReply(403,
 			"Opa opa, access denied!!!", nil, 0, "some details here")
 		return api.LocalReply
 	}
-
-	defer fmt.Println(">>>>>>>>>>>>>>>>>> DONE <<<<<<<<<<<<<<<<<<<")
-
 	return api.Continue
 }
 
 func (f *filter) DecodeData(instance api.BufferInstance, b bool) api.StatusType {
-
-	body := instance.Bytes()
-	fmt.Println(">>>>>>>>>>>>>. DECODE DATA >>>>>>>>>>>>>")
-	defer fmt.Println(">>>>>>>>>>>>>. DECODE DATA DONE >>>>>>>>>>>>>")
-	fmt.Println(string(body))
+	f.evalRequest.body = C.CString(string(instance.Bytes()))
+	if C.kg_process_request_body(&f.evalRequest) != 0 {
+		f.callbacks.DecoderFilterCallbacks().SendLocalReply(403,
+			"Opa opa, access denied!!!", nil, 0, "some details here")
+		return api.LocalReply
+	}
 	return api.Continue
 }
 
@@ -96,10 +107,12 @@ func (f *filter) DecodeTrailers(trailerMap api.RequestTrailerMap) api.StatusType
 }
 
 func (f *filter) EncodeHeaders(headerMap api.ResponseHeaderMap, b bool) api.StatusType {
+	//TODO: understand how valuable this feature is
 	return api.Continue
 }
 
 func (f *filter) EncodeData(instance api.BufferInstance, b bool) api.StatusType {
+	//TODO: understand how valuable this feature is
 	return api.Continue
 }
 
@@ -125,8 +138,11 @@ func (f *filter) OnLogDownstreamPeriodic(
 }
 
 func (f *filter) OnDestroy(reason api.DestroyReason) {
-	defer fmt.Println(fmt.Sprintf("distrotying filter instance, reason: %d\n", reason))
+	defer f.logger.
+		With(f.logCtx...).
+		Info("destroying filter instance", zap.Int("reason", int(reason)))
 	f.freeEvaluationRequest()
+	C.kg_transaction_cleanup(&f.evalRequest)
 
 }
 

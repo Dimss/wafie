@@ -7,13 +7,14 @@ package main
 */
 import "C"
 import (
+	"github.com/Dimss/cwaf/internal/applogger"
 	"github.com/envoyproxy/envoy/contrib/golang/common/go/api"
 	"github.com/envoyproxy/envoy/contrib/golang/filters/http/source/go/pkg/http"
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
 func init() {
-	path := "/example.conf"
+	path := "/config/"
 	rulesPath := C.CString(path)
 	C.kg_library_init(rulesPath)
 	c := config{}
@@ -35,6 +36,7 @@ func (c config) Merge(parentConfig interface{}, childConfig interface{}) interfa
 func myFactory(config interface{}, callbacks api.FilterCallbackHandler) api.StreamFilter {
 	return &filter{
 		callbacks: callbacks,
+		logger:    applogger.NewLogger(),
 	}
 }
 
