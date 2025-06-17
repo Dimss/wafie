@@ -14,11 +14,9 @@ import (
 )
 
 func init() {
-	path := "/config/"
-	rulesPath := C.CString(path)
-	C.kg_library_init(rulesPath)
+	C.kg_library_init(C.CString("/config"))
 	c := config{}
-	http.RegisterHttpFilterFactoryAndConfigParser("kubeguard", myFactory, c)
+	http.RegisterHttpFilterFactoryAndConfigParser("kubeguard", kubeGuardFilterFactory, c)
 
 }
 
@@ -33,7 +31,7 @@ func (c config) Merge(parentConfig interface{}, childConfig interface{}) interfa
 	return nil
 }
 
-func myFactory(config interface{}, callbacks api.FilterCallbackHandler) api.StreamFilter {
+func kubeGuardFilterFactory(config interface{}, callbacks api.FilterCallbackHandler) api.StreamFilter {
 	return &filter{
 		callbacks: callbacks,
 		logger:    applogger.NewLogger(),
@@ -41,5 +39,8 @@ func myFactory(config interface{}, callbacks api.FilterCallbackHandler) api.Stre
 }
 
 func main() {
-
+	// KubeGuard ModSecurity Envoy HTTP filter
+	// compiled as a shared object (.so) for use with Envoy.
+	// depends on the kubeguard (kubeguard.so) library and kubeguard/kubeguardlib.h files
+	// to build: go build -ldflags='-s -w' -o ./kubeguard-modsec.so -buildmode=c-shared ./cmd/modsecfilter
 }

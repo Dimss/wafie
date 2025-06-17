@@ -32,7 +32,7 @@ static_resources:
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.golang.v3alpha.Config
                       library_id: kubeguard-v1
-                      library_path: /go/src/github.com/Dimss/cwaf/kubeguard.so
+                      library_path: /go/src/github.com/Dimss/cwaf/kubeguard-modsec.so
                       plugin_name: kubeguard
                   - name: envoy.filters.http.router
                     typed_config:

@@ -77,8 +77,6 @@ func (f *filter) newLogCtx(headerMap api.RequestHeaderMap) {
 func (f *filter) DecodeHeaders(headerMap api.RequestHeaderMap, b bool) api.StatusType {
 	// set new logger context
 	f.newLogCtx(headerMap)
-	f.logger.With(f.logCtx...).Info("processing request headers")
-	defer f.logger.With(f.logCtx...).Info("processing request headers done")
 	// create new evaluation request
 	f.newEvaluationRequest(headerMap)
 	//C.kg_add_rule(C.CString("SecRule REMOTE_ADDR \"@ipMatch 10.244.0.31\" \"id:203948180384," +
@@ -89,6 +87,7 @@ func (f *filter) DecodeHeaders(headerMap api.RequestHeaderMap, b bool) api.Statu
 			"Opa opa, access denied!!!", nil, 0, "some details here")
 		return api.LocalReply
 	}
+	f.logger.With(f.logCtx...).Info("request headers evaluation done")
 	return api.Continue
 }
 
