@@ -79,8 +79,9 @@ func (f *filter) DecodeHeaders(headerMap api.RequestHeaderMap, b bool) api.Statu
 	f.newLogCtx(headerMap)
 	// create new evaluation request
 	f.newEvaluationRequest(headerMap)
-	//C.kg_add_rule(C.CString("SecRule REMOTE_ADDR \"@ipMatch 10.244.0.31\" \"id:203948180384," +
+	//C.kg_add_rule(C.CString("SecRule REMOTE_ADDR \"@ipMatch 10.244.0.22\" \"id:203948180384," +
 	//	"phase:0,deny,status:403,msg:'Blocking connection from specific IP'\""))
+	//C.kg_add_rule(C.CString("SecAction \"id:203948180384,phase:1,log,pass,msg:'FOO-PARANOIA-LEVEL: %{tx.blocking_paranoia_level}'\""))
 	// evaluate request headers and connection (modsecurity: phase0, phase1)
 	if C.kg_process_request_headers(&f.evalRequest) != 0 {
 		f.callbacks.DecoderFilterCallbacks().SendLocalReply(403,

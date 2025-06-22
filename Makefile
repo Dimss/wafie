@@ -11,6 +11,10 @@ build:
       -ldflags="-X 'github.com/Dimss/cwaf/cmd/apiserver/cmd.Build=$$(git rev-parse --short HEAD)'" \
       -o bin/api-server cmd/apiserver/main.go
 
+	go build \
+		-ldflags="-X 'github.com/Dimss/cwaf/cmd/apiserver/cmd.Build=$$(git rev-parse --short HEAD)'" \
+		-o bin/pcp cmd/pcp/main.go
+
 docker:
 	docker buildx build --push -t dimssss/cwaf . -f Dockerfile_cwaf_agent
 

@@ -25,5 +25,7 @@ dev:
     ports:
       - port: "2345"
       - port: "10000"
+      - port: "19000"
+      - port: "8888"
 
 

@@ -25,6 +25,7 @@ This is how you can work with it:
 - Run \`${COLOR_GREEN}agent${COLOR_RESET}\`
 - Run \`${COLOR_GREEN}run-envoy${COLOR_RESET}\`
 - Run \`${COLOR_GREEN}build-filter${COLOR_RESET}\`
+- Run \`${COLOR_GREEN}pcp${COLOR_RESET}\`
 
 "
 
@@ -35,6 +36,7 @@ export SRC_ROOT="/go/src/github.com/Dimss/cwaf"
 touch /a
 
 echo "alias agent=\"cd ${SRC_ROOT} && dlv debug --headless --listen=:2345 --api-version=2 --accept-multiclient cmd/agent/control/main.go\"" >> /a
+echo "alias pcp=\"cd ${SRC_ROOT} && dlv debug --headless --listen=:2345 --api-version=2 --accept-multiclient cmd/pcp/main.go -- start \"" >> /a
 echo "alias run-envoy=\"envoy -c ops/envoy/envoy.yaml\"" >> /a
 echo "alias build-filter=\"go build -ldflags='-s -w' -o ./kubeguard-modsec.so -buildmode=c-shared ./cmd/modsecfilter\"" >> /a
 # Include project's bin/ folder in PATH
