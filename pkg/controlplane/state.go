@@ -25,17 +25,14 @@ import (
 )
 
 type state struct {
-	//resources map[resource.Type][]types.Resource
 	logger *zap.Logger
 }
 
 func newState() *state {
-	return &state{
-		logger: applogger.NewLogger(),
-	}
+	return &state{logger: applogger.NewLogger()}
 }
 
-func (s state) httpFilters() []*hcm.HttpFilter {
+func (s *state) httpFilters() []*hcm.HttpFilter {
 	totalFilters := 2 // router + custom kubeguard
 	var filters = make([]*hcm.HttpFilter, totalFilters)
 
@@ -66,7 +63,7 @@ func (s state) httpFilters() []*hcm.HttpFilter {
 	return filters
 }
 
-func (s state) httpConnectionManager() *hcm.HttpConnectionManager {
+func (s *state) httpConnectionManager() *hcm.HttpConnectionManager {
 	stdoutLogs, _ := anypb.New(&stream.StdoutAccessLog{})
 	return &hcm.HttpConnectionManager{
 		CodecType:  hcm.HttpConnectionManager_AUTO,
@@ -115,7 +112,7 @@ func (s state) httpConnectionManager() *hcm.HttpConnectionManager {
 	}
 }
 
-func (s state) listeners() []types.Resource {
+func (s *state) listeners() []types.Resource {
 	httpConnectionMgr, _ := anypb.New(s.httpConnectionManager())
 	return []types.Resource{
 		&v3listener.Listener{
@@ -147,7 +144,7 @@ func (s state) listeners() []types.Resource {
 	//s.resources[resource.ListenerType] = []types.Resource{l}
 }
 
-func (s state) clusters(name string) []types.Resource {
+func (s *state) clusters(name string) []types.Resource {
 	//name := "wp-host"
 	return []types.Resource{
 		&cluster.Cluster{
@@ -186,7 +183,7 @@ func (s state) clusters(name string) []types.Resource {
 	}
 }
 
-func (s state) routes(name string) []types.Resource {
+func (s *state) routes(name string) []types.Resource {
 	//name := "wp-host"
 	host := "*"
 	return []types.Resource{
@@ -220,7 +217,7 @@ func (s state) routes(name string) []types.Resource {
 	}
 }
 
-func (s state) dumpConfigs() {
+func (s *state) dumpConfigs() {
 	configs := ""
 	resources := map[resource.Type][]types.Resource{
 		resource.ListenerType: s.listeners(),
@@ -240,7 +237,7 @@ func (s state) dumpConfigs() {
 	fmt.Println(configs)
 }
 
-func (s state) resources() map[resource.Type][]types.Resource {
+func (s *state) resources() map[resource.Type][]types.Resource {
 
 	return map[resource.Type][]types.Resource{
 		resource.ListenerType: s.listeners(),

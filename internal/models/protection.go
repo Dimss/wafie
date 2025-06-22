@@ -165,8 +165,8 @@ func (s *ProtectionModelSvc) ListProtections(options *v1.ListProtectionsOptions)
 	}
 	var protections []*Protection
 	query := s.db.Model(&Protection{})
-	if options.ProtectedMode != nil {
-		query = query.Where("protections.mode = ?", uint32(*options.ProtectedMode))
+	if options.ProtectionMode != nil {
+		query = query.Where("protections.mode = ?", uint32(*options.ProtectionMode))
 	}
 	if options.ModSecMode != nil {
 		query = query.Where(
@@ -187,25 +187,34 @@ func (s *ProtectionModelSvc) ListProtections(options *v1.ListProtectionsOptions)
 	return protections, res.Error
 }
 
-func (p *Protection) AfterCreate(tx *gorm.DB) error {
-	vhModelSvc := NewVirtualHostModelSvc(tx, nil)
-	_, err := vhModelSvc.CreateVirtualHost(p.ID)
+func (p *Protection) AfterCreate(tx *gorm.DB) (err error) {
+	//vhModelSvc := NewVirtualHostModelSvc(tx, nil)
+	//_, err := vhModelSvc.CreateVirtualHost(p.ID)
+	err = NewDataVersionModelSvc(tx, nil).UpdateProtectionVersion()
 	return err
 }
 
-func (p *Protection) AfterUpdate(tx *gorm.DB) error {
-	vhModelSvc := NewVirtualHostModelSvc(tx, nil)
-	virtualHost, err := vhModelSvc.GetVirtualHostByProtectionId(p.ID)
-	if connect.CodeOf(err) == connect.CodeNotFound {
-		if _, err := vhModelSvc.CreateVirtualHost(p.ID); err != nil {
-			return err
-		}
-		return nil
-	} else if err != nil {
-		return err // unexpected error, rollback transaction and return an error
-	}
-	if _, err := vhModelSvc.UpdateVirtualHost(virtualHost.ID); err != nil {
-		return err
-	}
-	return nil
+func (p *Protection) AfterUpdate(tx *gorm.DB) (err error) {
+	//vhModelSvc := NewVirtualHostModelSvc(tx, nil)
+	err = NewDataVersionModelSvc(tx, nil).UpdateProtectionVersion()
+	//virtualHost, err := vhModelSvc.GetVirtualHostByProtectionId(p.ID)
+	//if connect.CodeOf(err) == connect.CodeNotFound {
+	//	if _, err := vhModelSvc.CreateVirtualHost(p.ID); err != nil {
+	//		return err
+	//	}
+	//	// update protection data version
+	//	if err := dataVersionSvc.UpdateProtectionVersion(); err != nil {
+	//		return err
+	//	}
+	//	return nil
+	//} else if err != nil {
+	//	return err // unexpected error, rollback transaction and return an error
+	//}
+	//if _, err := vhModelSvc.UpdateVirtualHost(virtualHost.ID); err != nil {
+	//	return err
+	//}
+	//if err := dataVersionSvc.UpdateProtectionVersion(); err != nil {
+	//	return err
+	//}
+	return err
 }

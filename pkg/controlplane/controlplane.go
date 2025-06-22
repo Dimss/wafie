@@ -1,8 +1,11 @@
 package controlplane
 
 import (
+	"connectrpc.com/connect"
 	"context"
 	"fmt"
+	cwafv1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
+	"github.com/Dimss/cwaf/api/gen/cwaf/v1/cwafv1connect"
 	"github.com/Dimss/cwaf/internal/applogger"
 	clusterservice "github.com/envoyproxy/go-control-plane/envoy/service/cluster/v3"
 	discoverygrpc "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
@@ -19,30 +22,33 @@ import (
 	"google.golang.org/grpc/keepalive"
 	"math/rand"
 	"net"
-	"os"
+	"net/http"
 	"time"
 )
 
 type EnvoyControlPlane struct {
-	cache  cache.SnapshotCache
-	logger *zap.Logger
+	state                      *state
+	cache                      cache.SnapshotCache
+	logger                     *zap.Logger
+	notifier                   chan struct{}
+	protectionServiceSvcClient cwafv1connect.ProtectionServiceClient
 }
 
-func NewEnvoyControlPlane() *EnvoyControlPlane {
-	s := newState()
+func NewEnvoyControlPlane(apiAddr string) *EnvoyControlPlane {
+
 	cp := &EnvoyControlPlane{
-		cache:  cache.NewSnapshotCache(false, cache.IDHash{}, applogger.NewLogger().Sugar()),
-		logger: applogger.NewLogger(),
+		state:    newState(),
+		logger:   applogger.NewLogger(),
+		notifier: make(chan struct{}, 1),
+		cache: cache.NewSnapshotCache(
+			false, cache.IDHash{}, applogger.NewLogger().Sugar()),
+		protectionServiceSvcClient: cwafv1connect.NewProtectionServiceClient(
+			http.DefaultClient, apiAddr),
 	}
-	snap, _ := cache.NewSnapshot(fmt.Sprintf("%d", rand.Int()), s.resources())
-	if err := snap.Consistent(); err != nil {
-		cp.logger.Error("snapshot inconsistency", zap.Error(err))
-		os.Exit(1)
-	}
-	if err := cp.cache.SetSnapshot(context.Background(), "node-1", snap); err != nil {
-		cp.logger.Error("failed to set snapshot", zap.Error(err))
-		os.Exit(1)
-	}
+	// start control plane data watcher
+	cp.startControlPlaneDataWatcher()
+	// start envoy snapshot generator
+	cp.startSnapshotGenerator()
 	return cp
 }
 
@@ -77,5 +83,48 @@ func (p *EnvoyControlPlane) Start() {
 	if err = grpcSrv.Serve(lis); err != nil {
 		zap.S().Fatal(err)
 	}
+}
 
+func (p *EnvoyControlPlane) startControlPlaneDataWatcher() {
+	p.logger.Info("starting control plane data watcher")
+	go func() {
+		for {
+			time.Sleep(1 * time.Second)
+			mode := cwafv1.ProtectionMode_PROTECTION_MODE_ON
+			req := connect.NewRequest(&cwafv1.ListProtectionsRequest{
+				Options: &cwafv1.ListProtectionsOptions{
+					ProtectionMode: &mode,
+				},
+			})
+			resp, err := p.protectionServiceSvcClient.ListProtections(context.Background(), req)
+			if err != nil {
+				p.logger.Error("failed to list protections", zap.Error(err))
+				continue
+			}
+			for _, protection := range resp.Msg.Protections {
+				p.logger.Info("protection found",
+					zap.Uint32("id", protection.Id),
+					zap.String("mode", protection.ProtectionMode.String()),
+				)
+			}
+		}
+	}()
+}
+
+func (p *EnvoyControlPlane) startSnapshotGenerator() {
+	p.logger.Info("starting envoy snapshot generator")
+	go func() {
+		for _ = range p.notifier {
+			p.logger.Info("state has been changed, generating new snapshot...")
+			snap, _ := cache.NewSnapshot(fmt.Sprintf("%d", rand.Int()), p.state.resources())
+			if err := snap.Consistent(); err != nil {
+				p.logger.Error("snapshot inconsistency", zap.Error(err))
+				continue
+			}
+			if err := p.cache.SetSnapshot(context.Background(), "node-1", snap); err != nil {
+				p.logger.Error("failed to set snapshot", zap.Error(err))
+				continue
+			}
+		}
+	}()
 }

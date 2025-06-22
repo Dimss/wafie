@@ -51,6 +51,9 @@ func NewDb(cfg *DbCfg) (*gorm.DB, error) {
 	if err := migrate(dbConn); err != nil {
 		return nil, err
 	}
+	if err := seed(dbConn); err != nil {
+		return nil, err
+	}
 	logger.Info("db connection established")
 	return dbConn, nil
 }
@@ -61,20 +64,17 @@ func migrate(db *gorm.DB) error {
 		&Ingress{},
 		&Protection{},
 		&VirtualHost{},
+		&DataVersion{},
 	)
+}
+
+func seed(db *gorm.DB) error {
+	return db.FirstOrCreate(&DataVersion{TypeId: 1}).Error
 }
 
 func db() *gorm.DB {
 	if dbConn == nil {
 		zap.S().Fatal("database connection not initialized, you must call NewDb(dbCfg) first")
 	}
-
 	return dbConn
-}
-
-func mlog() *zap.Logger {
-	if logger == nil {
-		zap.S().Fatal("logger not initialized, you must call NewDb(dbCfg) first")
-	}
-	return logger
 }

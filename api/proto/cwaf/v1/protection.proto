@@ -64,7 +64,7 @@ message PutProtectionResponse {
 }
 
 message ListProtectionsOptions {
-  optional ProtectionMode protected_mode = 1;
+  optional ProtectionMode protection_mode = 1;
   optional ProtectionMode mod_sec_mode = 2;
   optional  bool include_apps = 3;
 }

@@ -51,6 +51,12 @@ func (s *ApiServer) registerHandlers(mux *http.ServeMux) {
 			NewVirtualHostService(s.logger),
 		),
 	)
+	mux.Handle(
+		cwafv1connect.NewDataVersionServiceHandler(
+			NewDataVersionService(s.logger),
+		),
+	)
+
 }
 
 func (s *ApiServer) enableReflection(mux *http.ServeMux) {
@@ -60,6 +66,7 @@ func (s *ApiServer) enableReflection(mux *http.ServeMux) {
 		cwafv1connect.ApplicationServiceName,
 		cwafv1connect.ProtectionServiceName,
 		cwafv1connect.VirtualHostServiceName,
+		cwafv1connect.DataVersionServiceName,
 	)
 	mux.Handle(grpcreflect.NewHandlerV1(reflector))
 	mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))

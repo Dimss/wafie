@@ -12,8 +12,8 @@ build:
       -o bin/api-server cmd/apiserver/main.go
 
 	go build \
-		-ldflags="-X 'github.com/Dimss/cwaf/cmd/apiserver/cmd.Build=$$(git rev-parse --short HEAD)'" \
-		-o bin/pcp cmd/pcp/main.go
+		-ldflags="-X 'github.com/Dimss/cwaf/cmd/proxycontrolplane/cmd.Build=$$(git rev-parse --short HEAD)'" \
+		-o bin/proxycontrolplane cmd/proxycontrolplane/main.go
 
 docker:
 	docker buildx build --push -t dimssss/cwaf . -f Dockerfile_cwaf_agent

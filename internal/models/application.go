@@ -27,14 +27,12 @@ type Application struct {
 
 func NewApplicationModelSvc(tx *gorm.DB, logger *zap.Logger) *ApplicationModelSvc {
 	modelSvc := &ApplicationModelSvc{db: tx, logger: logger}
-
 	if tx == nil {
 		modelSvc.db = db()
 	}
 	if logger == nil {
 		modelSvc.logger = applogger.NewLogger()
 	}
-
 	return modelSvc
 }
 
