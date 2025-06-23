@@ -1,6 +1,8 @@
 package apiserver
 
 import (
+	"connectrpc.com/connect"
+	"connectrpc.com/grpchealth"
 	"connectrpc.com/grpcreflect"
 	"github.com/Dimss/cwaf/api/gen/cwaf/v1/cwafv1connect"
 	"go.uber.org/zap"
@@ -21,6 +23,7 @@ func NewApiServer(log *zap.Logger) *ApiServer {
 func (s *ApiServer) Start() {
 	s.logger.Info("starting API server")
 	mux := http.NewServeMux()
+
 	s.enableReflection(mux)
 	s.registerHandlers(mux)
 	go func() {
@@ -31,29 +34,48 @@ func (s *ApiServer) Start() {
 
 func (s *ApiServer) registerHandlers(mux *http.ServeMux) {
 	s.logger.Info("registering handlers")
+
+	compress1KB := connect.WithCompressMinBytes(1024)
+	mux.Handle(
+		grpchealth.NewHandler(
+			NewSystemService(s.logger),
+			compress1KB,
+		),
+	)
 	mux.Handle(
 		cwafv1connect.NewApplicationServiceHandler(
 			NewApplicationService(s.logger),
+			compress1KB,
 		),
 	)
 	mux.Handle(
 		cwafv1connect.NewIngressServiceHandler(
 			NewIngressService(s.logger),
+			compress1KB,
 		),
 	)
 	mux.Handle(
 		cwafv1connect.NewProtectionServiceHandler(
 			NewProtectionService(s.logger),
+			compress1KB,
 		),
 	)
 	mux.Handle(
 		cwafv1connect.NewVirtualHostServiceHandler(
 			NewVirtualHostService(s.logger),
+			compress1KB,
 		),
 	)
 	mux.Handle(
 		cwafv1connect.NewDataVersionServiceHandler(
 			NewDataVersionService(s.logger),
+			compress1KB,
+		),
+	)
+	mux.Handle(
+		cwafv1connect.NewSystemServiceHandler(
+			NewSystemService(s.logger),
+			compress1KB,
 		),
 	)
 
@@ -67,6 +89,7 @@ func (s *ApiServer) enableReflection(mux *http.ServeMux) {
 		cwafv1connect.ProtectionServiceName,
 		cwafv1connect.VirtualHostServiceName,
 		cwafv1connect.DataVersionServiceName,
+		cwafv1connect.SystemServiceName,
 	)
 	mux.Handle(grpcreflect.NewHandlerV1(reflector))
 	mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))

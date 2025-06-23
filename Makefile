@@ -4,10 +4,6 @@ build:
       -o bin/discovery-agent cmd/agent/discovery/main.go
 
 	go build \
-      -ldflags="-X 'github.com/Dimss/cwaf/cmd/agent/control/cmd.Build=$$(git rev-parse --short HEAD)'" \
-      -o bin/control-agent cmd/agent/control/main.go
-
-	go build \
       -ldflags="-X 'github.com/Dimss/cwaf/cmd/apiserver/cmd.Build=$$(git rev-parse --short HEAD)'" \
       -o bin/api-server cmd/apiserver/main.go
 
@@ -15,8 +11,11 @@ build:
 		-ldflags="-X 'github.com/Dimss/cwaf/cmd/proxycontrolplane/cmd.Build=$$(git rev-parse --short HEAD)'" \
 		-o bin/proxycontrolplane cmd/proxycontrolplane/main.go
 
-docker:
-	docker buildx build --push -t dimssss/cwaf . -f Dockerfile_cwaf_agent
+docker-wafy:
+	docker buildx build --push -t dimssss/wafy-core -f dockerfiles/Dockerfile_wafy .
+
+docker-proxy:
+	docker buildx build --push -t dimssss/wafy-proxy -f dockerfiles/Dockerfile_proxy .
 
 .PHONY: proto
 proto:

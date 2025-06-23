@@ -59,11 +59,12 @@ func (s *IngressModelSvc) NewIngressFromRequest(req *v1.CreateIngressRequest) er
 
 func (i *Ingress) ToProto() *v1.Ingress {
 	return &v1.Ingress{
-		Name:         i.Name,
-		Path:         i.Path,
-		Host:         i.Host,
-		UpstreamHost: i.UpstreamHost,
-		UpstreamPort: i.UpstreamPort,
+		Name:          i.Name,
+		Path:          i.Path,
+		Host:          i.Host,
+		UpstreamHost:  i.UpstreamHost,
+		UpstreamPort:  i.UpstreamPort,
+		ApplicationId: int32(i.ApplicationID),
 	}
 }
 

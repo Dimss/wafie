@@ -14,7 +14,9 @@ import (
 	routeservice "github.com/envoyproxy/go-control-plane/envoy/service/route/v3"
 	runtimeservice "github.com/envoyproxy/go-control-plane/envoy/service/runtime/v3"
 	secretservice "github.com/envoyproxy/go-control-plane/envoy/service/secret/v3"
+	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"
+	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/server/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/test/v3"
 	"go.uber.org/zap"
@@ -27,23 +29,30 @@ import (
 )
 
 type EnvoyControlPlane struct {
-	state                      *state
-	cache                      cache.SnapshotCache
-	logger                     *zap.Logger
-	notifier                   chan struct{}
-	protectionServiceSvcClient cwafv1connect.ProtectionServiceClient
+	state                *state
+	cache                cache.SnapshotCache
+	logger               *zap.Logger
+	resourcesCh          chan map[resource.Type][]types.Resource
+	dataVersion          string
+	protectionSvcClient  cwafv1connect.ProtectionServiceClient
+	dataVersionSvcClient cwafv1connect.DataVersionServiceClient
 }
 
 func NewEnvoyControlPlane(apiAddr string) *EnvoyControlPlane {
 
 	cp := &EnvoyControlPlane{
-		state:    newState(),
-		logger:   applogger.NewLogger(),
-		notifier: make(chan struct{}, 1),
+		state:       newState(),
+		logger:      applogger.NewLogger(),
+		resourcesCh: make(chan map[resource.Type][]types.Resource, 1),
 		cache: cache.NewSnapshotCache(
-			false, cache.IDHash{}, applogger.NewLogger().Sugar()),
-		protectionServiceSvcClient: cwafv1connect.NewProtectionServiceClient(
-			http.DefaultClient, apiAddr),
+			false, cache.IDHash{}, applogger.NewLogger().Sugar(),
+		),
+		protectionSvcClient: cwafv1connect.NewProtectionServiceClient(
+			http.DefaultClient, apiAddr,
+		),
+		dataVersionSvcClient: cwafv1connect.NewDataVersionServiceClient(
+			http.DefaultClient, apiAddr,
+		),
 	}
 	// start control plane data watcher
 	cp.startControlPlaneDataWatcher()
@@ -85,28 +94,59 @@ func (p *EnvoyControlPlane) Start() {
 	}
 }
 
+func (p *EnvoyControlPlane) dataVersionChanged() bool {
+	dataVersionResponse, err := p.dataVersionSvcClient.GetDataVersion(
+		context.Background(),
+		connect.NewRequest(
+			&cwafv1.GetDataVersionRequest{
+				TypeId: cwafv1.DataTypeId_DATA_TYPE_ID_PROTECTION,
+			},
+		),
+	)
+	if err != nil {
+		p.logger.Error("failed to get protection data version", zap.Error(err))
+		return false
+	}
+	// check if the protection data version has changed since last iteration
+	if dataVersionResponse.Msg.VersionId == p.dataVersion {
+		return false
+	}
+	p.logger.Info("protection data version has changed",
+		zap.String("versionId", dataVersionResponse.Msg.VersionId))
+	p.dataVersion = dataVersionResponse.Msg.VersionId
+	return true
+}
+
 func (p *EnvoyControlPlane) startControlPlaneDataWatcher() {
 	p.logger.Info("starting control plane data watcher")
 	go func() {
 		for {
 			time.Sleep(1 * time.Second)
+			if !p.dataVersionChanged() {
+				continue
+			}
 			mode := cwafv1.ProtectionMode_PROTECTION_MODE_ON
+			includeApps := true
 			req := connect.NewRequest(&cwafv1.ListProtectionsRequest{
 				Options: &cwafv1.ListProtectionsOptions{
 					ProtectionMode: &mode,
+					IncludeApps:    &includeApps,
 				},
 			})
-			resp, err := p.protectionServiceSvcClient.ListProtections(context.Background(), req)
+			resp, err := p.protectionSvcClient.ListProtections(context.Background(), req)
 			if err != nil {
 				p.logger.Error("failed to list protections", zap.Error(err))
 				continue
 			}
-			for _, protection := range resp.Msg.Protections {
-				p.logger.Info("protection found",
-					zap.Uint32("id", protection.Id),
-					zap.String("mode", protection.ProtectionMode.String()),
-				)
-			}
+			p.resourcesCh <- p.state.buildResources(resp.Msg.Protections)
+			
+			//for _, protection := range resp.Msg.Protections {
+			//	p.logger.Info("protection found",
+			//		zap.Uint32("id", protection.Id),
+			//		zap.String("mode", protection.ProtectionMode.String()),
+			//		zap.String("applicationName", protection.Application.Name),
+			//	)
+			//}
 		}
 	}()
 }
@@ -114,9 +154,9 @@ func (p *EnvoyControlPlane) startControlPlaneDataWatcher() {
 func (p *EnvoyControlPlane) startSnapshotGenerator() {
 	p.logger.Info("starting envoy snapshot generator")
 	go func() {
-		for _ = range p.notifier {
+		for resources := range p.resourcesCh {
 			p.logger.Info("state has been changed, generating new snapshot...")
-			snap, _ := cache.NewSnapshot(fmt.Sprintf("%d", rand.Int()), p.state.resources())
+			snap, _ := cache.NewSnapshot(fmt.Sprintf("%d", rand.Int()), resources)
 			if err := snap.Consistent(); err != nil {
 				p.logger.Error("snapshot inconsistency", zap.Error(err))
 				continue

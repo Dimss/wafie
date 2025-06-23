@@ -58,7 +58,7 @@ func (a *Application) ToProto() *v1.Application {
 
 func (s *ApplicationModelSvc) GetApplication(req *v1.GetApplicationRequest) (*Application, error) {
 	app := &Application{ID: uint(req.GetId())}
-	err := s.db.First(&app, req.GetId()).Error
+	err := s.db.Preload("Ingress").First(&app, req.GetId()).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("application not found"))
 	} else if err != nil {

@@ -90,14 +90,16 @@ func (p *Protection) FromProto(protectionv1 *v1.Protection) error {
 func (p *Protection) ToProto() *v1.Protection {
 
 	protection := &v1.Protection{
-		Id:            uint32(p.ID),
-		ApplicationId: uint32(p.ApplicationID),
-		//Application:    p.Application.ToProto(),
+		Id:             uint32(p.ID),
+		ApplicationId:  uint32(p.ApplicationID),
 		ProtectionMode: v1.ProtectionMode(p.Mode),
 		DesiredState: &v1.ProtectionDesiredState{ModeSec: &v1.ModSec{
 			ProtectionMode: v1.ProtectionMode(p.DesiredState.ModSec.Mode),
 			ParanoiaLevel:  v1.ParanoiaLevel(p.DesiredState.ModSec.ParanoiaLevel),
 		}},
+	}
+	if p.Application.ID != 0 {
+		protection.Application = p.Application.ToProto()
 	}
 	return protection
 }

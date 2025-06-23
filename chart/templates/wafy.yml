@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wafy-core
+  namespace: {{.Release.Namespace}}
+  labels:
+    app: wafy-core
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wafy-core
+  template:
+    metadata:
+      labels:
+        app: wafy-core
+    spec:
+      serviceAccountName: wafy
+      containers:
+        - name: api-server
+          image: {{.Values.wafyCoreImage}}
+          imagePullPolicy: Always
+          command:
+            - /usr/local/bin/api-server
+            - start
+            - --db-host={{.Release.Name}}-postgresql
+          ports:
+            - name: api-server
+              containerPort: 8080
+        - name: proxy-control-plane
+          image: {{.Values.wafyCoreImage}}
+          imagePullPolicy: Always
+          command:
+            - /usr/local/bin/proxycontrolplane
+            - start
+          ports:
+            - name: pcp
+              containerPort: 18000
+          livenessProbe:
+            grpc:
+                port: 8080
+        - name: discovery-agent
+          image: {{.Values.wafyCoreImage}}
+          imagePullPolicy: Always
+          command:
+            - /usr/local/bin/discovery-agent
+            - start
+        - name: proxy
+          image: {{.Values.wafyProxyImage}}
+          imagePullPolicy: Always
+          command:
+            - /usr/local/bin/envoy
+            - -c /etc/envoy/envoy-xds.yaml
+

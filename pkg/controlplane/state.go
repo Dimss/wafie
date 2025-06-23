@@ -1,7 +1,7 @@
 package controlplane
 
 import (
-	"fmt"
+	cwafv1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
 	"github.com/Dimss/cwaf/internal/applogger"
 	golangv3alpha "github.com/envoyproxy/go-control-plane/contrib/envoy/extensions/filters/http/golang/v3alpha"
 	accesslog "github.com/envoyproxy/go-control-plane/envoy/config/accesslog/v3"
@@ -18,7 +18,6 @@ import (
 	"github.com/envoyproxy/go-control-plane/pkg/wellknown"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"go.uber.org/zap"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"time"
@@ -29,7 +28,9 @@ type state struct {
 }
 
 func newState() *state {
-	return &state{logger: applogger.NewLogger()}
+	return &state{
+		logger: applogger.NewLogger(),
+	}
 }
 
 func (s *state) httpFilters() []*hcm.HttpFilter {
@@ -38,7 +39,7 @@ func (s *state) httpFilters() []*hcm.HttpFilter {
 
 	kubeguardLibCfg, err := anypb.New(&golangv3alpha.Config{
 		LibraryId:   "kubeguard-v1",
-		LibraryPath: "/go/src/github.com/Dimss/cwaf/kubeguard-modsec.so",
+		LibraryPath: "/usr/local/lib/kubeguard-modsec.so",
 		PluginName:  "kubeguard",
 	})
 	if err != nil {
@@ -141,20 +142,22 @@ func (s *state) listeners() []types.Resource {
 			},
 		},
 	}
-	//s.resources[resource.ListenerType] = []types.Resource{l}
 }
 
-func (s *state) clusters(name string) []types.Resource {
-	//name := "wp-host"
-	return []types.Resource{
-		&cluster.Cluster{
-			Name:                 name,
+func (s *state) clusters(protections []*cwafv1.Protection) (clusters []types.Resource) {
+	clusters = make([]types.Resource, 0, len(protections))
+	for _, protection := range protections {
+		if shouldSkipProtection(protection) {
+			continue
+		}
+		clusters = append(clusters, &cluster.Cluster{
+			Name:                 protection.Application.Name,
 			ClusterDiscoveryType: &cluster.Cluster_Type{Type: cluster.Cluster_STRICT_DNS},
 			ConnectTimeout:       durationpb.New(20 * time.Second),
 			LbPolicy:             cluster.Cluster_ROUND_ROBIN,
 			DnsLookupFamily:      cluster.Cluster_V4_ONLY,
 			LoadAssignment: &endpoint.ClusterLoadAssignment{
-				ClusterName: name,
+				ClusterName: protection.Application.Name,
 				Endpoints: []*endpoint.LocalityLbEndpoints{
 					{
 						LbEndpoints: []*endpoint.LbEndpoint{
@@ -165,9 +168,11 @@ func (s *state) clusters(name string) []types.Resource {
 											Address: &core.Address_SocketAddress{
 												SocketAddress: &core.SocketAddress{
 													Protocol: core.SocketAddress_TCP,
-													Address:  "wp-wordpress.default.svc",
+													Address:  protection.Application.Ingress[0].UpstreamHost,
 													PortSpecifier: &core.SocketAddress_PortValue{
-														PortValue: 80,
+														PortValue: uint32(
+															protection.Application.Ingress[0].UpstreamPort,
+														),
 													},
 												},
 											},
@@ -179,23 +184,26 @@ func (s *state) clusters(name string) []types.Resource {
 					},
 				},
 			},
-		},
+		})
 	}
+	return clusters
 }
 
-func (s *state) routes(name string) []types.Resource {
-	//name := "wp-host"
-	host := "*"
-	return []types.Resource{
-		&route.RouteConfiguration{
+func (s *state) routes(protections []*cwafv1.Protection) (routes []types.Resource) {
+	routes = make([]types.Resource, 0, len(protections))
+	for _, protection := range protections {
+		if shouldSkipProtection(protection) {
+			continue
+		}
+		routes = append(routes, &route.RouteConfiguration{
 			Name: "local_route",
 			VirtualHosts: []*route.VirtualHost{
 				{
-					Name:    name,
-					Domains: []string{host},
+					Name:    protection.Application.Name,
+					Domains: []string{protection.Application.Ingress[0].Host},
 					Routes: []*route.Route{
 						{
-							Name: name,
+							Name: protection.Application.Name,
 							Match: &route.RouteMatch{
 								PathSpecifier: &route.RouteMatch_Prefix{
 									Prefix: "/",
@@ -205,7 +213,7 @@ func (s *state) routes(name string) []types.Resource {
 								Route: &route.RouteAction{
 									Timeout: durationpb.New(0 * time.Second), // zero meaning disabled
 									ClusterSpecifier: &route.RouteAction_Cluster{
-										Cluster: name,
+										Cluster: protection.Application.Name,
 									},
 								},
 							},
@@ -213,35 +221,35 @@ func (s *state) routes(name string) []types.Resource {
 					},
 				},
 			},
-		},
+		})
 	}
+	return routes
 }
 
-func (s *state) dumpConfigs() {
-	configs := ""
-	resources := map[resource.Type][]types.Resource{
-		resource.ListenerType: s.listeners(),
-		resource.ClusterType:  s.clusters("wp-host"),
-		resource.RouteType:    s.routes("wp-host"),
-	}
-	for _, resourceList := range resources {
-		for _, res := range resourceList {
-			jsonBytes, err := protojson.Marshal(res)
-			if err != nil {
-				s.logger.Error("failed to marshal resources", zap.Error(err))
-				continue
-			}
-			configs += string(jsonBytes) + "\n"
-		}
-	}
-	fmt.Println(configs)
-}
+//func (s *state) dumpConfigs() {
+//	configs := ""
+//	buildResources := map[resource.Type][]types.Resource{
+//		resource.ListenerType: s.listeners(),
+//		resource.ClusterType:  s.clusters("wp-host"),
+//		resource.RouteType:    s.routes("wp-host"),
+//	}
+//	for _, resourceList := range buildResources {
+//		for _, res := range resourceList {
+//			jsonBytes, err := protojson.Marshal(res)
+//			if err != nil {
+//				s.logger.Error("failed to marshal buildResources", zap.Error(err))
+//				continue
+//			}
+//			configs += string(jsonBytes) + "\n"
+//		}
+//	}
+//	fmt.Println(configs)
+//}
 
-func (s *state) resources() map[resource.Type][]types.Resource {
-
+func (s *state) buildResources(protections []*cwafv1.Protection) map[resource.Type][]types.Resource {
 	return map[resource.Type][]types.Resource{
 		resource.ListenerType: s.listeners(),
-		resource.ClusterType:  s.clusters("wp-host"),
-		resource.RouteType:    s.routes("wp-host"),
+		resource.ClusterType:  s.clusters(protections),
+		resource.RouteType:    s.routes(protections),
 	}
 }

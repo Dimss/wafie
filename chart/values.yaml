@@ -1,0 +1,11 @@
+wafyCoreImage: dimssss/wafy-core:latest
+wafyProxyImage: dimssss/wafy-proxy:latest
+postgresql:
+  auth:
+    postgresPassword: "cwafpg"
+    username: "cwafpg"
+    password: "cwafpg"
+    database: "cwaf"
+  primary:
+    persistence:
+      size: 20Gi

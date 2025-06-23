@@ -4,6 +4,7 @@ go 1.24.3
 
 require (
 	connectrpc.com/connect v1.18.1
+	connectrpc.com/grpchealth v1.4.0
 	connectrpc.com/grpcreflect v1.3.0
 	github.com/docker/docker v28.0.1+incompatible
 	github.com/docker/go-connections v0.5.0
