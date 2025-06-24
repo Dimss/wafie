@@ -31,6 +31,7 @@ var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "start cwaf discovery agent",
 	Run: func(cmd *cobra.Command, args []string) {
+
 		cache := ingresscache.NewIngressCache(
 			viper.GetString("ingress-type"),
 			viper.GetString("api-addr"))

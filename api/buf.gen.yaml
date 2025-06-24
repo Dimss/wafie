@@ -14,3 +14,6 @@ plugins:
     opt: paths=source_relative
 inputs:
   - directory: proto
+  - module: buf.build/grpc/grpc
+    types:
+      - grpc.health.v1.Health

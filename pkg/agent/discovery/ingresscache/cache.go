@@ -4,6 +4,8 @@ import (
 	"connectrpc.com/connect"
 	cwafv1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
 	"github.com/Dimss/cwaf/api/gen/cwaf/v1/cwafv1connect"
+	healthv1 "github.com/Dimss/cwaf/api/gen/grpc/health/v1"
+	"github.com/Dimss/cwaf/api/gen/grpc/health/v1/healthv1connect"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -60,6 +62,18 @@ func NewIngressCache(ingressType IngressType, apiAddr string) *IngressCache {
 		ingressSvcClient: cwafv1connect.NewIngressServiceClient(
 			http.DefaultClient, apiAddr),
 	}
+	hc := healthv1connect.NewHealthClient(
+		http.DefaultClient, apiAddr)
+
+	resp, err := hc.Check(context.Background(), connect.NewRequest(&healthv1.HealthCheckRequest{}))
+	if err != nil {
+		cache.log().Errorf("failed to connect to health service: %v", err)
+	}
+	if resp.Msg.GetStatus() != healthv1.HealthCheckResponse_SERVING {
+
+	}
+	cache.log().Infof("health service response: %s", resp.Msg.GetStatus())
+
 	return cache
 }
 

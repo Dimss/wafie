@@ -50,7 +50,7 @@ var startCmd = &cobra.Command{
 			),
 		)
 		if err != nil {
-			logger.Fatal("error during database connection initialization", zap.Error(err))
+			logger.Error("error during database connection initialization", zap.Error(err))
 		}
 		srv := apiserver.NewApiServer(logger)
 		srv.Start()

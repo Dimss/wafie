@@ -1,7 +1,6 @@
 package apiserver
 
 import (
-	"connectrpc.com/connect"
 	"connectrpc.com/grpchealth"
 	"context"
 	"github.com/Dimss/cwaf/api/gen/cwaf/v1/cwafv1connect"
@@ -24,7 +23,7 @@ func (s *SystemService) Check(context.Context, *grpchealth.CheckRequest) (*grpch
 	systemModelSvc := models.NewSystemModelSvc(nil, s.logger)
 	if err := systemModelSvc.Ping(); err != nil {
 		s.logger.Error("database ping failed", zap.Error(err))
-		return &grpchealth.CheckResponse{Status: grpchealth.StatusNotServing}, connect.NewError(connect.CodeInternal, err)
+		return &grpchealth.CheckResponse{Status: grpchealth.StatusNotServing}, nil
 	}
 	return &grpchealth.CheckResponse{Status: grpchealth.StatusServing}, nil
 }

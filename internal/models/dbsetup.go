@@ -8,8 +8,10 @@ import (
 )
 
 var (
-	dbConn *gorm.DB
-	logger *zap.Logger
+	dbConn   *gorm.DB
+	logger   *zap.Logger
+	migrated bool
+	seeded   bool
 )
 
 type DbCfg struct {
@@ -47,7 +49,7 @@ func NewDb(cfg *DbCfg) (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	dbConn = dbConn.Debug()
+	//dbConn = dbConn.Debug()
 	if err := migrate(dbConn); err != nil {
 		return nil, err
 	}
@@ -59,22 +61,40 @@ func NewDb(cfg *DbCfg) (*gorm.DB, error) {
 }
 
 func migrate(db *gorm.DB) error {
-	return db.AutoMigrate(
+	if err := db.AutoMigrate(
 		&Application{},
 		&Ingress{},
 		&Protection{},
 		&VirtualHost{},
 		&DataVersion{},
-	)
+	); err != nil {
+		return err
+	}
+	migrated = true // mark as migrated
+	return nil
 }
 
 func seed(db *gorm.DB) error {
-	return db.FirstOrCreate(&DataVersion{TypeId: 1}).Error
+	if err := db.FirstOrCreate(&DataVersion{TypeId: 1}).Error; err != nil {
+		return err
+	}
+	seeded = true // mark as seeded
+	return nil
 }
 
 func db() *gorm.DB {
 	if dbConn == nil {
-		zap.S().Fatal("database connection not initialized, you must call NewDb(dbCfg) first")
+		logger.Error("database connection not initialized, you must call NewDb(dbCfg) first")
+	}
+	if !migrated {
+		if err := migrate(dbConn); err != nil {
+			logger.Error("failed to migrate database", zap.Error(err))
+		}
+	}
+	if !seeded {
+		if err := seed(dbConn); err != nil {
+			logger.Error("failed to seed database", zap.Error(err))
+		}
 	}
 	return dbConn
 }
