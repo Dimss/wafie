@@ -1,6 +1,0 @@
-syntax = "proto3";
-
-package cwaf.v1;
-
-
-service SystemService {}

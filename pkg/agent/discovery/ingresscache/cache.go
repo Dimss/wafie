@@ -4,8 +4,7 @@ import (
 	"connectrpc.com/connect"
 	cwafv1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
 	"github.com/Dimss/cwaf/api/gen/cwaf/v1/cwafv1connect"
-	healthv1 "github.com/Dimss/cwaf/api/gen/grpc/health/v1"
-	"github.com/Dimss/cwaf/api/gen/grpc/health/v1/healthv1connect"
+	"github.com/Dimss/cwaf/internal/applogger"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -59,36 +58,22 @@ func NewIngressCache(ingressType IngressType, apiAddr string) *IngressCache {
 		notifier:    make(chan struct{}, 1000),
 		namespace:   "",
 		normalizer:  newParser(ingressType),
+		logger:      applogger.NewLogger(),
 		ingressSvcClient: cwafv1connect.NewIngressServiceClient(
-			http.DefaultClient, apiAddr),
+			http.DefaultClient, apiAddr,
+		),
 	}
-	hc := healthv1connect.NewHealthClient(
-		http.DefaultClient, apiAddr)
-
-	resp, err := hc.Check(context.Background(), connect.NewRequest(&healthv1.HealthCheckRequest{}))
-	if err != nil {
-		cache.log().Errorf("failed to connect to health service: %v", err)
-	}
-	if resp.Msg.GetStatus() != healthv1.HealthCheckResponse_SERVING {
-
-	}
-	cache.log().Infof("health service response: %s", resp.Msg.GetStatus())
-
 	return cache
-}
-
-func (c *IngressCache) log() *zap.SugaredLogger {
-	return zap.S().With("parser", c.ingressType)
 }
 
 func (c *IngressCache) Start() {
 
 	go func() {
-		l := c.log()
+		l := c.logger.With(zap.String("parser", c.ingressType))
 		var informerStartError error
 		for {
 			if informerStartError != nil {
-				l.Error(informerStartError)
+				l.Error("informer start error", zap.Error(informerStartError))
 				informerStartError = nil
 				l.Info("restarting informer after error")
 				time.Sleep(3 * time.Second)
@@ -113,18 +98,18 @@ func (c *IngressCache) Start() {
 			r, err := genericInformer.Informer().AddEventHandler(cache2.ResourceEventHandlerFuncs{
 				AddFunc: func(obj interface{}) {
 					unstructuredIngress := obj.(*unstructured.Unstructured)
-					l := c.log().
-						With("name", unstructuredIngress.GetName(),
-							"namespace", unstructuredIngress.GetNamespace())
 					if err := c.createIngress(unstructuredIngress); err != nil {
-						l.Error("error creating ingress", zap.Error(err))
+						l.With(
+							zap.String("name", unstructuredIngress.GetName()),
+							zap.String("namespace", unstructuredIngress.GetNamespace()),
+						).Error("error creating ingress", zap.Error(err))
 					}
 				},
 				UpdateFunc: func(oldObj, newObj interface{}) {
-					c.log().Infof("updated ingress object: %v", newObj)
+					l.Info("updated ingress", zap.Any("object", newObj))
 				},
 				DeleteFunc: func(obj interface{}) {
-					c.log().Infof("deleted ingress object: %v", obj)
+					l.Info("deleted ingress", zap.Any("object", obj))
 				},
 			})
 			if r.HasSynced() {

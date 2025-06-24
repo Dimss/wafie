@@ -6,25 +6,25 @@ import (
 	"gorm.io/gorm"
 )
 
-type SystemModelSvc struct {
+type HealthCheckModelSvc struct {
 	db     *gorm.DB
 	logger *zap.Logger
 }
 
-func NewSystemModelSvc(tx *gorm.DB, logger *zap.Logger) *SystemModelSvc {
+func NewHealthCheckSvc(tx *gorm.DB, logger *zap.Logger) *HealthCheckModelSvc {
 	if tx == nil {
 		tx = db()
 	}
 	if logger == nil {
 		logger = applogger.NewLogger()
 	}
-	return &SystemModelSvc{
+	return &HealthCheckModelSvc{
 		db:     tx,
 		logger: logger,
 	}
 }
 
-func (s *SystemModelSvc) Ping() error {
+func (s *HealthCheckModelSvc) Ping() error {
 	sqlDB, err := s.db.DB()
 	if err != nil {
 		return err

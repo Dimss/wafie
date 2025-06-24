@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/Dimss/cwaf/pkg/agent/discovery/ingresscache"
+	hsrv "github.com/Dimss/cwaf/pkg/healthchecksrv"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -31,7 +32,11 @@ var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "start cwaf discovery agent",
 	Run: func(cmd *cobra.Command, args []string) {
-
+		// start health check server
+		hsrv.NewHealthCheckServer(
+			":8081", viper.GetString("api-addr"),
+		).Serve()
+		// start ingress cache
 		cache := ingresscache.NewIngressCache(
 			viper.GetString("ingress-type"),
 			viper.GetString("api-addr"))

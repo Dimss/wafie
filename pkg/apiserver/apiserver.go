@@ -23,7 +23,6 @@ func NewApiServer(log *zap.Logger) *ApiServer {
 func (s *ApiServer) Start() {
 	s.logger.Info("starting API server")
 	mux := http.NewServeMux()
-
 	s.enableReflection(mux)
 	s.registerHandlers(mux)
 	go func() {
@@ -34,11 +33,10 @@ func (s *ApiServer) Start() {
 
 func (s *ApiServer) registerHandlers(mux *http.ServeMux) {
 	s.logger.Info("registering handlers")
-
 	compress1KB := connect.WithCompressMinBytes(1024)
 	mux.Handle(
 		grpchealth.NewHandler(
-			NewSystemService(s.logger),
+			NewHealthCheckService(s.logger),
 			compress1KB,
 		),
 	)
@@ -74,7 +72,7 @@ func (s *ApiServer) registerHandlers(mux *http.ServeMux) {
 	)
 	mux.Handle(
 		cwafv1connect.NewSystemServiceHandler(
-			NewSystemService(s.logger),
+			NewHealthCheckService(s.logger),
 			compress1KB,
 		),
 	)
