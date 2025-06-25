@@ -27,6 +27,12 @@ spec:
           ports:
             - name: api-server
               containerPort: 8080
+          readinessProbe:
+            grpc:
+              port: 8080
+          livenessProbe:
+            grpc:
+              port: 8080
         - name: proxy-control-plane
           image: {{.Values.wafyCoreImage}}
           imagePullPolicy: Always
@@ -36,9 +42,12 @@ spec:
           ports:
             - name: pcp
               containerPort: 18000
+          readinessProbe:
+            grpc:
+              port: 8082
           livenessProbe:
             grpc:
-                port: 8080
+              port: 8082
         - name: discovery-agent
           image: {{.Values.wafyCoreImage}}
           imagePullPolicy: Always
@@ -51,4 +60,10 @@ spec:
           command:
             - /usr/local/bin/envoy
             - -c /etc/envoy/envoy-xds.yaml
+          readinessProbe:
+            grpc:
+              port: 8081
+          livenessProbe:
+            grpc:
+              port: 8081
 
