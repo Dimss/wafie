@@ -129,6 +129,9 @@ func (c *IngressCache) createIngress(obj *unstructured.Unstructured) error {
 	if err != nil {
 		return err
 	}
+	if req == nil {
+		return nil
+	}
 	_, err = c.
 		ingressSvcClient.
 		CreateIngress(

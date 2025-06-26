@@ -34,3 +34,10 @@ run-test-postgres:
 stop-test-postgres:
 	docker stop test-postgres
 	docker rm test-postgres
+
+.PHONY: chart
+install:
+	cd chart && helm upgrade -i wafy .
+uninstall:
+	cd chart && helm delete wafy && kubectl delete pvc data-wafy-postgresql-0
+

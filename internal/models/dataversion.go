@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
+	"time"
 )
 
 type DataVersionModelSvc struct {
@@ -17,6 +18,8 @@ type DataVersionModelSvc struct {
 type DataVersion struct {
 	TypeId    uint32 `gorm:"primaryKey"`
 	VersionId string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 func NewDataVersionModelSvc(tx *gorm.DB, logger *zap.Logger) *DataVersionModelSvc {

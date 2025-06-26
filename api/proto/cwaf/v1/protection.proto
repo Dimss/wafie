@@ -19,6 +19,12 @@ enum ProtectionMode {
   PROTECTION_MODE_OFF = 2;
 }
 
+enum IngressAutoPatch {
+  INGRESS_AUTO_PATCH_UNSPECIFIED = 0;
+  INGRESS_AUTO_PATCH_ON = 1;
+  INGRESS_AUTO_PATCH_OFF = 2;
+}
+
 message ModSec {
   ProtectionMode protection_mode = 1;
   ParanoiaLevel paranoia_level = 2;
@@ -34,12 +40,15 @@ message Protection {
   optional Application application = 3;
   ProtectionMode protection_mode = 4;
   ProtectionDesiredState desired_state = 5;
+  IngressAutoPatch ingress_auto_patch = 6;
+
 }
 
 message CreateProtectionRequest {
   uint32 application_id = 1;
   ProtectionMode protection_mode = 2;
   ProtectionDesiredState desired_state = 3;
+  IngressAutoPatch ingress_auto_patch = 4;
 }
 
 message CreateProtectionResponse {
@@ -56,8 +65,9 @@ message GetProtectionResponse {
 
 message PutProtectionRequest {
   uint32 id = 1;
-  ProtectionMode protection_mode = 3;
-  ProtectionDesiredState desired_state = 4;
+  optional ProtectionMode protection_mode = 2;
+  optional IngressAutoPatch ingress_auto_patch = 3;
+  optional ProtectionDesiredState desired_state = 4;
 }
 
 message PutProtectionResponse {

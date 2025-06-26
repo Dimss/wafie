@@ -2,14 +2,24 @@ syntax = "proto3";
 
 package cwaf.v1;
 
+enum IngressType {
+  INGRESS_TYPE_UNSPECIFIED = 0;
+  INGRESS_TYPE_NGINX = 1;
+  INGRESS_TYPE_ISTIO = 2;
+  INGRESS_TYPE_OCP = 4;
+}
+
 message Ingress {
   string name = 1;
-  string host = 2;
-  int32 port = 3;
-  string path = 4;
-  string upstream_host = 5;
-  int32 upstream_port = 6;
+  string namespace = 2;
+  string host = 3;
+  int32 port = 4;
+  string path = 5;
+  string upstream_host = 6;
+  int32 upstream_port = 7;
   int32 application_id = 8;
+  string raw_ingress_spec = 9;
+  IngressType ingress_type = 10;
 }
 
 message CreateIngressRequest {
@@ -17,6 +27,7 @@ message CreateIngressRequest {
 }
 
 message CreateIngressResponse {}
+
 
 service IngressService{
 

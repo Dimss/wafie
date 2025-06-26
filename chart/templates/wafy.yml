@@ -54,16 +54,20 @@ spec:
           command:
             - /usr/local/bin/discovery-agent
             - start
-        - name: proxy
-          image: {{.Values.wafyProxyImage}}
-          imagePullPolicy: Always
-          command:
-            - /usr/local/bin/envoy
-            - -c /etc/envoy/envoy-xds.yaml
           readinessProbe:
             grpc:
               port: 8081
           livenessProbe:
             grpc:
               port: 8081
+        - name: proxy
+          image: {{.Values.wafyProxyImage}}
+          imagePullPolicy: Always
+          command:
+            - /usr/local/bin/envoy
+            - -c /etc/envoy/envoy-xds.yaml
+          ports:
+            - name: waf
+              containerPort: 8888
+
 

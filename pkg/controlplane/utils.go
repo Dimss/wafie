@@ -1,6 +1,11 @@
 package controlplane
 
-import cwafv1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
+import (
+	cwafv1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
+	"k8s.io/client-go/kubernetes"
+	//"k8s.io/client-go/tools/clientcmd"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
+)
 
 func shouldSkipProtection(protection *cwafv1.Protection) bool {
 	if protection.Application == nil {
@@ -10,4 +15,16 @@ func shouldSkipProtection(protection *cwafv1.Protection) bool {
 		return true // skip if no ingress is associated
 	}
 	return false
+}
+
+func newKubeClient() (*kubernetes.Clientset, error) {
+	rc, err := config.GetConfig()
+	if err != nil {
+		return nil, err
+	}
+	clientset, err := kubernetes.NewForConfig(rc)
+	if err != nil {
+		return nil, err
+	}
+	return clientset, nil
 }

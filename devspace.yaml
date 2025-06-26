@@ -1,23 +1,27 @@
 version: v2beta1
 name: devspace
-
 dev:
   app:
     workingDir: /go/src/github.com/Dimss/cwaf
     labelSelector:
-      app: "cwaf-test"
-    container: cwaf
+      app: "wafy-core"
+    container: api-server
     devImage: dimssss/kubeguard-agent:latest
     sync:
-     - path: ./:./
-       waitInitialSync: true
-       printLogs: true
-       polling: true
-       disableDownload: true
-     - path: ./devspace_start.sh
-       printLogs: true
-       waitInitialSync: true
-       polling: true
+      - path: ./:./
+        waitInitialSync: true
+        printLogs: true
+        polling: true
+        disableDownload: true
+      - path: ./devspace_start.sh
+        printLogs: true
+        waitInitialSync: true
+        polling: true
+    patches:
+      - op: remove
+        path: spec.containers.name=api-server.readinessProbe
+      - op: remove
+        path: spec.containers.name=api-server.livenessProbe
     terminal:
       command: ./devspace_start.sh
     ssh:

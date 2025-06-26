@@ -22,6 +22,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
+	"k8s.io/client-go/kubernetes"
 	"math/rand"
 	"net"
 	"net/http"
@@ -33,6 +34,7 @@ type EnvoyControlPlane struct {
 	cache                cache.SnapshotCache
 	logger               *zap.Logger
 	resourcesCh          chan map[resource.Type][]types.Resource
+	ingressPatcherCh     chan []*cwafv1.Protection
 	dataVersion          string
 	protectionSvcClient  cwafv1connect.ProtectionServiceClient
 	dataVersionSvcClient cwafv1connect.DataVersionServiceClient
@@ -41,9 +43,10 @@ type EnvoyControlPlane struct {
 func NewEnvoyControlPlane(apiAddr string) *EnvoyControlPlane {
 
 	cp := &EnvoyControlPlane{
-		state:       newState(),
-		logger:      applogger.NewLogger(),
-		resourcesCh: make(chan map[resource.Type][]types.Resource, 1),
+		state:            newState(),
+		logger:           applogger.NewLogger(),
+		resourcesCh:      make(chan map[resource.Type][]types.Resource, 1),
+		ingressPatcherCh: make(chan []*cwafv1.Protection, 1),
 		cache: cache.NewSnapshotCache(
 			false, cache.IDHash{}, applogger.NewLogger().Sugar(),
 		),
@@ -58,6 +61,9 @@ func NewEnvoyControlPlane(apiAddr string) *EnvoyControlPlane {
 	cp.startControlPlaneDataWatcher()
 	// start envoy snapshot generator
 	cp.startSnapshotGenerator()
+	// start ingress patcher
+	// TODO: this is a hack, need to understand how to properly handle this if at all
+	//cp.ingressPatcher()
 	return cp
 }
 
@@ -138,15 +144,10 @@ func (p *EnvoyControlPlane) startControlPlaneDataWatcher() {
 				p.logger.Error("failed to list protections", zap.Error(err))
 				continue
 			}
+			p.logger.Info("data version has changed, building new resources")
+			p.ingressPatcherCh <- resp.Msg.Protections
 			p.resourcesCh <- p.state.buildResources(resp.Msg.Protections)
-			
-			//for _, protection := range resp.Msg.Protections {
-			//	p.logger.Info("protection found",
-			//		zap.Uint32("id", protection.Id),
-			//		zap.String("mode", protection.ProtectionMode.String()),
-			//		zap.String("applicationName", protection.Application.Name),
-			//	)
-			//}
+
 		}
 	}()
 }
@@ -167,4 +168,26 @@ func (p *EnvoyControlPlane) startSnapshotGenerator() {
 			}
 		}
 	}()
+}
+
+func (p *EnvoyControlPlane) ingressPatcher() {
+	p.logger.Info("starting ingress patcher")
+	go func(kc *kubernetes.Clientset, kcError error) {
+		for protections := range p.ingressPatcherCh {
+			if kcError != nil {
+				p.logger.Error("kube client in error, can't patch ingresses", zap.Error(kcError))
+				continue
+			}
+			for _, protection := range protections {
+				if protection.IngressAutoPatch == cwafv1.IngressAutoPatch_INGRESS_AUTO_PATCH_ON {
+					if err := NewIngressPatcher(kc, protection, p.logger).Patch(); err != nil {
+						p.logger.Error("failed to patch ingress", zap.Error(err))
+					}
+				}
+				if protection.IngressAutoPatch == cwafv1.IngressAutoPatch_INGRESS_AUTO_PATCH_OFF {
+
+				}
+			}
+		}
+	}(newKubeClient())
 }

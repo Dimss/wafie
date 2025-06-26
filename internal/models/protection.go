@@ -29,13 +29,14 @@ type ProtectionDesiredState struct {
 }
 
 type Protection struct {
-	ID            uint                   `gorm:"primaryKey"`
-	Mode          uint32                 `gorm:"default:0"`
-	ApplicationID uint                   `gorm:"not null;uniqueIndex:idx_protection_app_id"`
-	Application   Application            `gorm:"foreignKey:ApplicationID"`
-	DesiredState  ProtectionDesiredState `gorm:"type:jsonb"`
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	ID               uint                   `gorm:"primaryKey"`
+	Mode             uint32                 `gorm:"default:0"`
+	IngressAutoPatch uint32                 `gorm:"default:2"`
+	ApplicationID    uint                   `gorm:"not null;uniqueIndex:idx_protection_app_id"`
+	Application      Application            `gorm:"foreignKey:ApplicationID"`
+	DesiredState     ProtectionDesiredState `gorm:"type:jsonb"`
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 func NewProtectionModelSvc(tx *gorm.DB, logger *zap.Logger) *ProtectionModelSvc {
@@ -82,6 +83,7 @@ func (p *Protection) FromProto(protectionv1 *v1.Protection) error {
 		return fmt.Errorf("protection is required")
 	}
 	p.Mode = uint32(protectionv1.ProtectionMode)
+	p.IngressAutoPatch = uint32(protectionv1.IngressAutoPatch)
 	p.ApplicationID = uint(protectionv1.ApplicationId)
 	p.DesiredState.FromProto(protectionv1.DesiredState)
 	return nil
@@ -90,9 +92,10 @@ func (p *Protection) FromProto(protectionv1 *v1.Protection) error {
 func (p *Protection) ToProto() *v1.Protection {
 
 	protection := &v1.Protection{
-		Id:             uint32(p.ID),
-		ApplicationId:  uint32(p.ApplicationID),
-		ProtectionMode: v1.ProtectionMode(p.Mode),
+		Id:               uint32(p.ID),
+		ApplicationId:    uint32(p.ApplicationID),
+		ProtectionMode:   v1.ProtectionMode(p.Mode),
+		IngressAutoPatch: v1.IngressAutoPatch(p.IngressAutoPatch),
 		DesiredState: &v1.ProtectionDesiredState{ModeSec: &v1.ModSec{
 			ProtectionMode: v1.ProtectionMode(p.DesiredState.ModSec.Mode),
 			ParanoiaLevel:  v1.ParanoiaLevel(p.DesiredState.ModSec.ParanoiaLevel),
@@ -106,8 +109,9 @@ func (p *Protection) ToProto() *v1.Protection {
 
 func (s *ProtectionModelSvc) CreateProtection(req *v1.CreateProtectionRequest) (*Protection, error) {
 	protection := &Protection{
-		ApplicationID: uint(req.ApplicationId),
-		Mode:          uint32(req.ProtectionMode),
+		ApplicationID:    uint(req.ApplicationId),
+		Mode:             uint32(req.ProtectionMode),
+		IngressAutoPatch: uint32(req.IngressAutoPatch),
 	}
 	protection.DesiredState.FromProto(req.DesiredState)
 	if err := s.db.Create(protection).Error; err != nil {
@@ -128,12 +132,17 @@ func (s *ProtectionModelSvc) GetProtection(req *v1.GetProtectionRequest) (*Prote
 }
 
 func (s *ProtectionModelSvc) UpdateProtection(req *v1.PutProtectionRequest) (*Protection, error) {
-	desiredState := &ProtectionDesiredState{}
-	desiredState.FromProto(req.DesiredState)
-	protection := &Protection{
-		ID:           uint(req.GetId()),
-		Mode:         uint32(req.ProtectionMode),
-		DesiredState: *desiredState,
+	protection := &Protection{ID: uint(req.GetId())}
+	if req.ProtectionMode != nil {
+		protection.Mode = uint32(*req.ProtectionMode)
+	}
+	if req.DesiredState != nil {
+		desiredState := &ProtectionDesiredState{}
+		desiredState.FromProto(req.DesiredState)
+		protection.DesiredState = *desiredState
+	}
+	if req.IngressAutoPatch != nil {
+		protection.IngressAutoPatch = uint32(*req.IngressAutoPatch)
 	}
 	// fetch the application id for the given protection
 	res := s.db.Model(&Protection{}).
@@ -158,7 +167,8 @@ func (s *ProtectionModelSvc) UpdateProtection(req *v1.PutProtectionRequest) (*Pr
 	if res.RowsAffected == 0 {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("protection id not found"))
 	}
-	return protection, nil
+
+	return s.GetProtection(&v1.GetProtectionRequest{Id: uint32(protection.ID)})
 }
 
 func (s *ProtectionModelSvc) ListProtections(options *v1.ListProtectionsOptions) ([]*Protection, error) {
