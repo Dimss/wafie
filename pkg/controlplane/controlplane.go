@@ -36,17 +36,19 @@ type EnvoyControlPlane struct {
 	resourcesCh          chan map[resource.Type][]types.Resource
 	ingressPatcherCh     chan []*cwafv1.Protection
 	dataVersion          string
+	namespace            string
 	protectionSvcClient  cwafv1connect.ProtectionServiceClient
 	dataVersionSvcClient cwafv1connect.DataVersionServiceClient
 }
 
-func NewEnvoyControlPlane(apiAddr string) *EnvoyControlPlane {
+func NewEnvoyControlPlane(apiAddr, namespace string) *EnvoyControlPlane {
 
 	cp := &EnvoyControlPlane{
 		state:            newState(),
 		logger:           applogger.NewLogger(),
 		resourcesCh:      make(chan map[resource.Type][]types.Resource, 1),
 		ingressPatcherCh: make(chan []*cwafv1.Protection, 1),
+		namespace:        namespace,
 		cache: cache.NewSnapshotCache(
 			false, cache.IDHash{}, applogger.NewLogger().Sugar(),
 		),
@@ -63,7 +65,7 @@ func NewEnvoyControlPlane(apiAddr string) *EnvoyControlPlane {
 	cp.startSnapshotGenerator()
 	// start ingress patcher
 	// TODO: this is a hack, need to understand how to properly handle this if at all
-	//cp.ingressPatcher()
+	cp.ingressPatcher()
 	return cp
 }
 
@@ -180,12 +182,14 @@ func (p *EnvoyControlPlane) ingressPatcher() {
 			}
 			for _, protection := range protections {
 				if protection.IngressAutoPatch == cwafv1.IngressAutoPatch_INGRESS_AUTO_PATCH_ON {
-					if err := NewIngressPatcher(kc, protection, p.logger).Patch(); err != nil {
+					if err := NewIngressPatcher(kc, protection, p.namespace, p.logger).Patch(); err != nil {
 						p.logger.Error("failed to patch ingress", zap.Error(err))
 					}
 				}
 				if protection.IngressAutoPatch == cwafv1.IngressAutoPatch_INGRESS_AUTO_PATCH_OFF {
-
+					if err := NewIngressPatcher(kc, protection, p.namespace, p.logger).Unpatch(); err != nil {
+						p.logger.Error("failed to unpatch ingress", zap.Error(err))
+					}
 				}
 			}
 		}

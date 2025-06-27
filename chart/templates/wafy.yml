@@ -42,6 +42,11 @@ spec:
           ports:
             - name: pcp
               containerPort: 18000
+          env:
+            - name: CWAF_PCP_SERVER_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
           readinessProbe:
             grpc:
               port: 8082

@@ -5,7 +5,7 @@ dev:
     workingDir: /go/src/github.com/Dimss/cwaf
     labelSelector:
       app: "wafy-core"
-    container: api-server
+    container: proxy-control-plane
     devImage: dimssss/kubeguard-agent:latest
     sync:
       - path: ./:./
@@ -19,9 +19,9 @@ dev:
         polling: true
     patches:
       - op: remove
-        path: spec.containers.name=api-server.readinessProbe
+        path: spec.containers.name=proxy-control-plane.readinessProbe
       - op: remove
-        path: spec.containers.name=api-server.livenessProbe
+        path: spec.containers.name=proxy-control-plane.livenessProbe
     terminal:
       command: ./devspace_start.sh
     ssh:

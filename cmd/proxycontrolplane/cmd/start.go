@@ -10,7 +10,9 @@ import (
 
 func init() {
 	startCmd.PersistentFlags().StringP("api-addr", "a", "http://localhost:8080", "API address")
+	startCmd.PersistentFlags().StringP("namespace", "n", "default", "K8s namespace")
 	viper.BindPFlag("api-addr", startCmd.PersistentFlags().Lookup("api-addr"))
+	viper.BindPFlag("namespace", startCmd.PersistentFlags().Lookup("namespace"))
 	rootCmd.AddCommand(startCmd)
 }
 
@@ -25,7 +27,9 @@ var startCmd = &cobra.Command{
 			":8082", viper.GetString("api-addr"),
 		).Serve()
 		logger.Info("starting PCP gRPC server")
-		envoyControlPlane := controlplane.NewEnvoyControlPlane(viper.GetString("api-addr"))
-		envoyControlPlane.Start()
+		controlplane.NewEnvoyControlPlane(
+			viper.GetString("api-addr"),
+			viper.GetString("namespace"),
+		).Start()
 	},
 }
