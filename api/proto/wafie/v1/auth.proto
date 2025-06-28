@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package wafie.v1;
+
+
+
+message LoginRequest {
+  // ingress object name
+  string username = 1;
+  // ingress object namespace
+  string password = 2;
+}
+
+message LoginResponse {}
+
+service AuthService{
+
+  rpc Login(LoginRequest) returns (LoginResponse);
+
+}

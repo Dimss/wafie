@@ -1,0 +1,96 @@
+syntax = "proto3";
+
+import "wafie/v1/application.proto";
+
+package wafie.v1;
+
+
+enum ParanoiaLevel {
+  PARANOIA_LEVEL_UNSPECIFIED = 0;
+  PARANOIA_LEVEL_1 = 1;
+  PARANOIA_LEVEL_2 = 2;
+  PARANOIA_LEVEL_3 = 3;
+  PARANOIA_LEVEL_4 = 4;
+}
+
+enum ProtectionMode {
+  PROTECTION_MODE_UNSPECIFIED = 0;
+  PROTECTION_MODE_ON = 1;
+  PROTECTION_MODE_OFF = 2;
+}
+
+enum IngressAutoPatch {
+  INGRESS_AUTO_PATCH_UNSPECIFIED = 0;
+  INGRESS_AUTO_PATCH_ON = 1;
+  INGRESS_AUTO_PATCH_OFF = 2;
+}
+
+message ModSec {
+  ProtectionMode protection_mode = 1;
+  ParanoiaLevel paranoia_level = 2;
+}
+
+message ProtectionDesiredState {
+  ModSec mode_sec = 1;
+}
+
+message Protection {
+  uint32 id = 1;
+  uint32 application_id = 2;
+  optional Application application = 3;
+  ProtectionMode protection_mode = 4;
+  ProtectionDesiredState desired_state = 5;
+  IngressAutoPatch ingress_auto_patch = 6;
+
+}
+
+message CreateProtectionRequest {
+  uint32 application_id = 1;
+  ProtectionMode protection_mode = 2;
+  ProtectionDesiredState desired_state = 3;
+  IngressAutoPatch ingress_auto_patch = 4;
+}
+
+message CreateProtectionResponse {
+  Protection protection = 1;
+}
+
+message GetProtectionRequest {
+  uint32 id = 1;
+}
+
+message GetProtectionResponse {
+  Protection protection = 1;
+}
+
+message PutProtectionRequest {
+  uint32 id = 1;
+  optional ProtectionMode protection_mode = 2;
+  optional IngressAutoPatch ingress_auto_patch = 3;
+  optional ProtectionDesiredState desired_state = 4;
+}
+
+message PutProtectionResponse {
+  Protection protection = 1;
+}
+
+message ListProtectionsOptions {
+  optional ProtectionMode protection_mode = 1;
+  optional ProtectionMode mod_sec_mode = 2;
+  optional  bool include_apps = 3;
+}
+
+message ListProtectionsRequest {
+  ListProtectionsOptions options = 1;
+}
+
+message ListProtectionsResponse {
+  repeated Protection protections = 1;
+}
+
+service ProtectionService {
+  rpc CreateProtection(CreateProtectionRequest) returns (CreateProtectionResponse);
+  rpc GetProtection(GetProtectionRequest) returns (GetProtectionResponse);
+  rpc ListProtections(ListProtectionsRequest) returns (ListProtectionsResponse);
+  rpc PutProtection(PutProtectionRequest) returns (PutProtectionResponse);
+}

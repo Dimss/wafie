@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package wafie.v1;
+
+message VirtualHost {
+  uint32 id = 1;
+  string spec = 2;
+  string checksum = 3;
+}
+
+message GetVirtualHostRequest {
+  uint32 id = 1;
+}
+
+message GetVirtualHostResponse {
+  VirtualHost virtual_host = 2;
+}
+
+message CreateVirtualHostRequest {
+  uint32 protection_id = 1;
+}
+
+message CreateVirtualHostResponse {
+  uint32 id = 1;
+}
+
+message ListVirtualHostsRequest {}
+
+message ListVirtualHostsResponse {
+  repeated VirtualHost virtual_hosts = 1;
+}
+
+service VirtualHostService {
+  rpc CreateVirtualHost(CreateVirtualHostRequest) returns (CreateVirtualHostResponse);
+  rpc GetVirtualHost(GetVirtualHostRequest) returns (GetVirtualHostResponse);
+  rpc ListVirtualHosts(ListVirtualHostsRequest) returns (ListVirtualHostsResponse);
+}
