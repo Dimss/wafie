@@ -4,11 +4,11 @@ import (
 	"connectrpc.com/connect"
 	"context"
 	"fmt"
-	cwafv1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
-	"github.com/Dimss/cwaf/api/gen/cwaf/v1/cwafv1connect"
+	cwafv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
+	"github.com/Dimss/wafie/api/gen/wafie/v1/wafiev1connect"
 	"os/exec"
 
-	//"github.com/Dimss/cwaf/api/gen/cwaf/v1/cwafv1connect"
+	//"github.com/Dimss/wafie/api/gen/wafie/v1/cwafv1connect"
 	"go.uber.org/zap"
 	"os"
 	"strconv"
@@ -36,7 +36,7 @@ type ConfigState struct {
 type Nginx struct {
 	VirtualHostsConfigPath string
 	logger                 *zap.Logger
-	VirtualHostSvcClient   cwafv1connect.VirtualHostServiceClient
+	VirtualHostSvcClient   wafiev1connect.VirtualHostServiceClient
 	VirtualHostsState      map[string]uint32
 	ActualState            []*ConfigState
 	DesiredState           []*ConfigState
@@ -74,7 +74,7 @@ func newStateFromVirtualHostApi(basePath string, vh *cwafv1.VirtualHost) *Config
 func NewNginxController(
 	configPath string,
 	logger *zap.Logger,
-	virtualHostSvcClient cwafv1connect.VirtualHostServiceClient) *Nginx {
+	virtualHostSvcClient wafiev1connect.VirtualHostServiceClient) *Nginx {
 
 	return &Nginx{
 		VirtualHostsConfigPath: configPath,

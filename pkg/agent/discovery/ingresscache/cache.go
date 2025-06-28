@@ -2,9 +2,9 @@ package ingresscache
 
 import (
 	"connectrpc.com/connect"
-	cwafv1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
-	"github.com/Dimss/cwaf/api/gen/cwaf/v1/cwafv1connect"
-	"github.com/Dimss/cwaf/internal/applogger"
+	wafiev1 "github.com/Dimss/wafie/api/gen/wafie/v1"
+	v1 "github.com/Dimss/wafie/api/gen/wafie/v1/wafiev1connect"
+	"github.com/Dimss/wafie/internal/applogger"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -27,7 +27,7 @@ const (
 
 type normalizer interface {
 	gvr() schema.GroupVersionResource
-	normalize(*unstructured.Unstructured) (*cwafv1.CreateIngressRequest, error)
+	normalize(*unstructured.Unstructured) (*wafiev1.CreateIngressRequest, error)
 }
 
 func newParser(ingressType IngressType) normalizer {
@@ -48,7 +48,7 @@ type IngressCache struct {
 	normalizer       normalizer
 	notifier         chan struct{}
 	namespace        string
-	ingressSvcClient cwafv1connect.IngressServiceClient
+	ingressSvcClient v1.IngressServiceClient
 	logger           *zap.Logger
 }
 
@@ -59,7 +59,7 @@ func NewIngressCache(ingressType IngressType, apiAddr string) *IngressCache {
 		namespace:   "",
 		normalizer:  newParser(ingressType),
 		logger:      applogger.NewLogger(),
-		ingressSvcClient: cwafv1connect.NewIngressServiceClient(
+		ingressSvcClient: v1.NewIngressServiceClient(
 			http.DefaultClient, apiAddr,
 		),
 	}

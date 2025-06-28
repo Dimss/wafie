@@ -3,14 +3,14 @@ package apiserver
 import (
 	"connectrpc.com/connect"
 	"context"
-	cwafv1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
-	"github.com/Dimss/cwaf/api/gen/cwaf/v1/cwafv1connect"
-	"github.com/Dimss/cwaf/internal/models"
+	wafiev1 "github.com/Dimss/wafie/api/gen/wafie/v1"
+	"github.com/Dimss/wafie/api/gen/wafie/v1/wafiev1connect"
+	"github.com/Dimss/wafie/internal/models"
 	"go.uber.org/zap"
 )
 
 type IngressService struct {
-	cwafv1connect.UnimplementedIngressServiceHandler
+	wafiev1connect.UnimplementedIngressServiceHandler
 	appSvc *ApplicationService
 	logger *zap.Logger
 }
@@ -24,8 +24,8 @@ func NewIngressService(log *zap.Logger) *IngressService {
 
 func (s *IngressService) CreateIngress(
 	ctx context.Context,
-	req *connect.Request[cwafv1.CreateIngressRequest]) (
-	*connect.Response[cwafv1.CreateIngressResponse], error) {
+	req *connect.Request[wafiev1.CreateIngressRequest]) (
+	*connect.Response[wafiev1.CreateIngressResponse], error) {
 	//setup logger with request context
 	l := s.logger.With(zap.String("name", req.Msg.Ingress.Name))
 	l.Info("creating new ingress entry")
@@ -35,7 +35,7 @@ func (s *IngressService) CreateIngress(
 	//	return nil, err
 	//}
 	ingressModelSvc := models.NewIngressModelSvc(nil, l)
-	return connect.NewResponse(&cwafv1.CreateIngressResponse{}),
+	return connect.NewResponse(&wafiev1.CreateIngressResponse{}),
 		ingressModelSvc.NewIngressFromRequest(req.Msg)
 }
 
@@ -46,8 +46,8 @@ func (s *IngressService) getApplicationForIngress(ctx context.Context, name stri
 	getAppResp, err := s.appSvc.GetApplication(
 		ctx,
 		connect.NewRequest(
-			&cwafv1.GetApplicationRequest{ // ToDo: implement
-				//NameOrId: &cwafv1.GetApplicationRequest_Name{
+			&wafiev1.GetApplicationRequest{ // ToDo: implement
+				//NameOrId: &wafiev1.GetApplicationRequest_Name{
 				//	Name: name,
 				//},
 			},
@@ -64,7 +64,7 @@ func (s *IngressService) getApplicationForIngress(ctx context.Context, name stri
 	// application does not exist, create it
 	createAppResp, err := s.appSvc.CreateApplication(ctx,
 		connect.NewRequest(
-			&cwafv1.CreateApplicationRequest{
+			&wafiev1.CreateApplicationRequest{
 				Name: name,
 			}),
 	)

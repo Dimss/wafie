@@ -3,14 +3,14 @@ package apiserver
 import (
 	"connectrpc.com/connect"
 	"context"
-	cwafv1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
-	"github.com/Dimss/cwaf/api/gen/cwaf/v1/cwafv1connect"
-	"github.com/Dimss/cwaf/internal/models"
+	wafiev1 "github.com/Dimss/wafie/api/gen/wafie/v1"
+	"github.com/Dimss/wafie/api/gen/wafie/v1/wafiev1connect"
+	"github.com/Dimss/wafie/internal/models"
 	"go.uber.org/zap"
 )
 
 type VirtualHostService struct {
-	cwafv1connect.UnimplementedVirtualHostServiceHandler
+	wafiev1connect.UnimplementedVirtualHostServiceHandler
 	logger *zap.Logger
 }
 
@@ -21,8 +21,8 @@ func NewVirtualHostService(log *zap.Logger) *VirtualHostService {
 }
 
 func (s *VirtualHostService) CreateVirtualHost(ctx context.Context,
-	req *connect.Request[cwafv1.CreateVirtualHostRequest]) (
-	*connect.Response[cwafv1.CreateVirtualHostResponse], error) {
+	req *connect.Request[wafiev1.CreateVirtualHostRequest]) (
+	*connect.Response[wafiev1.CreateVirtualHostResponse], error) {
 	l := s.logger.With(zap.Uint32("protection_id", req.Msg.ProtectionId))
 	l.Info("create virtual host entry")
 	defer l.Info("virtual host entry created")
@@ -30,9 +30,9 @@ func (s *VirtualHostService) CreateVirtualHost(ctx context.Context,
 		CreateVirtualHost(uint(req.Msg.ProtectionId))
 	if err != nil {
 		l.Error("failed to create virtual host entry", zap.Error(err))
-		return connect.NewResponse(&cwafv1.CreateVirtualHostResponse{}), err
+		return connect.NewResponse(&wafiev1.CreateVirtualHostResponse{}), err
 	}
-	return connect.NewResponse(&cwafv1.CreateVirtualHostResponse{
+	return connect.NewResponse(&wafiev1.CreateVirtualHostResponse{
 		Id: uint32(vh.ID),
 	}), nil
 
@@ -40,18 +40,18 @@ func (s *VirtualHostService) CreateVirtualHost(ctx context.Context,
 
 func (s *VirtualHostService) GetVirtualHost(
 	ctx context.Context,
-	req *connect.Request[cwafv1.GetVirtualHostRequest]) (
-	*connect.Response[cwafv1.GetVirtualHostResponse], error) {
+	req *connect.Request[wafiev1.GetVirtualHostRequest]) (
+	*connect.Response[wafiev1.GetVirtualHostResponse], error) {
 	l := s.logger.With(zap.Uint32("id", req.Msg.Id))
 	l.Info("getting virtual host entry")
 	defer l.Info("virtual host entry retrieved")
 	vh, err := models.NewVirtualHostModelSvc(nil, l).
 		GetVirtualHostById(uint(req.Msg.Id))
 	if err != nil {
-		return connect.NewResponse(&cwafv1.GetVirtualHostResponse{}), err
+		return connect.NewResponse(&wafiev1.GetVirtualHostResponse{}), err
 	}
 	return connect.NewResponse(
-		&cwafv1.GetVirtualHostResponse{
+		&wafiev1.GetVirtualHostResponse{
 			VirtualHost: vh.ToProto(),
 		},
 	), nil
@@ -59,21 +59,21 @@ func (s *VirtualHostService) GetVirtualHost(
 
 func (s *VirtualHostService) ListVirtualHosts(
 	ctx context.Context,
-	req *connect.Request[cwafv1.ListVirtualHostsRequest]) (
-	*connect.Response[cwafv1.ListVirtualHostsResponse], error) {
+	req *connect.Request[wafiev1.ListVirtualHostsRequest]) (
+	*connect.Response[wafiev1.ListVirtualHostsResponse], error) {
 	s.logger.Info("listing virtual host entries")
 	defer s.logger.Info("virtual host entries listed")
 	vhs, err := models.NewVirtualHostModelSvc(nil, s.logger).
 		ListVirtualHosts()
 	if err != nil {
-		return connect.NewResponse(&cwafv1.ListVirtualHostsResponse{}), err
+		return connect.NewResponse(&wafiev1.ListVirtualHostsResponse{}), err
 	}
-	virtualHosts := make([]*cwafv1.VirtualHost, len(vhs))
+	virtualHosts := make([]*wafiev1.VirtualHost, len(vhs))
 	for i, vh := range vhs {
 		virtualHosts[i] = vh.ToProto()
 	}
 	return connect.NewResponse(
-		&cwafv1.ListVirtualHostsResponse{
+		&wafiev1.ListVirtualHostsResponse{
 			VirtualHosts: virtualHosts,
 		},
 	), nil

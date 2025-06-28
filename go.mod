@@ -1,4 +1,4 @@
-module github.com/Dimss/cwaf
+module github.com/Dimss/wafie
 
 go 1.24.3
 

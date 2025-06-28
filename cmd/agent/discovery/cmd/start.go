@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/Dimss/cwaf/pkg/agent/discovery/ingresscache"
-	hsrv "github.com/Dimss/cwaf/pkg/healthchecksrv"
+	"github.com/Dimss/wafie/pkg/agent/discovery/ingresscache"
+	hsrv "github.com/Dimss/wafie/pkg/healthchecksrv"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -30,7 +30,7 @@ func init() {
 
 var startCmd = &cobra.Command{
 	Use:   "start",
-	Short: "start cwaf discovery agent",
+	Short: "start wafie discovery agent",
 	Run: func(cmd *cobra.Command, args []string) {
 		// start health check server
 		hsrv.NewHealthCheckServer(

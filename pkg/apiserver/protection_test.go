@@ -3,8 +3,8 @@ package apiserver
 import (
 	"connectrpc.com/connect"
 	"context"
-	cwafv1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
-	"github.com/Dimss/cwaf/internal/applogger"
+	wafiev1 "github.com/Dimss/wafie/api/gen/wafie/v1"
+	"github.com/Dimss/wafie/internal/applogger"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -15,7 +15,7 @@ func createProtectionDependencies(t *testing.T) (appId uint32) {
 	app, err := appSvc.CreateApplication(
 		context.Background(),
 		connect.NewRequest(
-			&cwafv1.CreateApplicationRequest{
+			&wafiev1.CreateApplicationRequest{
 				Name: randomString(),
 			},
 		),
@@ -25,8 +25,8 @@ func createProtectionDependencies(t *testing.T) (appId uint32) {
 	ingSvc := NewIngressService(applogger.NewLogger())
 	_, err = ingSvc.CreateIngress(context.Background(),
 		connect.NewRequest(
-			&cwafv1.CreateIngressRequest{
-				Ingress: &cwafv1.Ingress{
+			&wafiev1.CreateIngressRequest{
+				Ingress: &wafiev1.Ingress{
 					Name:          randomString(),
 					Host:          randomString(),
 					Port:          80,
@@ -40,13 +40,13 @@ func createProtectionDependencies(t *testing.T) (appId uint32) {
 	)
 	assert.Nil(t, err)
 	//create new protection
-	_ = &cwafv1.CreateProtectionRequest{
+	_ = &wafiev1.CreateProtectionRequest{
 		ApplicationId:  app.Msg.Id,
-		ProtectionMode: cwafv1.ProtectionMode_PROTECTION_MODE_OFF,
-		DesiredState: &cwafv1.ProtectionDesiredState{
-			ModeSec: &cwafv1.ModSec{
-				ProtectionMode: cwafv1.ProtectionMode_PROTECTION_MODE_OFF,
-				ParanoiaLevel:  cwafv1.ParanoiaLevel_PARANOIA_LEVEL_4,
+		ProtectionMode: wafiev1.ProtectionMode_PROTECTION_MODE_OFF,
+		DesiredState: &wafiev1.ProtectionDesiredState{
+			ModeSec: &wafiev1.ModSec{
+				ProtectionMode: wafiev1.ProtectionMode_PROTECTION_MODE_OFF,
+				ParanoiaLevel:  wafiev1.ParanoiaLevel_PARANOIA_LEVEL_4,
 			},
 		},
 	}
@@ -59,13 +59,13 @@ func TestDisabledProtection(t *testing.T) {
 	protectionSvc := NewProtectionService(applogger.NewLogger())
 	_, err := protectionSvc.CreateProtection(
 		context.Background(),
-		connect.NewRequest(&cwafv1.CreateProtectionRequest{
+		connect.NewRequest(&wafiev1.CreateProtectionRequest{
 			ApplicationId:  appId,
-			ProtectionMode: cwafv1.ProtectionMode_PROTECTION_MODE_OFF,
-			DesiredState: &cwafv1.ProtectionDesiredState{
-				ModeSec: &cwafv1.ModSec{
-					ProtectionMode: cwafv1.ProtectionMode_PROTECTION_MODE_OFF,
-					ParanoiaLevel:  cwafv1.ParanoiaLevel_PARANOIA_LEVEL_4,
+			ProtectionMode: wafiev1.ProtectionMode_PROTECTION_MODE_OFF,
+			DesiredState: &wafiev1.ProtectionDesiredState{
+				ModeSec: &wafiev1.ModSec{
+					ProtectionMode: wafiev1.ProtectionMode_PROTECTION_MODE_OFF,
+					ParanoiaLevel:  wafiev1.ParanoiaLevel_PARANOIA_LEVEL_4,
 				},
 			},
 		}),
@@ -73,7 +73,7 @@ func TestDisabledProtection(t *testing.T) {
 	virtualHostSvc := NewVirtualHostService(applogger.NewLogger())
 	vh, err := virtualHostSvc.ListVirtualHosts(
 		context.Background(),
-		connect.NewRequest(&cwafv1.ListVirtualHostsRequest{}))
+		connect.NewRequest(&wafiev1.ListVirtualHostsRequest{}))
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(vh.Msg.VirtualHosts))
 	assert.Empty(t, vh.Msg.VirtualHosts[0].Spec)
@@ -84,13 +84,13 @@ func TestEnabledProtection(t *testing.T) {
 	protectionSvc := NewProtectionService(applogger.NewLogger())
 	_, err := protectionSvc.CreateProtection(
 		context.Background(),
-		connect.NewRequest(&cwafv1.CreateProtectionRequest{
+		connect.NewRequest(&wafiev1.CreateProtectionRequest{
 			ApplicationId:  appId,
-			ProtectionMode: cwafv1.ProtectionMode_PROTECTION_MODE_ON,
-			DesiredState: &cwafv1.ProtectionDesiredState{
-				ModeSec: &cwafv1.ModSec{
-					ProtectionMode: cwafv1.ProtectionMode_PROTECTION_MODE_OFF,
-					ParanoiaLevel:  cwafv1.ParanoiaLevel_PARANOIA_LEVEL_4,
+			ProtectionMode: wafiev1.ProtectionMode_PROTECTION_MODE_ON,
+			DesiredState: &wafiev1.ProtectionDesiredState{
+				ModeSec: &wafiev1.ModSec{
+					ProtectionMode: wafiev1.ProtectionMode_PROTECTION_MODE_OFF,
+					ParanoiaLevel:  wafiev1.ParanoiaLevel_PARANOIA_LEVEL_4,
 				},
 			},
 		}),
@@ -98,7 +98,7 @@ func TestEnabledProtection(t *testing.T) {
 	virtualHostSvc := NewVirtualHostService(applogger.NewLogger())
 	vh, err := virtualHostSvc.ListVirtualHosts(
 		context.Background(),
-		connect.NewRequest(&cwafv1.ListVirtualHostsRequest{}))
+		connect.NewRequest(&wafiev1.ListVirtualHostsRequest{}))
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(vh.Msg.VirtualHosts))
 	assert.NotEmpty(t, vh.Msg.VirtualHosts[0].Spec)
@@ -107,26 +107,26 @@ func TestEnabledProtection(t *testing.T) {
 func TestProtectionTestModeOn(t *testing.T) {
 	appId := createProtectionDependencies(t)
 	//create new protection
-	_ = &cwafv1.CreateProtectionRequest{
+	_ = &wafiev1.CreateProtectionRequest{
 		ApplicationId:  appId,
-		ProtectionMode: cwafv1.ProtectionMode_PROTECTION_MODE_OFF,
-		DesiredState: &cwafv1.ProtectionDesiredState{
-			ModeSec: &cwafv1.ModSec{
-				ProtectionMode: cwafv1.ProtectionMode_PROTECTION_MODE_OFF,
-				ParanoiaLevel:  cwafv1.ParanoiaLevel_PARANOIA_LEVEL_4,
+		ProtectionMode: wafiev1.ProtectionMode_PROTECTION_MODE_OFF,
+		DesiredState: &wafiev1.ProtectionDesiredState{
+			ModeSec: &wafiev1.ModSec{
+				ProtectionMode: wafiev1.ProtectionMode_PROTECTION_MODE_OFF,
+				ParanoiaLevel:  wafiev1.ParanoiaLevel_PARANOIA_LEVEL_4,
 			},
 		},
 	}
 	protectionSvc := NewProtectionService(applogger.NewLogger())
 	_, err := protectionSvc.CreateProtection(
 		context.Background(),
-		connect.NewRequest(&cwafv1.CreateProtectionRequest{
+		connect.NewRequest(&wafiev1.CreateProtectionRequest{
 			ApplicationId:  appId,
-			ProtectionMode: cwafv1.ProtectionMode_PROTECTION_MODE_ON,
-			DesiredState: &cwafv1.ProtectionDesiredState{
-				ModeSec: &cwafv1.ModSec{
-					ProtectionMode: cwafv1.ProtectionMode_PROTECTION_MODE_ON,
-					ParanoiaLevel:  cwafv1.ParanoiaLevel_PARANOIA_LEVEL_4,
+			ProtectionMode: wafiev1.ProtectionMode_PROTECTION_MODE_ON,
+			DesiredState: &wafiev1.ProtectionDesiredState{
+				ModeSec: &wafiev1.ModSec{
+					ProtectionMode: wafiev1.ProtectionMode_PROTECTION_MODE_ON,
+					ParanoiaLevel:  wafiev1.ParanoiaLevel_PARANOIA_LEVEL_4,
 				},
 			},
 		}),
@@ -134,7 +134,7 @@ func TestProtectionTestModeOn(t *testing.T) {
 	virtualHostSvc := NewVirtualHostService(applogger.NewLogger())
 	vh, err := virtualHostSvc.ListVirtualHosts(
 		context.Background(),
-		connect.NewRequest(&cwafv1.ListVirtualHostsRequest{}))
+		connect.NewRequest(&wafiev1.ListVirtualHostsRequest{}))
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(vh.Msg.VirtualHosts))
 	assert.Contains(t, vh.Msg.VirtualHosts[0].Spec, "modsecurity on;")
@@ -146,13 +146,13 @@ func TestProtectionTestModeOff(t *testing.T) {
 	protectionSvc := NewProtectionService(applogger.NewLogger())
 	_, err := protectionSvc.CreateProtection(
 		context.Background(),
-		connect.NewRequest(&cwafv1.CreateProtectionRequest{
+		connect.NewRequest(&wafiev1.CreateProtectionRequest{
 			ApplicationId:  appId,
-			ProtectionMode: cwafv1.ProtectionMode_PROTECTION_MODE_ON,
-			DesiredState: &cwafv1.ProtectionDesiredState{
-				ModeSec: &cwafv1.ModSec{
-					ProtectionMode: cwafv1.ProtectionMode_PROTECTION_MODE_OFF,
-					ParanoiaLevel:  cwafv1.ParanoiaLevel_PARANOIA_LEVEL_4,
+			ProtectionMode: wafiev1.ProtectionMode_PROTECTION_MODE_ON,
+			DesiredState: &wafiev1.ProtectionDesiredState{
+				ModeSec: &wafiev1.ModSec{
+					ProtectionMode: wafiev1.ProtectionMode_PROTECTION_MODE_OFF,
+					ParanoiaLevel:  wafiev1.ParanoiaLevel_PARANOIA_LEVEL_4,
 				},
 			},
 		}),
@@ -160,7 +160,7 @@ func TestProtectionTestModeOff(t *testing.T) {
 	virtualHostSvc := NewVirtualHostService(applogger.NewLogger())
 	vh, err := virtualHostSvc.ListVirtualHosts(
 		context.Background(),
-		connect.NewRequest(&cwafv1.ListVirtualHostsRequest{}))
+		connect.NewRequest(&wafiev1.ListVirtualHostsRequest{}))
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(vh.Msg.VirtualHosts))
 	assert.NotContains(t, vh.Msg.VirtualHosts[0].Spec, "modsecurity on;")
@@ -174,33 +174,34 @@ func TestUpdateProtection(t *testing.T) {
 	protectionSvc := NewProtectionService(applogger.NewLogger())
 	protection, err := protectionSvc.CreateProtection(
 		context.Background(),
-		connect.NewRequest(&cwafv1.CreateProtectionRequest{
+		connect.NewRequest(&wafiev1.CreateProtectionRequest{
 			ApplicationId:  appId,
-			ProtectionMode: cwafv1.ProtectionMode_PROTECTION_MODE_OFF,
-			DesiredState: &cwafv1.ProtectionDesiredState{
-				ModeSec: &cwafv1.ModSec{
-					ProtectionMode: cwafv1.ProtectionMode_PROTECTION_MODE_ON,
-					ParanoiaLevel:  cwafv1.ParanoiaLevel_PARANOIA_LEVEL_4,
+			ProtectionMode: wafiev1.ProtectionMode_PROTECTION_MODE_OFF,
+			DesiredState: &wafiev1.ProtectionDesiredState{
+				ModeSec: &wafiev1.ModSec{
+					ProtectionMode: wafiev1.ProtectionMode_PROTECTION_MODE_ON,
+					ParanoiaLevel:  wafiev1.ParanoiaLevel_PARANOIA_LEVEL_4,
 				},
 			},
 		}),
 	)
 	vh, err := virtualHostSvc.ListVirtualHosts(
 		context.Background(),
-		connect.NewRequest(&cwafv1.ListVirtualHostsRequest{}))
+		connect.NewRequest(&wafiev1.ListVirtualHostsRequest{}))
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(vh.Msg.VirtualHosts))
 	assert.Empty(t, vh.Msg.VirtualHosts[0].Spec)
+	modeOn := wafiev1.ProtectionMode_PROTECTION_MODE_ON
 	// update protection
 	_, err = protectionSvc.PutProtection(
 		context.Background(),
-		connect.NewRequest(&cwafv1.PutProtectionRequest{
+		connect.NewRequest(&wafiev1.PutProtectionRequest{
 			Id:             protection.Msg.Protection.Id,
-			ProtectionMode: cwafv1.ProtectionMode_PROTECTION_MODE_ON,
-			DesiredState: &cwafv1.ProtectionDesiredState{
-				ModeSec: &cwafv1.ModSec{
-					ProtectionMode: cwafv1.ProtectionMode_PROTECTION_MODE_ON,
-					ParanoiaLevel:  cwafv1.ParanoiaLevel_PARANOIA_LEVEL_4,
+			ProtectionMode: &modeOn,
+			DesiredState: &wafiev1.ProtectionDesiredState{
+				ModeSec: &wafiev1.ModSec{
+					ProtectionMode: wafiev1.ProtectionMode_PROTECTION_MODE_ON,
+					ParanoiaLevel:  wafiev1.ParanoiaLevel_PARANOIA_LEVEL_4,
 				},
 			},
 		}),
@@ -209,21 +210,20 @@ func TestUpdateProtection(t *testing.T) {
 	// get rendered virtual host
 	vh, err = virtualHostSvc.ListVirtualHosts(
 		context.Background(),
-		connect.NewRequest(&cwafv1.ListVirtualHostsRequest{}))
+		connect.NewRequest(&wafiev1.ListVirtualHostsRequest{}))
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(vh.Msg.VirtualHosts))
 	assert.Contains(t, vh.Msg.VirtualHosts[0].Spec, "modsecurity on;")
-
 	// update protection
 	_, err = protectionSvc.PutProtection(
 		context.Background(),
-		connect.NewRequest(&cwafv1.PutProtectionRequest{
+		connect.NewRequest(&wafiev1.PutProtectionRequest{
 			Id:             protection.Msg.Protection.Id,
-			ProtectionMode: cwafv1.ProtectionMode_PROTECTION_MODE_ON,
-			DesiredState: &cwafv1.ProtectionDesiredState{
-				ModeSec: &cwafv1.ModSec{
-					ProtectionMode: cwafv1.ProtectionMode_PROTECTION_MODE_OFF,
-					ParanoiaLevel:  cwafv1.ParanoiaLevel_PARANOIA_LEVEL_4,
+			ProtectionMode: &modeOn,
+			DesiredState: &wafiev1.ProtectionDesiredState{
+				ModeSec: &wafiev1.ModSec{
+					ProtectionMode: wafiev1.ProtectionMode_PROTECTION_MODE_OFF,
+					ParanoiaLevel:  wafiev1.ParanoiaLevel_PARANOIA_LEVEL_4,
 				},
 			},
 		}),
@@ -232,7 +232,7 @@ func TestUpdateProtection(t *testing.T) {
 	// get rendered virtual host
 	vh, err = virtualHostSvc.ListVirtualHosts(
 		context.Background(),
-		connect.NewRequest(&cwafv1.ListVirtualHostsRequest{}))
+		connect.NewRequest(&wafiev1.ListVirtualHostsRequest{}))
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(vh.Msg.VirtualHosts))
 	assert.NotContains(t, vh.Msg.VirtualHosts[0].Spec, "modsecurity on;")

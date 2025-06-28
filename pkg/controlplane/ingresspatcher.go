@@ -2,7 +2,7 @@ package controlplane
 
 import (
 	"context"
-	cwafv1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
+	cwafv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	"go.uber.org/zap"
 	v1 "k8s.io/api/networking/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"

@@ -3,8 +3,8 @@ package apiserver
 import (
 	"connectrpc.com/connect"
 	"context"
-	cwafv1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
-	"github.com/Dimss/cwaf/internal/applogger"
+	wafiev1 "github.com/Dimss/wafie/api/gen/wafie/v1"
+	"github.com/Dimss/wafie/internal/applogger"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -12,8 +12,8 @@ import (
 func TestCreateIngressWithNoneExistingApp(t *testing.T) {
 	svc := NewIngressService(applogger.NewLogger())
 	req := connect.NewRequest(
-		&cwafv1.CreateIngressRequest{
-			Ingress: &cwafv1.Ingress{
+		&wafiev1.CreateIngressRequest{
+			Ingress: &wafiev1.Ingress{
 				Name:         randomString(),
 				Host:         randomString(),
 				Port:         80,
@@ -32,7 +32,7 @@ func TestCreateIngressWithExistingApp(t *testing.T) {
 	app, err := appSvc.CreateApplication(
 		context.Background(),
 		connect.NewRequest(
-			&cwafv1.CreateApplicationRequest{
+			&wafiev1.CreateApplicationRequest{
 				Name: randomString(),
 			},
 		),
@@ -41,8 +41,8 @@ func TestCreateIngressWithExistingApp(t *testing.T) {
 	svc := NewIngressService(applogger.NewLogger())
 	_, err = svc.CreateIngress(context.Background(),
 		connect.NewRequest(
-			&cwafv1.CreateIngressRequest{
-				Ingress: &cwafv1.Ingress{
+			&wafiev1.CreateIngressRequest{
+				Ingress: &wafiev1.Ingress{
 					Name:          randomString(),
 					Host:          randomString(),
 					Port:          80,

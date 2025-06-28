@@ -1,7 +1,7 @@
 package ingresscache
 
 import (
-	cwafv1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
+	cwafv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )

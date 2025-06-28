@@ -3,8 +3,8 @@ package models
 import (
 	"connectrpc.com/connect"
 	"errors"
-	v1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
-	"github.com/Dimss/cwaf/internal/applogger"
+	v1 "github.com/Dimss/wafie/api/gen/wafie/v1"
+	"github.com/Dimss/wafie/internal/applogger"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"

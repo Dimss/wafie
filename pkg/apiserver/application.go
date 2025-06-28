@@ -2,15 +2,15 @@ package apiserver
 
 import (
 	"connectrpc.com/connect"
-	cwafv1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
-	"github.com/Dimss/cwaf/api/gen/cwaf/v1/cwafv1connect"
-	"github.com/Dimss/cwaf/internal/models"
+	cwafv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
+	v1 "github.com/Dimss/wafie/api/gen/wafie/v1/wafiev1connect"
+	"github.com/Dimss/wafie/internal/models"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
 )
 
 type ApplicationService struct {
-	cwafv1connect.UnimplementedApplicationServiceHandler
+	v1.UnimplementedApplicationServiceHandler
 	logger *zap.Logger
 }
 

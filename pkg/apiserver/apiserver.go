@@ -4,7 +4,7 @@ import (
 	"connectrpc.com/connect"
 	"connectrpc.com/grpchealth"
 	"connectrpc.com/grpcreflect"
-	"github.com/Dimss/cwaf/api/gen/cwaf/v1/cwafv1connect"
+	v1 "github.com/Dimss/wafie/api/gen/wafie/v1/wafiev1connect"
 	"go.uber.org/zap"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
@@ -41,53 +41,45 @@ func (s *ApiServer) registerHandlers(mux *http.ServeMux) {
 		),
 	)
 	mux.Handle(
-		cwafv1connect.NewApplicationServiceHandler(
+		v1.NewApplicationServiceHandler(
 			NewApplicationService(s.logger),
 			compress1KB,
 		),
 	)
 	mux.Handle(
-		cwafv1connect.NewIngressServiceHandler(
+		v1.NewIngressServiceHandler(
 			NewIngressService(s.logger),
 			compress1KB,
 		),
 	)
 	mux.Handle(
-		cwafv1connect.NewProtectionServiceHandler(
+		v1.NewProtectionServiceHandler(
 			NewProtectionService(s.logger),
 			compress1KB,
 		),
 	)
 	mux.Handle(
-		cwafv1connect.NewVirtualHostServiceHandler(
+		v1.NewVirtualHostServiceHandler(
 			NewVirtualHostService(s.logger),
 			compress1KB,
 		),
 	)
 	mux.Handle(
-		cwafv1connect.NewDataVersionServiceHandler(
+		v1.NewDataVersionServiceHandler(
 			NewDataVersionService(s.logger),
 			compress1KB,
 		),
 	)
-	mux.Handle(
-		cwafv1connect.NewSystemServiceHandler(
-			NewHealthCheckService(s.logger),
-			compress1KB,
-		),
-	)
-
 }
 
 func (s *ApiServer) enableReflection(mux *http.ServeMux) {
 	reflector := grpcreflect.NewStaticReflector(
-		cwafv1connect.IngressServiceName,
-		cwafv1connect.AuthServiceName,
-		cwafv1connect.ApplicationServiceName,
-		cwafv1connect.ProtectionServiceName,
-		cwafv1connect.VirtualHostServiceName,
-		cwafv1connect.DataVersionServiceName,
-		cwafv1connect.SystemServiceName,
+		v1.IngressServiceName,
+		v1.AuthServiceName,
+		v1.ApplicationServiceName,
+		v1.ProtectionServiceName,
+		v1.VirtualHostServiceName,
+		v1.DataVersionServiceName,
 	)
 	mux.Handle(grpcreflect.NewHandlerV1(reflector))
 	mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))

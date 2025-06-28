@@ -1,9 +1,9 @@
 package cmd
 
 import (
-	"github.com/Dimss/cwaf/internal/applogger"
-	"github.com/Dimss/cwaf/pkg/controlplane"
-	hsrv "github.com/Dimss/cwaf/pkg/healthchecksrv"
+	"github.com/Dimss/wafie/internal/applogger"
+	"github.com/Dimss/wafie/pkg/controlplane"
+	hsrv "github.com/Dimss/wafie/pkg/healthchecksrv"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

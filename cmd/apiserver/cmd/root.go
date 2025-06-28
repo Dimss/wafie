@@ -9,8 +9,8 @@ import (
 
 var (
 	rootCmd = &cobra.Command{
-		Use:   "cwaf-api-server",
-		Short: "CWAF API Server",
+		Use:   "wafie-api-server",
+		Short: "WAFie API Server",
 	}
 )
 

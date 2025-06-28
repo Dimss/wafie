@@ -1,14 +1,14 @@
 build:
 	go build \
-      -ldflags="-X 'github.com/Dimss/cwaf/cmd/agent/discovery/cmd.Build=$$(git rev-parse --short HEAD)'" \
+      -ldflags="-X 'github.com/Dimss/wafie/cmd/agent/discovery/cmd.Build=$$(git rev-parse --short HEAD)'" \
       -o bin/discovery-agent cmd/agent/discovery/main.go
 
 	go build \
-      -ldflags="-X 'github.com/Dimss/cwaf/cmd/apiserver/cmd.Build=$$(git rev-parse --short HEAD)'" \
+      -ldflags="-X 'github.com/Dimss/wafie/cmd/apiserver/cmd.Build=$$(git rev-parse --short HEAD)'" \
       -o bin/api-server cmd/apiserver/main.go
 
 	go build \
-		-ldflags="-X 'github.com/Dimss/cwaf/cmd/proxycontrolplane/cmd.Build=$$(git rev-parse --short HEAD)'" \
+		-ldflags="-X 'github.com/Dimss/wafie/cmd/proxycontrolplane/cmd.Build=$$(git rev-parse --short HEAD)'" \
 		-o bin/proxycontrolplane cmd/proxycontrolplane/main.go
 
 docker-wafy:

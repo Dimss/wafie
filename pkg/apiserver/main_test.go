@@ -2,8 +2,8 @@ package apiserver
 
 import (
 	"context"
-	cwafv1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
-	"github.com/Dimss/cwaf/internal/models"
+	wafiev1 "github.com/Dimss/wafie/api/gen/wafie/v1"
+	"github.com/Dimss/wafie/internal/models"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/testcontainers/testcontainers-go"
@@ -61,9 +61,9 @@ func setupTest(t *testing.T) (testcontainers.Container, *gorm.DB, *zap.Logger) {
 
 func createApp(db *gorm.DB, logger *zap.Logger) *models.Application {
 	appModelSvc := models.NewApplicationModelSvc(db, logger)
-	app, _ := appModelSvc.CreateApplication(&cwafv1.CreateApplicationRequest{Name: "testapp"})
+	app, _ := appModelSvc.CreateApplication(&wafiev1.CreateApplicationRequest{Name: "testapp"})
 	ingressModelSvc := models.NewIngressModelSvc(db, logger)
-	_ = ingressModelSvc.NewIngressFromRequest(&cwafv1.CreateIngressRequest{Ingress: &cwafv1.Ingress{
+	_ = ingressModelSvc.NewIngressFromRequest(&wafiev1.CreateIngressRequest{Ingress: &wafiev1.Ingress{
 		Name:          "testapp",
 		Host:          "testapp-host",
 		Port:          80,

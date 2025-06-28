@@ -1,9 +1,9 @@
 package cmd
 
 import (
-	"github.com/Dimss/cwaf/internal/applogger"
-	"github.com/Dimss/cwaf/internal/models"
-	"github.com/Dimss/cwaf/pkg/apiserver"
+	"github.com/Dimss/wafie/internal/applogger"
+	"github.com/Dimss/wafie/internal/models"
+	"github.com/Dimss/wafie/pkg/apiserver"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"

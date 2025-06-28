@@ -4,9 +4,9 @@ import (
 	"connectrpc.com/connect"
 	"context"
 	"fmt"
-	cwafv1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
-	"github.com/Dimss/cwaf/api/gen/cwaf/v1/cwafv1connect"
-	"github.com/Dimss/cwaf/internal/applogger"
+	wafiev1 "github.com/Dimss/wafie/api/gen/wafie/v1"
+	"github.com/Dimss/wafie/api/gen/wafie/v1/wafiev1connect"
+	"github.com/Dimss/wafie/internal/applogger"
 	clusterservice "github.com/envoyproxy/go-control-plane/envoy/service/cluster/v3"
 	discoverygrpc "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	endpointservice "github.com/envoyproxy/go-control-plane/envoy/service/endpoint/v3"
@@ -34,11 +34,11 @@ type EnvoyControlPlane struct {
 	cache                cache.SnapshotCache
 	logger               *zap.Logger
 	resourcesCh          chan map[resource.Type][]types.Resource
-	ingressPatcherCh     chan []*cwafv1.Protection
+	ingressPatcherCh     chan []*wafiev1.Protection
 	dataVersion          string
 	namespace            string
-	protectionSvcClient  cwafv1connect.ProtectionServiceClient
-	dataVersionSvcClient cwafv1connect.DataVersionServiceClient
+	protectionSvcClient  wafiev1connect.ProtectionServiceClient
+	dataVersionSvcClient wafiev1connect.DataVersionServiceClient
 }
 
 func NewEnvoyControlPlane(apiAddr, namespace string) *EnvoyControlPlane {
@@ -47,15 +47,15 @@ func NewEnvoyControlPlane(apiAddr, namespace string) *EnvoyControlPlane {
 		state:            newState(),
 		logger:           applogger.NewLogger(),
 		resourcesCh:      make(chan map[resource.Type][]types.Resource, 1),
-		ingressPatcherCh: make(chan []*cwafv1.Protection, 1),
+		ingressPatcherCh: make(chan []*wafiev1.Protection, 1),
 		namespace:        namespace,
 		cache: cache.NewSnapshotCache(
 			false, cache.IDHash{}, applogger.NewLogger().Sugar(),
 		),
-		protectionSvcClient: cwafv1connect.NewProtectionServiceClient(
+		protectionSvcClient: wafiev1connect.NewProtectionServiceClient(
 			http.DefaultClient, apiAddr,
 		),
-		dataVersionSvcClient: cwafv1connect.NewDataVersionServiceClient(
+		dataVersionSvcClient: wafiev1connect.NewDataVersionServiceClient(
 			http.DefaultClient, apiAddr,
 		),
 	}
@@ -106,8 +106,8 @@ func (p *EnvoyControlPlane) dataVersionChanged() bool {
 	dataVersionResponse, err := p.dataVersionSvcClient.GetDataVersion(
 		context.Background(),
 		connect.NewRequest(
-			&cwafv1.GetDataVersionRequest{
-				TypeId: cwafv1.DataTypeId_DATA_TYPE_ID_PROTECTION,
+			&wafiev1.GetDataVersionRequest{
+				TypeId: wafiev1.DataTypeId_DATA_TYPE_ID_PROTECTION,
 			},
 		),
 	)
@@ -133,10 +133,10 @@ func (p *EnvoyControlPlane) startControlPlaneDataWatcher() {
 			if !p.dataVersionChanged() {
 				continue
 			}
-			mode := cwafv1.ProtectionMode_PROTECTION_MODE_ON
+			mode := wafiev1.ProtectionMode_PROTECTION_MODE_ON
 			includeApps := true
-			req := connect.NewRequest(&cwafv1.ListProtectionsRequest{
-				Options: &cwafv1.ListProtectionsOptions{
+			req := connect.NewRequest(&wafiev1.ListProtectionsRequest{
+				Options: &wafiev1.ListProtectionsOptions{
 					ProtectionMode: &mode,
 					IncludeApps:    &includeApps,
 				},
@@ -181,12 +181,12 @@ func (p *EnvoyControlPlane) ingressPatcher() {
 				continue
 			}
 			for _, protection := range protections {
-				if protection.IngressAutoPatch == cwafv1.IngressAutoPatch_INGRESS_AUTO_PATCH_ON {
+				if protection.IngressAutoPatch == wafiev1.IngressAutoPatch_INGRESS_AUTO_PATCH_ON {
 					if err := NewIngressPatcher(kc, protection, p.namespace, p.logger).Patch(); err != nil {
 						p.logger.Error("failed to patch ingress", zap.Error(err))
 					}
 				}
-				if protection.IngressAutoPatch == cwafv1.IngressAutoPatch_INGRESS_AUTO_PATCH_OFF {
+				if protection.IngressAutoPatch == wafiev1.IngressAutoPatch_INGRESS_AUTO_PATCH_OFF {
 					if err := NewIngressPatcher(kc, protection, p.namespace, p.logger).Unpatch(); err != nil {
 						p.logger.Error("failed to unpatch ingress", zap.Error(err))
 					}

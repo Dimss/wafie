@@ -2,8 +2,8 @@ package ingresscache
 
 import (
 	"fmt"
-	cwafv1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
-	"github.com/Dimss/cwaf/internal/applogger"
+	wafiev1 "github.com/Dimss/wafie/api/gen/wafie/v1"
+	"github.com/Dimss/wafie/internal/applogger"
 	"go.uber.org/zap"
 	v1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -28,7 +28,7 @@ func (i *ingress) gvr() schema.GroupVersionResource {
 		Resource: "ingresses",
 	}
 }
-func (i *ingress) normalize(obj *unstructured.Unstructured) (*cwafv1.CreateIngressRequest, error) {
+func (i *ingress) normalize(obj *unstructured.Unstructured) (*wafiev1.CreateIngressRequest, error) {
 
 	ingObj := &v1.Ingress{}
 	if err := runtime.
@@ -47,7 +47,7 @@ func (i *ingress) normalize(obj *unstructured.Unstructured) (*cwafv1.CreateIngre
 				zap.String("ingress", ingObj.Name+"."+ingObj.Namespace))
 			return nil, nil
 		}
-		cwafv1Ing := &cwafv1.Ingress{
+		cwafv1Ing := &wafiev1.Ingress{
 			Name:         ingObj.Name,
 			Namespace:    ingObj.Namespace,
 			Port:         80, // TODO: add support for TLS passthroughs and other protocols later on
@@ -58,7 +58,7 @@ func (i *ingress) normalize(obj *unstructured.Unstructured) (*cwafv1.CreateIngre
 			Path:           ingObj.Spec.Rules[0].HTTP.Paths[0].Path,
 			Host:           ingObj.Spec.Rules[0].Host,
 			RawIngressSpec: string(objJson),
-			IngressType:    cwafv1.IngressType_INGRESS_TYPE_NGINX,
+			IngressType:    wafiev1.IngressType_INGRESS_TYPE_NGINX,
 		}
 		if ingObj.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number == 0 {
 			if port, err := getSvcPortByName(
@@ -71,7 +71,7 @@ func (i *ingress) normalize(obj *unstructured.Unstructured) (*cwafv1.CreateIngre
 				cwafv1Ing.UpstreamPort = port
 			}
 		}
-		return &cwafv1.CreateIngressRequest{Ingress: cwafv1Ing}, nil
+		return &wafiev1.CreateIngressRequest{Ingress: cwafv1Ing}, nil
 	}
 	return nil, nil
 }

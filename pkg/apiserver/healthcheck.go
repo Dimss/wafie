@@ -3,7 +3,7 @@ package apiserver
 import (
 	"connectrpc.com/grpchealth"
 	"context"
-	"github.com/Dimss/cwaf/internal/models"
+	"github.com/Dimss/wafie/internal/models"
 	"go.uber.org/zap"
 )
 

@@ -1,7 +1,7 @@
 package controlplane
 
 import (
-	cwafv1 "github.com/Dimss/cwaf/api/gen/cwaf/v1"
+	cwafv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	"k8s.io/client-go/kubernetes"
 	//"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"

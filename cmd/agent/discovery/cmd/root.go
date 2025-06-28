@@ -11,8 +11,8 @@ import (
 
 var (
 	rootCmd = &cobra.Command{
-		Use:   "cwaf-discovery-agent",
-		Short: "CWAF Discovery Agent",
+		Use:   "wafie-discovery-agent",
+		Short: "WAFie Discovery Agent",
 	}
 )
 
