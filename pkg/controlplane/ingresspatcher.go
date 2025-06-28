@@ -105,7 +105,7 @@ func (p *IngressPatcher) createdProtectedIngress(appIngress *v1.Ingress) error {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        p.protection.Application.Ingress[0].Name,
 			Namespace:   p.proxyNs,
-			Annotations: map[string]string{"kguard.io/owned": "true"},
+			Annotations: map[string]string{"wafie.io/owned": "true"},
 		},
 		Spec: v1.IngressSpec{
 			Rules: protectedIngressRules,
@@ -120,7 +120,7 @@ func (p *IngressPatcher) createdProtectedIngress(appIngress *v1.Ingress) error {
 }
 
 func (p *IngressPatcher) kguardOwned(ingress *v1.Ingress) bool {
-	if _, ok := ingress.ObjectMeta.Annotations["kguard.io/owned"]; ok {
+	if _, ok := ingress.ObjectMeta.Annotations["wafie.io/owned"]; ok {
 		p.logger.Info("ingress already patched, skipping",
 			zap.String("name", ingress.Name),
 			zap.String("namespace", ingress.Namespace))
