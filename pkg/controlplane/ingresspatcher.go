@@ -139,7 +139,7 @@ func (p *IngressPatcher) Unpatch() error {
 		createUnprotectedIngress = true
 	} else if err != nil {
 		return err
-	} else if !p.kguardOwned(unprotectedIngress) { // in case waf and service ingress are in the name ns
+	} else if p.kguardOwned(unprotectedIngress) { // in case waf and service ingress are in the name ns
 		createUnprotectedIngress = true
 	}
 	// check if protected ingress must be deleted
