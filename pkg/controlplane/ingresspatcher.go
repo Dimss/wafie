@@ -14,7 +14,11 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const WafieIngressOwnerAnnotation = "wafie.io/owned"
+const (
+	WafieIngressOwnerAnnotation = "wafie.io/owned"
+	WafieGatewaySvcName         = "wafie-control-plane"
+	WafieGatewaySvcPort         = 8888
+)
 
 type IngressPatcher struct {
 	kc         *kubernetes.Clientset
@@ -85,9 +89,9 @@ func (p *IngressPatcher) createdProtectedIngress(appIngress *v1.Ingress) error {
 				PathType: appPath.PathType,
 				Backend: v1.IngressBackend{
 					Service: &v1.IngressServiceBackend{
-						Name: "wafy-core",
+						Name: WafieGatewaySvcName,
 						Port: v1.ServiceBackendPort{
-							Number: 8888,
+							Number: WafieGatewaySvcPort,
 						},
 					},
 				},
