@@ -93,3 +93,19 @@ func (s *ProtectionService) ListProtections(
 		Protections: cwafv1Protections,
 	}), nil
 }
+
+func (s *ProtectionService) DeleteProtection(
+	ctx context.Context,
+	req *connect.Request[cwafv1.DeleteProtectionRequest]) (
+	*connect.Response[cwafv1.DeleteProtectionResponse], error) {
+	l := s.logger.With(zap.Uint32("protectionId", req.Msg.Id))
+	l.Info("deleting protection entry")
+	defer l.Info("protection entry deleted")
+	protectionModelSvc := models.NewProtectionModelSvc(nil, l)
+	err := protectionModelSvc.DeleteProtection(req.Msg.Id)
+	if err != nil {
+		l.Error("failed to delete protection entry", zap.Error(err))
+		return connect.NewResponse(&cwafv1.DeleteProtectionResponse{}), err
+	}
+	return connect.NewResponse(&cwafv1.DeleteProtectionResponse{}), nil
+}

@@ -1,16 +1,16 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: wafy
+  name: wafie-control-plane
   namespace: {{.Release.Namespace}}
 spec:
   rules:
-    - host: wafy-api.10.100.102.84.nip.io
+    - host: wafie-api.10.100.102.84.nip.io
       http:
         paths:
           - backend:
               service:
-                name: wafy
+                name: wafie-control-plane
                 port:
                   name: http
             path: /

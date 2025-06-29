@@ -1,6 +1,6 @@
 apiVersion: v2
-name: wafy
-description: WAFY is a Cloud native Web Application Firewall (WAF).
+name: wafie
+description: WAFie Kubernetes native WAF and API Security
 type: application
 version: 1.0.0
 appVersion: 1.0.0

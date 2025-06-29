@@ -8,14 +8,14 @@ build:
       -o bin/api-server cmd/apiserver/main.go
 
 	go build \
-		-ldflags="-X 'github.com/Dimss/wafie/cmd/proxycontrolplane/cmd.Build=$$(git rev-parse --short HEAD)'" \
-		-o bin/proxycontrolplane cmd/proxycontrolplane/main.go
+		-ldflags="-X 'github.com/Dimss/wafie/cmd/gwctrl/cmd.Build=$$(git rev-parse --short HEAD)'" \
+		-o bin/gwctrl cmd/gwctrl/main.go
 
-docker-wafy:
-	docker buildx build --push -t dimssss/wafy-core -f dockerfiles/Dockerfile_wafy .
+docker-wafie-control-plane:
+	docker buildx build --push -t dimssss/wafie-control-plane -f dockerfiles/Dockerfile_wafie_control_plane .
 
-docker-proxy:
-	docker buildx build --push -t dimssss/wafy-proxy -f dockerfiles/Dockerfile_proxy .
+docker-wafie-gateway:
+	docker buildx build --push -t dimssss/wafie-gateway -f dockerfiles/Dockerfile_wafie_gateway .
 
 .PHONY: proto
 proto:
@@ -37,7 +37,7 @@ stop-test-postgres:
 
 .PHONY: chart
 install:
-	cd chart && helm upgrade -i wafy .
+	cd chart && helm upgrade -i wafie .
 uninstall:
-	cd chart && helm delete wafy && kubectl delete pvc data-wafy-postgresql-0
+	cd chart && helm delete wafie && kubectl delete pvc data-wafie-postgresql-0
 

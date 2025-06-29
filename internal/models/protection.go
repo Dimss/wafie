@@ -199,6 +199,10 @@ func (s *ProtectionModelSvc) ListProtections(options *v1.ListProtectionsOptions)
 	return protections, res.Error
 }
 
+func (s *ProtectionModelSvc) DeleteProtection(protectionId uint32) error {
+	return s.db.Delete(&Protection{ID: uint(protectionId)}).Error
+}
+
 func (p *Protection) AfterCreate(tx *gorm.DB) (err error) {
 	//vhModelSvc := NewVirtualHostModelSvc(tx, nil)
 	//_, err := vhModelSvc.CreateVirtualHost(p.ID)

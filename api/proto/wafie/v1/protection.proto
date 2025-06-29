@@ -77,7 +77,7 @@ message PutProtectionResponse {
 message ListProtectionsOptions {
   optional ProtectionMode protection_mode = 1;
   optional ProtectionMode mod_sec_mode = 2;
-  optional  bool include_apps = 3;
+  optional bool include_apps = 3;
 }
 
 message ListProtectionsRequest {
@@ -88,9 +88,16 @@ message ListProtectionsResponse {
   repeated Protection protections = 1;
 }
 
+message DeleteProtectionRequest {
+  uint32 id = 1;
+}
+
+message DeleteProtectionResponse {}
+
 service ProtectionService {
   rpc CreateProtection(CreateProtectionRequest) returns (CreateProtectionResponse);
   rpc GetProtection(GetProtectionRequest) returns (GetProtectionResponse);
   rpc ListProtections(ListProtectionsRequest) returns (ListProtectionsResponse);
   rpc PutProtection(PutProtectionRequest) returns (PutProtectionResponse);
+  rpc DeleteProtection(DeleteProtectionRequest) returns (DeleteProtectionResponse);
 }

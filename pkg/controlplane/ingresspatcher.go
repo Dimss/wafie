@@ -14,6 +14,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+const WafieIngressOwnerAnnotation = "wafie.io/owned"
+
 type IngressPatcher struct {
 	kc         *kubernetes.Clientset
 	proxyNs    string
@@ -105,7 +107,7 @@ func (p *IngressPatcher) createdProtectedIngress(appIngress *v1.Ingress) error {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        p.protection.Application.Ingress[0].Name,
 			Namespace:   p.proxyNs,
-			Annotations: map[string]string{"wafie.io/owned": "true"},
+			Annotations: map[string]string{WafieIngressOwnerAnnotation: "true"},
 		},
 		Spec: v1.IngressSpec{
 			Rules: protectedIngressRules,
@@ -120,7 +122,7 @@ func (p *IngressPatcher) createdProtectedIngress(appIngress *v1.Ingress) error {
 }
 
 func (p *IngressPatcher) kguardOwned(ingress *v1.Ingress) bool {
-	if _, ok := ingress.ObjectMeta.Annotations["wafie.io/owned"]; ok {
+	if _, ok := ingress.ObjectMeta.Annotations[WafieIngressOwnerAnnotation]; ok {
 		p.logger.Info("ingress already patched, skipping",
 			zap.String("name", ingress.Name),
 			zap.String("namespace", ingress.Namespace))

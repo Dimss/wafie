@@ -1,5 +1,6 @@
-wafyCoreImage: dimssss/wafy-core:latest
-wafyProxyImage: dimssss/wafy-proxy:latest
+image:
+  api: dimssss/wafie-control-plane:latest
+  gateway: dimssss/wafie-gateway:latest
 postgresql:
   auth:
     postgresPassword: "cwafpg"
