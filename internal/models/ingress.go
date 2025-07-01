@@ -59,19 +59,21 @@ func (s *IngressModelSvc) NewIngressFromRequest(req *v1.CreateIngressRequest) er
 		IngressType:    uint32(req.Ingress.IngressType),
 		ApplicationID:  uint(req.Ingress.ApplicationId),
 	}
+
 	if res := s.db.Clauses(clause.OnConflict{
-		Columns: []clause.Column{{Name: "host"}},
-		DoUpdates: clause.AssignmentColumns(
-			[]string{
-				"name",
-				"namespace",
-				"host",
-				"port",
-				"path",
-				"upstream_host",
-				"upstream_port",
-			},
-		),
+		Columns:   []clause.Column{{Name: "host"}},
+		DoNothing: true, // Ingress object is immutable! No updates can be done after creation
+		//DoUpdates: clause.AssignmentColumns(
+		//	[]string{
+		//		//"name",
+		//		//"namespace",
+		//		//"host",
+		//		//"port",
+		//		//"path",
+		//		//"upstream_host",
+		//		//"upstream_port",
+		//	},
+		//),
 	}).Create(ingress); res.Error != nil {
 		return connect.NewError(connect.CodeUnknown, res.Error)
 	}

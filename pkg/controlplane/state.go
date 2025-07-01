@@ -34,21 +34,21 @@ func newState() *state {
 }
 
 func (s *state) httpFilters() []*hcm.HttpFilter {
-	totalFilters := 2 // router + custom kubeguard
+	totalFilters := 2 // router + custom wafie
 	var filters = make([]*hcm.HttpFilter, totalFilters)
 
-	kubeguardLibCfg, err := anypb.New(&golangv3alpha.Config{
-		LibraryId:   "kubeguard-v1",
-		LibraryPath: "/usr/local/lib/kubeguard-modsec.so",
-		PluginName:  "kubeguard",
+	wafieLibCfg, err := anypb.New(&golangv3alpha.Config{
+		LibraryId:   "wafie-v1",
+		LibraryPath: "/usr/local/lib/wafie-modsec.so",
+		PluginName:  "wafie",
 	})
 	if err != nil {
-		s.logger.Error("failed to create kubeguard config", zap.Error(err))
+		s.logger.Error("failed to create wafie config", zap.Error(err))
 	}
 	filters[0] = &hcm.HttpFilter{
 		Name: "envoy.filters.http.golang",
 		ConfigType: &hcm.HttpFilter_TypedConfig{
-			TypedConfig: kubeguardLibCfg,
+			TypedConfig: wafieLibCfg,
 		},
 	}
 	routerConfig, err := anypb.New(&router.Router{})

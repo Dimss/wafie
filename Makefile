@@ -11,6 +11,10 @@ build:
 		-ldflags="-X 'github.com/Dimss/wafie/cmd/gwctrl/cmd.Build=$$(git rev-parse --short HEAD)'" \
 		-o bin/gwctrl cmd/gwctrl/main.go
 
+	go build \
+		-ldflags="-X 'github.com/Dimss/wafie/cmd/gwsupervisor/cmd.Build=$$(git rev-parse --short HEAD)'" \
+		-o bin/gwsupervisor cmd/gwsupervisor/main.go
+
 docker-wafie-control-plane:
 	docker buildx build --push -t dimssss/wafie-control-plane -f dockerfiles/Dockerfile_wafie_control_plane .
 

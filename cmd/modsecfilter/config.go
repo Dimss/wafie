@@ -1,9 +1,9 @@
 package main
 
 /*
-#cgo LDFLAGS: -lkubeguard
+#cgo LDFLAGS: -lwafie
 #include <stdlib.h>
-#include <kubeguard/kubeguardlib.h>
+#include <wafie/wafielib.h>
 */
 import "C"
 import (
@@ -14,9 +14,9 @@ import (
 )
 
 func init() {
-	C.kg_library_init(C.CString("/config"))
+	C.wafie_library_init(C.CString("/config"))
 	c := config{}
-	http.RegisterHttpFilterFactoryAndConfigParser("kubeguard", kubeGuardFilterFactory, c)
+	http.RegisterHttpFilterFactoryAndConfigParser("wafie", wafieFilterFactory, c)
 
 }
 
@@ -31,7 +31,7 @@ func (c config) Merge(parentConfig interface{}, childConfig interface{}) interfa
 	return nil
 }
 
-func kubeGuardFilterFactory(config interface{}, callbacks api.FilterCallbackHandler) api.StreamFilter {
+func wafieFilterFactory(config interface{}, callbacks api.FilterCallbackHandler) api.StreamFilter {
 	return &filter{
 		callbacks: callbacks,
 		logger:    applogger.NewLogger(),
@@ -39,8 +39,8 @@ func kubeGuardFilterFactory(config interface{}, callbacks api.FilterCallbackHand
 }
 
 func main() {
-	// KubeGuard ModSecurity Envoy HTTP filter
+	// wafie ModSecurity Envoy HTTP filter
 	// compiled as a shared object (.so) for use with Envoy.
-	// depends on the kubeguard (kubeguard.so) library and kubeguard/kubeguardlib.h files
-	// to build: go build -ldflags='-s -w' -o ./kubeguard-modsec.so -buildmode=c-shared ./cmd/modsecfilter
+	// depends on the wafie (wafie.so) library and wafie/wafielib.h files
+	// to build: go build -ldflags='-s -w' -o ./wafie-modsec.so -buildmode=c-shared ./cmd/modsecfilter
 }

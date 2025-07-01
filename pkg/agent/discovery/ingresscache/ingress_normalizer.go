@@ -47,6 +47,11 @@ func (i *ingress) normalize(obj *unstructured.Unstructured) (*wafiev1.CreateIngr
 				zap.String("ingress", ingObj.Name+"."+ingObj.Namespace))
 			return nil, nil
 		}
+		//// TODO: fix this!
+		//if ingObj.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name == controlplane.WafieGatewaySvcName {
+		//	i.logger.Info("skipping, ingress already routing to wafie gateway svc",
+		//		zap.String("ingress", ingObj.Name+"."+ingObj.Namespace))
+		//}
 		cwafv1Ing := &wafiev1.Ingress{
 			Name:         ingObj.Name,
 			Namespace:    ingObj.Namespace,

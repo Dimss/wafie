@@ -1,9 +1,9 @@
 package main
 
 /*
-#cgo LDFLAGS: -lkubeguard
+#cgo LDFLAGS: -lwafie
 #include <stdlib.h>
-#include <kubeguard/kubeguardlib.h>
+#include <wafie/wafielib.h>
 */
 import "C"
 import (
@@ -50,7 +50,7 @@ func (f *filter) newEvaluationRequest(headerMap api.RequestHeaderMap) {
 	f.evalRequest.headers_count = C.size_t(len(headerMap.GetAllHeaders()))
 	f.evalRequest.headers = f.evaluationRequestHeaders(headerMap.GetAllHeaders())
 	f.evalRequest.body = nil
-	C.kg_init_request_transaction(&f.evalRequest)
+	C.wafie_init_request_transaction(&f.evalRequest)
 }
 
 func (f *filter) freeEvaluationRequest() {
@@ -79,11 +79,11 @@ func (f *filter) DecodeHeaders(headerMap api.RequestHeaderMap, b bool) api.Statu
 	f.newLogCtx(headerMap)
 	// create new evaluation request
 	f.newEvaluationRequest(headerMap)
-	//C.kg_add_rule(C.CString("SecRule REMOTE_ADDR \"@ipMatch 10.244.0.22\" \"id:203948180384," +
+	//C.wafie_add_rule(C.CString("SecRule REMOTE_ADDR \"@ipMatch 10.244.0.22\" \"id:203948180384," +
 	//	"phase:0,deny,status:403,msg:'Blocking connection from specific IP'\""))
-	//C.kg_add_rule(C.CString("SecAction \"id:203948180384,phase:1,log,pass,msg:'FOO-PARANOIA-LEVEL: %{tx.blocking_paranoia_level}'\""))
+	//C.wafie_add_rule(C.CString("SecAction \"id:203948180384,phase:1,log,pass,msg:'FOO-PARANOIA-LEVEL: %{tx.blocking_paranoia_level}'\""))
 	// evaluate request headers and connection (modsecurity: phase0, phase1)
-	if C.kg_process_request_headers(&f.evalRequest) != 0 {
+	if C.wafie_process_request_headers(&f.evalRequest) != 0 {
 		f.callbacks.DecoderFilterCallbacks().SendLocalReply(403,
 			"Opa opa, access denied!!!", nil, 0, "some details here")
 		return api.LocalReply
@@ -94,7 +94,7 @@ func (f *filter) DecodeHeaders(headerMap api.RequestHeaderMap, b bool) api.Statu
 
 func (f *filter) DecodeData(instance api.BufferInstance, b bool) api.StatusType {
 	f.evalRequest.body = C.CString(string(instance.Bytes()))
-	if C.kg_process_request_body(&f.evalRequest) != 0 {
+	if C.wafie_process_request_body(&f.evalRequest) != 0 {
 		f.callbacks.DecoderFilterCallbacks().SendLocalReply(403,
 			"Opa opa, access denied!!!", nil, 0, "some details here")
 		return api.LocalReply
@@ -142,7 +142,7 @@ func (f *filter) OnDestroy(reason api.DestroyReason) {
 		With(f.logCtx...).
 		Info("destroying filter instance", zap.Int("reason", int(reason)))
 	f.freeEvaluationRequest()
-	C.kg_transaction_cleanup(&f.evalRequest)
+	C.wafie_transaction_cleanup(&f.evalRequest)
 
 }
 
