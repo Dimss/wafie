@@ -50,6 +50,7 @@ RUN apt -y update \
         libxml2-dev \
         libyajl-dev \
         libgeoip-dev \
+        libcurl4-openssl-dev \
         gcc \
         vim \
         wget \

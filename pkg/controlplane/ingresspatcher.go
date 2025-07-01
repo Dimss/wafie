@@ -121,7 +121,9 @@ func (p *IngressPatcher) createdProtectedIngress(appIngress *v1.Ingress) error {
 		NetworkingV1().
 		Ingresses(p.protection.Application.Ingress[0].Namespace).
 		Create(context.Background(), protectedIngress, metav1.CreateOptions{})
-	p.logger.Info("kguard ingress created")
+	p.logger.Info("wafie protected ingress created",
+		zap.String("name", protectedIngress.Name),
+		zap.String("namespace", p.protection.Application.Ingress[0].Namespace))
 	return err
 }
 
