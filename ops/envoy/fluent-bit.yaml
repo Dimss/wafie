@@ -1,0 +1,8 @@
+pipeline:
+  inputs:
+    - name: tail
+      read_from_head: true
+      path: /data/audit/modsec.log
+  outputs:
+    - name: stdout
+      match: '*'
