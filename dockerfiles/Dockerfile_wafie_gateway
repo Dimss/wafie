@@ -1,5 +1,5 @@
 FROM envoyproxy/envoy:contrib-v1.34.1 AS modsecfilter-builder
-ENV GO_VERSION="https://go.dev/dl/go1.24.4.linux-arm64.tar.gz"
+ENV GO_VERSION="go1.24.4.linux-amd64.tar.gz"
 ENV GOBIN="/go/bin"
 ENV PATH="${PATH}:${GOBIN}:/usr/local/go/bin"
 ENV GOPATH="/go"
@@ -13,13 +13,16 @@ RUN apt -y update \
       gcc \
       vim \
       wget
-RUN wget $GO_VERSION \
-    && tar -C /usr/local -xzf go1.24.4.linux-arm64.tar.gz \
-    && rm go1.24.4.linux-arm64.tar.gz \
+RUN wget "https://go.dev/dl/${GO_VERSION}" \
+    && tar -C /usr/local -xzf ${GO_VERSION} \
+    && rm ${GO_VERSION} \
     && mkdir -p /go/bin \
     && go install github.com/go-delve/delve/cmd/dlv@latest
 COPY cmd/modsecfilter/include/ /usr/local/include/
-COPY cmd/modsecfilter/libwafie.so /usr/local/lib/libwafie.so
+RUN wget https://github.com/Dimss/wafielib/releases/download/v0.0.01/libwafie.zip \
+    && unzip libwafie.zip \
+    && cp libwafie.so /usr/local/lib/libwafie.so
+#COPY cmd/modsecfilter/libwafie.so /usr/local/lib/libwafie.so
 ADD go.mod go.sum ./
 ADD cmd/modsecfilter ./cmd/modsecfilter/
 ADD internal/applogger ./internal/applogger/

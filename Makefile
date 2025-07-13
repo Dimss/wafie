@@ -16,10 +16,10 @@ build:
 		-o bin/gwsupervisor cmd/gwsupervisor/main.go
 
 docker-wafie-control-plane:
-	docker buildx build --push -t dimssss/wafie-control-plane -f dockerfiles/Dockerfile_wafie_control_plane .
+	docker buildx build --push -t dimssss/wafie-control-plane --platform linux/amd64/v2 -f dockerfiles/Dockerfile_wafie_control_plane .
 
 docker-wafie-gateway:
-	docker buildx build --push -t dimssss/wafie-gateway -f dockerfiles/Dockerfile_wafie_gateway .
+	docker buildx build --push -t dimssss/wafie-gateway --platform linux/amd64/v2 -f dockerfiles/Dockerfile_wafie_gateway .
 
 .PHONY: proto
 proto:
