@@ -12,7 +12,8 @@ RUN apt -y update \
       libcurl4-openssl-dev \
       gcc \
       vim \
-      wget
+      wget \
+      unzip
 RUN wget "https://go.dev/dl/${GO_VERSION}" \
     && tar -C /usr/local -xzf ${GO_VERSION} \
     && rm ${GO_VERSION} \
