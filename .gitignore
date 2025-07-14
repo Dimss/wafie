@@ -10,3 +10,4 @@ api/gen
 api/vendor
 bin
 .devspace
+ops/.secrets

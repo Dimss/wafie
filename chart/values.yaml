@@ -1,6 +1,6 @@
 image:
-  api: image-registry.openshift-image-registry.svc:5000/default/wafie-control-plane
-  gateway: dimssss/wafie-gateway:latest
+  api: docker.io/dimssss/wafie-control-plane:latest
+  gateway: image-registry.openshift-image-registry.svc:5000/default/wafie-gateway
 postgresql:
   auth:
     postgresPassword: "cwafpg"
