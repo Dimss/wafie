@@ -1,4 +1,4 @@
-name: Build and Upload to Github artifacts
+name: Build and Push Docker Image
 on:
   push:
     branches:
@@ -6,7 +6,7 @@ on:
 jobs:
   build:
     if: contains(github.event.head_commit.message, '[build-docker]')
-    name: Build wafie lib
+    name: Build wafie control plane and gateway images
     runs-on: ubuntu-latest
     strategy:
       matrix:
