@@ -58,10 +58,11 @@ RUN apt -y update \
         gcc \
         vim \
         wget \
-        logrotate
+        logrotate \
+    && rm -rf /var/lib/apt/lists/*
 COPY cmd/modsecfilter/config/ /config/
 COPY cmd/modsecfilter/include/ /usr/local/include/
-COPY cmd/modsecfilter/libwafie.so /usr/local/lib/libwafie.so
+COPY --from=libwafie /wafie/build/libwafie.so /usr/local/lib/libwafie.so
 COPY --from=modsecfilter-builder /go/src/wafie-modsec.so /usr/local/lib/wafie-modsec.so
 RUN ldconfig \
      && chown -R envoy:envoy /var/lib/logrotate
