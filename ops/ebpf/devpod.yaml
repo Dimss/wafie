@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ebpf-dev
+  labels:
+    app: ebpf-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ebpf-dev
+  template:
+    metadata:
+      labels:
+        app: ebpf-dev
+    spec:
+      hostIPC: true
+      hostNetwork: true
+      hostPID: true
+      containers:
+        - name: ebpf-dev
+          command:
+            - /bin/bash
+            - -c
+            - sleep inf
+          image: dimssss/wafie-gateway
+          imagePullPolicy: Always
+          ports:
+            - name: api-server
+              containerPort: 8080
+          securityContext:
+            capabilities:
+              add:
+                - CAP_SYS_ADMIN
+            runAsUser: 0
+            runAsGroup: 0
+            privileged: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wafie-control-plane
+spec:
+  type: ClusterIP
+  selector:
+    app:  ebpf-dev
+  ports:
+    - name: api-server
+      port: 8080
+      targetPort: api-server

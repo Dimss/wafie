@@ -1,0 +1,7 @@
+{
+  "name": "TCx eBPF dev container",
+  "image": "docker.io/dimssss/ebpf-dev",
+  "runArgs": [
+    "--privileged"
+  ]
+}

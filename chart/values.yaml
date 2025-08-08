@@ -11,16 +11,4 @@ postgresql:
     persistence:
       size: 20Gi
   volumePermissions:
-    enabled: false
-    securityContext:
-      runAsUser: "auto"
-
-  securityContext:
-    enabled: false
-
-  shmVolume:
-    chmod:
-      enabled: false
-
-  containerSecurityContext:
-    enabled: false
+    enabled: true

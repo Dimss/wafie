@@ -1,3 +1,9 @@
+SHELL := /usr/bin/env bash
+
+shell:
+	@$(RUN) /bin/bash
+
+
 build:
 	go build \
       -ldflags="-X 'github.com/Dimss/wafie/cmd/agent/discovery/cmd.Build=$$(git rev-parse --short HEAD)'" \
@@ -15,11 +21,15 @@ build:
 		-ldflags="-X 'github.com/Dimss/wafie/cmd/gwsupervisor/cmd.Build=$$(git rev-parse --short HEAD)'" \
 		-o bin/gwsupervisor cmd/gwsupervisor/main.go
 
+	go build \
+		-ldflags="-X 'github.com/containernetworking/plugins/pkg/utils/buildversion.BuildVersion=$$(git rev-parse --short HEAD)'" \
+		-o bin/wafie-cni pkg/cni/cni.go
+
 docker-wafie-control-plane:
-	docker buildx build --push -t dimssss/wafie-control-plane --platform linux/amd64/v2 -f dockerfiles/Dockerfile_wafie_control_plane .
+	docker buildx build --push -t dimssss/wafie-control-plane --platform linux/arm64 -f dockerfiles/Dockerfile_wafie_control_plane .
 
 docker-wafie-gateway:
-	docker buildx build --push -t dimssss/wafie-gateway --platform linux/amd64/v2 -f dockerfiles/Dockerfile_wafie_gateway .
+	docker buildx build --build-arg ARCH=arm64 --push -t dimssss/wafie-gateway --platform linux/arm64 -f dockerfiles/Dockerfile_wafie_gateway .
 
 .PHONY: proto
 proto:
@@ -45,3 +55,9 @@ install:
 uninstall:
 	cd chart && helm delete wafie && kubectl delete pvc data-wafie-postgresql-0
 
+
+
+foo:
+	@echo "The current shell is: $(SHELL)"
+	@echo "Bash version is: $$BASH_VERSION"
+	@echo "$(shell pwd)"
