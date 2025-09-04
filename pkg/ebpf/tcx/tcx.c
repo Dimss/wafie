@@ -26,47 +26,6 @@ struct {
 } ip_map SEC(".maps");
 
 
-SEC("xdp")
-int xdp_prog_func(struct xdp_md *ctx) {
-	void *data_end = (void *)(long)ctx->data_end;
-	void *data     = (void *)(long)ctx->data;
-
-    // Pointers for parsing
-    struct ethhdr *eth = data;
-    struct iphdr *iph;
-
-  // Boundary check and ensure it's an IP packet
-    if (data + sizeof(*eth) > data_end)
-        return TC_ACT_OK;
-    if (eth->h_proto != bpf_htons(ETH_P_IP))
-        return XDP_PASS;
-
-    iph = data + sizeof(*eth);
-    if ((void *)iph + sizeof(*iph) > data_end)
-        return XDP_PASS;
-
-    if (iph->protocol != IPPROTO_TCP)
-        return XDP_PASS;
-
-    struct ip_pair key = {
-        .src_ip = iph->saddr,
-        .dst_ip = iph->daddr,
-    };
-
-    struct ip_pair_value *ipv = bpf_map_lookup_elem(&ip_map, &key);
-    if (ipv) {
-        __sync_fetch_and_add(&ipv->count, 1);
-    } else {
-        struct ip_pair_value value = {
-            .count = 1,
-            .ifindex = ctx->ingress_ifindex
-        };
-        bpf_map_update_elem(&ip_map, &key, &value, BPF_ANY);
-    }
-	return XDP_PASS;
-}
-
-
 SEC("tc/ingress")
 int ingress_prog_func(struct __sk_buff *skb) {
 	void *data_end = (void *)(long)skb->data_end;

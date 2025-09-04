@@ -9,6 +9,8 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -tags linux bpf tcx.c -- -I../headers
@@ -24,103 +26,51 @@ type IpPairValue struct {
 	_       uint32
 }
 
-func main() {
-	if len(os.Args) < 3 {
-		log.Fatalf("Please specify prog type [xdp|tc] and a network interface")
-	}
-	interfaces := getActiveInterfaces()
+func init() {
+	rootCmd.PersistentFlags().String("iface-name", "i", "Interface name")
 
-	// Look up the network interface by name.
-	progType := os.Args[1]
-	ifaceName := os.Args[2]
-	if ifaceName == "all" {
-		fmt.Println("using all interfaces")
-	} else {
-		_, err := net.InterfaceByName(ifaceName)
-		if err != nil {
-			log.Fatalf("lookup network iface %q: %s", ifaceName, err)
-		}
-		interfaces = []string{ifaceName}
-	}
-
-	// Load pre-compiled programs into the kernel.
-	objs := bpfObjects{}
-	if err := loadBpfObjects(&objs, nil); err != nil {
-		log.Fatalf("loading objects: %s", err)
-	}
-	defer objs.Close()
-
-	links, err := attachToMultipleInterfaces(progType, objs, interfaces)
-
-	if err != nil {
-		log.Fatalf("could not attach TCx program: %s", err)
-	}
-	defer func() {
-		for _, l := range links {
-			l.Close()
-		}
-	}()
-
-	// Print the contents of the counters maps.
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-	for range ticker.C {
-		readIPMap(objs.IpMap)
-	}
+	viper.BindPFlag("iface-name", rootCmd.PersistentFlags().Lookup("iface-name"))
 }
 
-func attachToMultipleInterfaces(progType string, obj bpfObjects, interfaceNames []string) ([]link.Link, error) {
-	var links []link.Link
-
-	for _, ifaceName := range interfaceNames {
-		iface, err := net.InterfaceByName(ifaceName)
+var rootCmd = &cobra.Command{
+	Use:   "start tc ebpf program",
+	Short: "start tc ebpf program",
+	Run: func(cmd *cobra.Command, args []string) {
+		objs := bpfObjects{}
+		if err := loadBpfObjects(&objs, nil); err != nil {
+			log.Fatalf("loading objects: %s", err)
+		}
+		defer objs.Close()
+		i := interfaceLookup(viper.GetString("iface-name"))
+		link, err := attachTCProgram(i, objs)
+		defer link.Close()
 		if err != nil {
-			return nil, fmt.Errorf("interface %s: %w", ifaceName, err)
+			log.Fatal(err)
 		}
-		if progType == "xdp" {
-			l, err := link.AttachXDP(
-				link.XDPOptions{
-					Interface: iface.Index,
-					Program:   obj.XdpProgFunc,
-				},
-			)
-			if err != nil {
-				return nil, fmt.Errorf("attach to %s: %w", ifaceName, err)
-			}
-			fmt.Println("attaching to " + ifaceName)
-			links = append(links, l)
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			readIPMap(objs.IpMap)
 		}
-		if progType == "tc" {
-			l, err := link.AttachTCX(link.TCXOptions{
-				Interface: iface.Index,
-				Program:   obj.IngressProgFunc,
-				Attach:    ebpf.AttachTCXIngress,
-			})
-			if err != nil {
-				return nil, fmt.Errorf("attach to %s: %w", ifaceName, err)
-			}
-			fmt.Println("attaching to " + ifaceName)
-			links = append(links, l)
-		}
-
-	}
-	return links, nil
+	},
 }
 
-func getActiveInterfaces() []string {
-	interfaces, err := net.Interfaces()
-	if err != nil {
-		return nil
-	}
+func attachTCProgram(i *net.Interface, objs bpfObjects) (link.Link, error) {
+	return link.AttachTCX(
+		link.TCXOptions{
+			Interface: i.Index,
+			Program:   objs.IngressProgFunc,
+			Attach:    ebpf.AttachTCXIngress,
+		},
+	)
+}
 
-	var names []string
-	for _, iface := range interfaces {
-		// Skip loopback and down interfaces
-		//if iface.Flags&net.FlagLoopback == 0 && iface.Flags&net.FlagUp != 0 {
-		names = append(names, iface.Name)
-		//}
+func interfaceLookup(ifname string) *net.Interface {
+	i, err := net.InterfaceByName(ifname)
+	if err != nil {
+		log.Fatal(err)
 	}
-	return names
+	return i
 }
 
 func readIPMap(ipMap *ebpf.Map) {
@@ -131,12 +81,12 @@ func readIPMap(ipMap *ebpf.Map) {
 	for iter.Next(&key, &value) {
 		srcIP := intToIP(key.SrcIP)
 		dstIP := intToIP(key.DstIP)
-		//wpSrcIp := net.ParseIP("10.244.0.7")
-		//wpDstIp := net.ParseIP("10.244.0.10")
-		//if srcIP.Equal(wpSrcIp) && dstIP.Equal(wpDstIp) {
-		fmt.Printf("%s \t--------> %s: %d packets interface: %s\n",
-			srcIP, dstIP, value.Count, ifindexToName(value.Ifindex))
-		//}
+		wpSrcIp := net.ParseIP("10.244.0.31")
+		wpDstIp := net.ParseIP("10.244.0.46")
+		if srcIP.Equal(wpSrcIp) && dstIP.Equal(wpDstIp) {
+			fmt.Printf("%s \t--------> %s: %d packets interface: %s\n",
+				srcIP, dstIP, value.Count, ifindexToName(value.Ifindex))
+		}
 	}
 
 	if err := iter.Err(); err != nil {
@@ -154,4 +104,11 @@ func ifindexToName(ifindex uint32) string {
 		return fmt.Sprintf("unknown(%d)", ifindex)
 	}
 	return iface.Name
+}
+
+func main() {
+	err := rootCmd.Execute()
+	if err != nil {
+		os.Exit(1)
+	}
 }

@@ -10,7 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-#        architecture: [ amd64, arm64 ]
         architecture: [ amd64 ]
     steps:
       - name: Checkout repository

@@ -26,10 +26,11 @@ build:
 		-o bin/wafie-cni pkg/cni/cni.go
 
 docker-wafie-control-plane:
-	docker buildx build --push -t dimssss/wafie-control-plane --platform linux/arm64 -f dockerfiles/Dockerfile_wafie_control_plane .
+	podman buildx build -t docker.io/dimssss/wafie-control-plane --platform linux/arm64 -f dockerfiles/Dockerfile_wafie_control_plane .
+	podman push docker.io/dimssss/wafie-control-plane
 
 docker-wafie-gateway:
-	docker buildx build --build-arg ARCH=arm64 --push -t dimssss/wafie-gateway --platform linux/arm64 -f dockerfiles/Dockerfile_wafie_gateway .
+	podman buildx build --build-arg ARCH=arm64 --push -t dimssss/wafie-gateway --platform linux/arm64 -f dockerfiles/Dockerfile_wafie_gateway .
 
 .PHONY: proto
 proto:

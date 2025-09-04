@@ -181,6 +181,10 @@ func (p *EnvoyControlPlane) ingressPatcher() {
 				continue
 			}
 			for _, protection := range protections {
+				if protection.IngressAutoPatch == wafiev1.IngressAutoPatch_INGRESS_AUTO_PATCH_EBPF {
+					p.logger.Info("auto patching disabled in favor to eBPF TC program")
+					continue
+				}
 				if protection.IngressAutoPatch == wafiev1.IngressAutoPatch_INGRESS_AUTO_PATCH_ON {
 					if err := NewIngressPatcher(kc, protection, p.namespace, p.logger).Patch(); err != nil {
 						p.logger.Error("failed to patch ingress", zap.Error(err))
