@@ -40,6 +40,6 @@ jobs:
           context: .
           push: true
           build-args: ARCH=${{ matrix.architecture }}
-          tags: dimssss/wafie-gateway
+          tags: dimssss/wafie-gateway:latest
           file: dockerfiles/Dockerfile_wafie_gateway
           platforms: linux/${{ matrix.architecture }}

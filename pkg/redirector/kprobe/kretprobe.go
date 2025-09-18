@@ -27,18 +27,26 @@ var rootCmd = &cobra.Command{
 		defer objs.Close()
 
 		// Attach the kprobe.
-		kp, err := link.Kprobe("__arm64_sys_socket", objs.KprobeSysSocket, nil)
-		if err != nil {
-			log.Fatalf("attaching kprobe: %s", err)
-		}
-		defer kp.Close()
-
-		// Attach the kretprobe.
-		krp, err := link.Kretprobe("__arm64_sys_socket", objs.KretprobeSysSocket, nil)
+		//kp, err := link.Kprobe("__arm64_sys_socket", objs.KprobeSysSocket, nil)
+		//if err != nil {
+		//	log.Fatalf("attaching kprobe: %s", err)
+		//}
+		//defer kp.Close()
+		//
+		//Attach the kretprobe.
+		krp, err := link.Kretprobe("__arm64_sys_socket", objs.KretprobeInetCskAccept, nil)
 		if err != nil {
 			log.Fatalf("attaching kretprobe: %s", err)
 		}
 		defer krp.Close()
+
+		// Attach kprobe/__x64_sys_connect
+		//log.Println("attaching __arm64_sys_connect")
+		//kpSysConnect, err := link.Kprobe("__arm64_sys_connect", objs.KprobeSysConnect, nil)
+		//if err != nil {
+		//	log.Fatalf("attaching kprobe: %s", err)
+		//}
+		//defer kpSysConnect.Close()
 
 		// Wait for signal
 		c := make(chan os.Signal, 1)

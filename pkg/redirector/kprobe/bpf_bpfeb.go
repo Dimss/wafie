@@ -13,6 +13,14 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type bpfNetInfo struct {
+	_     structs.HostLayout
+	Saddr uint32
+	Daddr uint32
+	Sport uint16
+	Dport uint16
+}
+
 type bpfSockArgs struct {
 	_        structs.HostLayout
 	Family   int32
@@ -62,15 +70,19 @@ type bpfSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type bpfProgramSpecs struct {
-	KprobeSysSocket    *ebpf.ProgramSpec `ebpf:"kprobe_sys_socket"`
-	KretprobeSysSocket *ebpf.ProgramSpec `ebpf:"kretprobe_sys_socket"`
+	KprobeSysConnect       *ebpf.ProgramSpec `ebpf:"kprobe_sys_connect"`
+	KprobeSysSocket        *ebpf.ProgramSpec `ebpf:"kprobe_sys_socket"`
+	KretprobeInetCskAccept *ebpf.ProgramSpec `ebpf:"kretprobe_inet_csk_accept"`
+	KretprobeSysSocket     *ebpf.ProgramSpec `ebpf:"kretprobe_sys_socket"`
 }
 
 // bpfMapSpecs contains maps before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type bpfMapSpecs struct {
-	SocketArgs *ebpf.MapSpec `ebpf:"socket_args"`
+	ActiveAccepts *ebpf.MapSpec `ebpf:"active_accepts"`
+	Events        *ebpf.MapSpec `ebpf:"events"`
+	SocketArgs    *ebpf.MapSpec `ebpf:"socket_args"`
 }
 
 // bpfVariableSpecs contains global variables before they are loaded into the kernel.
@@ -99,11 +111,15 @@ func (o *bpfObjects) Close() error {
 //
 // It can be passed to loadBpfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type bpfMaps struct {
-	SocketArgs *ebpf.Map `ebpf:"socket_args"`
+	ActiveAccepts *ebpf.Map `ebpf:"active_accepts"`
+	Events        *ebpf.Map `ebpf:"events"`
+	SocketArgs    *ebpf.Map `ebpf:"socket_args"`
 }
 
 func (m *bpfMaps) Close() error {
 	return _BpfClose(
+		m.ActiveAccepts,
+		m.Events,
 		m.SocketArgs,
 	)
 }
@@ -118,13 +134,17 @@ type bpfVariables struct {
 //
 // It can be passed to loadBpfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type bpfPrograms struct {
-	KprobeSysSocket    *ebpf.Program `ebpf:"kprobe_sys_socket"`
-	KretprobeSysSocket *ebpf.Program `ebpf:"kretprobe_sys_socket"`
+	KprobeSysConnect       *ebpf.Program `ebpf:"kprobe_sys_connect"`
+	KprobeSysSocket        *ebpf.Program `ebpf:"kprobe_sys_socket"`
+	KretprobeInetCskAccept *ebpf.Program `ebpf:"kretprobe_inet_csk_accept"`
+	KretprobeSysSocket     *ebpf.Program `ebpf:"kretprobe_sys_socket"`
 }
 
 func (p *bpfPrograms) Close() error {
 	return _BpfClose(
+		p.KprobeSysConnect,
 		p.KprobeSysSocket,
+		p.KretprobeInetCskAccept,
 		p.KretprobeSysSocket,
 	)
 }

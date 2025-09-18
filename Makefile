@@ -4,7 +4,7 @@ shell:
 	@$(RUN) /bin/bash
 
 
-build:
+build: build-cni
 	go build \
       -ldflags="-X 'github.com/Dimss/wafie/cmd/agent/discovery/cmd.Build=$$(git rev-parse --short HEAD)'" \
       -o bin/discovery-agent cmd/agent/discovery/main.go
@@ -21,9 +21,11 @@ build:
 		-ldflags="-X 'github.com/Dimss/wafie/cmd/gwsupervisor/cmd.Build=$$(git rev-parse --short HEAD)'" \
 		-o bin/gwsupervisor cmd/gwsupervisor/main.go
 
-	go build \
-		-ldflags="-X 'github.com/containernetworking/plugins/pkg/utils/buildversion.BuildVersion=$$(git rev-parse --short HEAD)'" \
-		-o bin/wafie-cni pkg/cni/cni.go
+build-cni:
+	go build -o bin/wafie-cni cni/cmd/wafie-cni/main.go
+
+build-relay:
+	go build -o bin/wafie-relay relay/cmd/relay/main.go
 
 docker-wafie-control-plane:
 	podman buildx build -t docker.io/dimssss/wafie-control-plane --platform linux/arm64 -f dockerfiles/Dockerfile_wafie_control_plane .

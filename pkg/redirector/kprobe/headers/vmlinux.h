@@ -1,5 +1,7 @@
 #ifndef __VMLINUX_H__
 #define __VMLINUX_H__
+#define AF_INET 2
+#define AF_INET6 1
 
 #ifndef BPF_NO_PRESERVE_ACCESS_INDEX
 #pragma clang attribute push (__attribute__((preserve_access_index)), apply_to = record)
