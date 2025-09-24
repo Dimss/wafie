@@ -25,7 +25,7 @@ build-cni:
 	go build -o bin/wafie-cni cni/cmd/wafie-cni/main.go
 
 build-relay:
-	go build -o bin/wafie-relay relay/cmd/relay/main.go
+	go build -o bin/wafie-relay relay/cmd/main.go
 
 docker-wafie-control-plane:
 	podman buildx build -t docker.io/dimssss/wafie-control-plane --platform linux/arm64 -f dockerfiles/Dockerfile_wafie_control_plane .
@@ -33,6 +33,9 @@ docker-wafie-control-plane:
 
 docker-wafie-gateway:
 	podman buildx build --build-arg ARCH=arm64 --push -t dimssss/wafie-gateway --platform linux/arm64 -f dockerfiles/Dockerfile_wafie_gateway .
+
+docker-relay:
+	podman buildx build --build-arg ARCH=arm64 -t docker.io/dimssss/wafie-relay --platform linux/arm64 -f dockerfiles/relay/Dockerfile .
 
 .PHONY: proto
 proto:

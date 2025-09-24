@@ -5,13 +5,15 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"strings"
+	"syscall"
 
-	"github.com/Dimss/wafie/cni/pkg/plugin/nftables"
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
-	current "github.com/containernetworking/cni/pkg/types/100"
+	cniv1 "github.com/containernetworking/cni/pkg/types/100"
 	"github.com/containernetworking/cni/pkg/version"
+	"github.com/containernetworking/plugins/pkg/ns"
 )
 
 var logger = log.New(os.Stderr, "[wafie-cni] ", log.LstdFlags)
@@ -35,7 +37,6 @@ func parseConfig(stdin []byte) (*Config, error) {
 	}
 	logger.Println("CMD PARSE CONFIG CALLED")
 	return &conf, nil
-
 }
 
 func CmdAdd(args *skel.CmdArgs) (err error) {
@@ -43,43 +44,50 @@ func CmdAdd(args *skel.CmdArgs) (err error) {
 	if err != nil {
 		return err
 	}
-	if conf.PrevResult == nil {
-		return fmt.Errorf("must be called as chained plugin")
+	result := &cniv1.Result{}
+	if conf.PrevResult != nil {
+		prevResult, err := cniv1.GetResult(conf.PrevResult)
+		if err != nil {
+			return fmt.Errorf("failed to convert prevResult: %v", err)
+		}
+		logger.Println(result.IPs)
+		result = prevResult
+	} else {
+		result = &cniv1.Result{
+			CNIVersion: cniv1.ImplementedSpecVersion,
+		}
 	}
-
-	prevResult, err := current.GetResult(conf.PrevResult)
-	if err != nil {
-		return fmt.Errorf("failed to convert prevResult: %v", err)
+	if err := StartRelay(args.Netns); err != nil {
+		logger.Printf("failed to start relay: %v", err)
 	}
-	if len(prevResult.IPs) == 0 {
-		return fmt.Errorf("got no container IPs")
-	}
-	result := prevResult
-	logger.Println(result.IPs)
-	//args.ContainerID
 	logger.Println("Network namespace " + args.Netns)
-	file, err := os.OpenFile(args.Netns, os.O_RDONLY, 0)
-	if err != nil {
-		logger.Printf("Error opening netns file %s: %v\n", args.Netns, err)
-	}
-	defer file.Close()
-	// The file descriptor is an integer handle to the namespace.
-	fd := file.Fd()
-	logger.Printf("Successfully got file descriptor %d for namespace at %s\n", fd, args.Netns)
-	if err := nftables.Program(args.Netns); err != nil {
-		logger.Printf("Error executing nftables program: %v", err)
-		os.Exit(1)
-	}
 	logger.Println("Ifname " + args.IfName)
 	k8sArgs := parseCNIArgs(args.Args)
 	logger.Printf("Pod: %s/%s\n", k8sArgs["K8S_POD_NAMESPACE"], k8sArgs["K8S_POD_NAME"])
+
 	return types.PrintResult(result, conf.CNIVersion)
 }
+
 func CmdDel(args *skel.CmdArgs) (err error) {
 	return nil
 }
+
 func CmdCheck(args *skel.CmdArgs) (err error) {
 	return nil
+}
+
+func StartRelay(netnsPath string) error {
+	targetNs, err := ns.GetNS(netnsPath)
+	if err != nil {
+		logger.Println("error getting netns", netnsPath)
+		return err
+	}
+
+	return targetNs.Do(func(ns.NetNS) error {
+		cmd := exec.Command("/opt/cni/bin/wafie-relay")
+		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+		return cmd.Start()
+	})
 }
 
 func parseCNIArgs(args string) map[string]string {

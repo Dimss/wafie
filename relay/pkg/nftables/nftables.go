@@ -2,10 +2,7 @@ package nftables
 
 import (
 	"context"
-	"log"
-	"os"
 
-	"github.com/containernetworking/plugins/pkg/ns"
 	"sigs.k8s.io/knftables"
 )
 
@@ -14,38 +11,12 @@ const (
 	WafieGatewayPreroutingChain = "prerouting"
 )
 
-var logger = log.New(os.Stderr, "[wafie-cni] ", log.LstdFlags)
-
-func Program(netNsName string) error {
-	netNs, err := ns.GetNS(netNsName)
-	if err != nil {
-		return err
-	}
-	defer netNs.Close()
-
-	return netNs.Do(func(_ ns.NetNS) error {
-		return Apply()
-	})
-}
-
-func startRelay() error {
-	// start socat here
-	// socat TCP-LISTEN:9090,fork TCP:10.96.109.104:8888
-	return nil
-}
-
-func Apply() error {
+func Program(errChan chan error) {
 	nft, err := knftables.New(knftables.InetFamily, WafieGatewayNatTable)
 	if err != nil {
-		return nil
+		errChan <- err
+		return
 	}
-	chains, err := nft.List(context.Background(), "chains")
-	if err != nil {
-		return err
-	}
-	logger.Println("--------------- CHAINS ---------------")
-	logger.Println(chains)
-	logger.Println("--------------- END ---------------")
 
 	table := knftables.Table{
 		Family: knftables.InetFamily,
@@ -79,6 +50,6 @@ func Apply() error {
 	}
 
 	tx.Add(&rule)
-	return nft.Run(context.Background(), tx)
+	errChan <- nft.Run(context.Background(), tx)
 
 }

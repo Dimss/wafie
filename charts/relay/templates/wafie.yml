@@ -1,0 +1,52 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: wafie
+  namespace: default
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: wafie-relay
+  namespace: default
+  labels:
+    app: wafie-relay
+spec:
+  selector:
+    matchLabels:
+      app: wafie-relay
+  template:
+    metadata:
+      labels:
+        app: wafie-relay
+    spec:
+      tolerations:
+        - operator: Exists
+          effect: NoSchedule
+        - operator: Exists
+          effect: NoExecute
+      serviceAccountName: wafie
+      hostPID: true
+      containers:
+        - name: wafie-relay
+          image: docker.io/dimssss/wafie-relay:latest
+          command:
+            - /bin/bash
+            - -c
+            - sleep inf
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: procfs
+              mountPath: /host/proc
+            - name: netns
+              mountPath: /host/var/run/netns
+      terminationGracePeriodSeconds: 10
+      volumes:
+        - name: procfs
+          hostPath:
+            path: /proc
+        - name: netns
+          hostPath:
+            path: /var/run/netns

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: wafie-relay
+description: WAFie Relay - Optional component for Kubernetes native WAF and API Security
+type: application
+version: 1.0.0
+appVersion: 1.0.0

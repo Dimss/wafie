@@ -28,6 +28,7 @@ import (
 var logger = log.New(os.Stderr, "[wafie-cni] ", log.LstdFlags)
 
 func main() {
+
 	if err := runPlugin(); err != nil {
 		logger.Printf("plugin exited with error: %v", err)
 		os.Exit(1)
