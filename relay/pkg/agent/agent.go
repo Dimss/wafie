@@ -66,7 +66,7 @@ func (r *Protections) relayInstancesMgr() {
 	go func() {
 		for protections := range r.protectionsChannel {
 			for _, protection := range protections {
-				r.logger.Info(protection.Application.Name)
+				r.logger.Info(protection.Application.Ingress[0].UpstreamHost)
 			}
 		}
 	}()

@@ -1,14 +1,15 @@
 package models
 
 import (
-	"connectrpc.com/connect"
 	"errors"
 	"fmt"
+	"time"
+
+	"connectrpc.com/connect"
 	v1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	"github.com/Dimss/wafie/internal/applogger"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
-	"time"
 )
 
 type ApplicationModelSvc struct {

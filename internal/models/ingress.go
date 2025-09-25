@@ -1,14 +1,15 @@
 package models
 
 import (
-	"connectrpc.com/connect"
 	"errors"
+	"time"
+
+	"connectrpc.com/connect"
 	v1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	"github.com/Dimss/wafie/internal/applogger"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"time"
 )
 
 type IngressModelSvc struct {
@@ -37,7 +38,7 @@ type Ingress struct {
 	Host           string `gorm:"uniqueIndex:idx_ing_host"`
 	Port           string
 	Path           string
-	UpstreamHost   string
+	UpstreamHost   string `gorm:"uniqueIndex:idx_ing_upstream_host"`
 	UpstreamPort   int32
 	ApplicationID  uint `gorm:"not null"`
 	Application    Application
@@ -45,6 +46,9 @@ type Ingress struct {
 	IngressType    uint32
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+
+	// Association based on UpstreamHost
+	EndpointSlices []EndpointSlice `gorm:"foreignKey:UpstreamHost;references:UpstreamHost"`
 }
 
 func (s *IngressModelSvc) NewIngressFromRequest(req *v1.CreateIngressRequest) error {
@@ -92,6 +96,7 @@ func (i *Ingress) ToProto() *v1.Ingress {
 		IngressType:    v1.IngressType(i.IngressType),
 		ApplicationId:  int32(i.ApplicationID),
 	}
+
 }
 
 func (i *Ingress) BeforeCreate(tx *gorm.DB) error {

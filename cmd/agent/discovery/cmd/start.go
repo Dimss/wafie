@@ -2,14 +2,17 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/Dimss/wafie/internal/applogger"
+	"github.com/Dimss/wafie/pkg/agent/discovery/endpointslicescache"
 	"github.com/Dimss/wafie/pkg/agent/discovery/ingresscache"
 	hsrv "github.com/Dimss/wafie/pkg/healthchecksrv"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 func init() {
@@ -37,10 +40,14 @@ var startCmd = &cobra.Command{
 			":8081", viper.GetString("api-addr"),
 		).Serve()
 		// start ingress cache
-		cache := ingresscache.NewIngressCache(
+		ingresscache.NewIngressCache(
 			viper.GetString("ingress-type"),
-			viper.GetString("api-addr"))
-		cache.Start()
+			viper.GetString("api-addr"),
+			applogger.NewLogger(),
+		).Start()
+		// start endpoints slice cache
+		endpointslicescache.NewCache(applogger.NewLogger()).Start()
+
 		// handle interrupts
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)

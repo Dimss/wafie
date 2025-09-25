@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+
 	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -63,6 +64,7 @@ func NewDb(cfg *DbCfg) (*gorm.DB, error) {
 func migrate(db *gorm.DB) error {
 	if err := db.AutoMigrate(
 		&Application{},
+		&EndpointSlice{},
 		&Ingress{},
 		&Protection{},
 		&VirtualHost{},

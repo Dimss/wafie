@@ -21,6 +21,18 @@ build: build-cni
 		-ldflags="-X 'github.com/Dimss/wafie/cmd/gwsupervisor/cmd.Build=$$(git rev-parse --short HEAD)'" \
 		-o bin/gwsupervisor cmd/gwsupervisor/main.go
 
+build-api:
+	go build \
+      -ldflags="-X 'github.com/Dimss/wafie/cmd/apiserver/cmd.Build=$$(git rev-parse --short HEAD)'" \
+      -o bin/api-server cmd/apiserver/main.go
+
+
+build-discovery:
+	go build \
+      -ldflags="-X 'github.com/Dimss/wafie/cmd/agent/discovery/cmd.Build=$$(git rev-parse --short HEAD)'" \
+      -o bin/discovery-agent cmd/agent/discovery/main.go
+
+
 build-cni:
 	go build -o bin/wafie-cni cni/cmd/wafie-cni/main.go
 

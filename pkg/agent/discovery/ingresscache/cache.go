@@ -1,10 +1,12 @@
 package ingresscache
 
 import (
+	"net/http"
+	"time"
+
 	"connectrpc.com/connect"
 	wafiev1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	v1 "github.com/Dimss/wafie/api/gen/wafie/v1/wafiev1connect"
-	"github.com/Dimss/wafie/internal/applogger"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -12,9 +14,7 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/dynamic/dynamicinformer"
 	cache2 "k8s.io/client-go/tools/cache"
-	"net/http"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
-	"time"
 )
 
 type IngressType = string
@@ -52,13 +52,13 @@ type IngressCache struct {
 	logger           *zap.Logger
 }
 
-func NewIngressCache(ingressType IngressType, apiAddr string) *IngressCache {
+func NewIngressCache(ingressType IngressType, apiAddr string, logger *zap.Logger) *IngressCache {
 	cache := &IngressCache{
 		ingressType: ingressType,
 		notifier:    make(chan struct{}, 1000),
 		namespace:   "",
 		normalizer:  newParser(ingressType),
-		logger:      applogger.NewLogger(),
+		logger:      logger,
 		ingressSvcClient: v1.NewIngressServiceClient(
 			http.DefaultClient, apiAddr,
 		),
@@ -70,6 +70,7 @@ func (c *IngressCache) Start() {
 
 	go func() {
 		l := c.logger.With(zap.String("parser", c.ingressType))
+		l.Info("starting ingress cache listener")
 		var informerStartError error
 		for {
 			if informerStartError != nil {
@@ -88,7 +89,6 @@ func (c *IngressCache) Start() {
 				informerStartError = err
 				continue
 			}
-			// about informer period: https://groups.google.com/g/kubernetes-sig-api-machinery/c/PbSCXdLDno0
 			genericInformer, err := dynamicinformer.NewFilteredDynamicInformer(dc, c.normalizer.gvr(),
 				c.namespace, 1*time.Hour, nil, nil), nil
 			if err != nil {
