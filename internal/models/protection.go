@@ -194,6 +194,10 @@ func (s *ProtectionModelSvc) ListProtections(options *v1.ListProtectionsOptions)
 			Joins("JOIN ingresses ON ingresses.application_id = applications.id").
 			Preload("Application").
 			Preload("Application.Ingress")
+
+		if options.UpstreamHost != nil {
+			query = query.Where("ingresses.upstream_host = ?", options.UpstreamHost)
+		}
 	}
 	res := query.Find(&protections)
 	return protections, res.Error

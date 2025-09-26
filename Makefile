@@ -4,7 +4,7 @@ shell:
 	@$(RUN) /bin/bash
 
 
-build: build-cni
+build:
 	go build \
       -ldflags="-X 'github.com/Dimss/wafie/cmd/agent/discovery/cmd.Build=$$(git rev-parse --short HEAD)'" \
       -o bin/discovery-agent cmd/agent/discovery/main.go

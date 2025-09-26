@@ -1,6 +1,8 @@
 package apiserver
 
 import (
+	"net/http"
+
 	"connectrpc.com/connect"
 	"connectrpc.com/grpchealth"
 	"connectrpc.com/grpcreflect"
@@ -8,7 +10,6 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
-	"net/http"
 )
 
 type ApiServer struct {
@@ -26,7 +27,9 @@ func (s *ApiServer) Start() {
 	s.enableReflection(mux)
 	s.registerHandlers(mux)
 	go func() {
-		http.ListenAndServe(":8080", h2c.NewHandler(mux, &http2.Server{}))
+		if err := http.ListenAndServe(":8080", h2c.NewHandler(mux, &http2.Server{})); err != nil {
+			s.logger.Error("failed to start API server", zap.Error(err))
+		}
 	}()
 	s.logger.Info("server running on 0.0.0.0:8080")
 }
@@ -70,6 +73,12 @@ func (s *ApiServer) registerHandlers(mux *http.ServeMux) {
 			compress1KB,
 		),
 	)
+	mux.Handle(
+		v1.NewEndpointSliceServiceHandler(
+			NewEndpointSliceService(s.logger),
+			compress1KB,
+		),
+	)
 }
 
 func (s *ApiServer) enableReflection(mux *http.ServeMux) {
@@ -80,6 +89,7 @@ func (s *ApiServer) enableReflection(mux *http.ServeMux) {
 		v1.ProtectionServiceName,
 		v1.VirtualHostServiceName,
 		v1.DataVersionServiceName,
+		v1.EndpointSliceServiceName,
 	)
 	mux.Handle(grpcreflect.NewHandlerV1(reflector))
 	mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))

@@ -26,14 +26,13 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(func() {
-
 		config := zap.NewDevelopmentConfig()
 		config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 		config.EncoderConfig.TimeKey = "timestamp"
 		config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 		logger, _ := config.Build()
 		zap.ReplaceGlobals(logger)
-		
+
 		viper.AutomaticEnv()
 		viper.SetEnvPrefix("WAFIE_RELAY")
 		viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))

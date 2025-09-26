@@ -46,7 +46,10 @@ var startCmd = &cobra.Command{
 			applogger.NewLogger(),
 		).Start()
 		// start endpoints slice cache
-		endpointslicescache.NewCache(applogger.NewLogger()).Start()
+		endpointslicescache.NewCache(
+			viper.GetString("api-addr"),
+			applogger.NewLogger(),
+		).Start()
 
 		// handle interrupts
 		sigCh := make(chan os.Signal, 1)

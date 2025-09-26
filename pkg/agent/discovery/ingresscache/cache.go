@@ -60,7 +60,8 @@ func NewIngressCache(ingressType IngressType, apiAddr string, logger *zap.Logger
 		normalizer:  newParser(ingressType),
 		logger:      logger,
 		ingressSvcClient: v1.NewIngressServiceClient(
-			http.DefaultClient, apiAddr,
+			http.DefaultClient,
+			apiAddr,
 		),
 	}
 	return cache

@@ -79,6 +79,7 @@ message ListProtectionsOptions {
   optional ProtectionMode protection_mode = 1;
   optional ProtectionMode mod_sec_mode = 2;
   optional bool include_apps = 3;
+  optional string upstream_host = 4;
 }
 
 message ListProtectionsRequest {

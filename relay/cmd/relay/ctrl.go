@@ -6,10 +6,11 @@ import (
 	"syscall"
 
 	"github.com/Dimss/wafie/internal/applogger"
-	"github.com/Dimss/wafie/relay/pkg/agent"
+	"github.com/Dimss/wafie/relay/pkg/ctrl"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
+	discoveryv1 "k8s.io/api/discovery/v1"
 )
 
 func init() {
@@ -23,11 +24,26 @@ var controllerCmd = &cobra.Command{
 	Short: "start relay instance controller",
 	Run: func(cmd *cobra.Command, args []string) {
 		zap.S().Info("starting relay instance controller")
-		protection := agent.NewProtections(
+		epsCh := make(chan *discoveryv1.EndpointSlice, 100)
+		// start relay controller
+		ctrl.NewController(
 			viper.GetString("api-addr"),
+			epsCh,
 			applogger.NewLogger(),
-		)
-		protection.Run()
+		).Run()
+		// start relay controller endpoint slice informer
+		ctrl.NewInformer(
+			epsCh,
+			applogger.NewLogger(),
+		).Start()
+
+		//informer.NewInformer()
+
+		//protection := agent.NewProtections(
+		//	viper.GetString("api-addr"),
+		//	applogger.NewLogger(),
+		//)
+		//protection.Run()
 		controllerShutdown()
 	},
 }

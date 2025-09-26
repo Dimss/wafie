@@ -1,0 +1,25 @@
+syntax = "proto3";
+package wafie.v1;
+
+message EndpointSlice {
+  string ip = 1;
+  string pod_name = 2;
+  string namespace = 3;
+  string node_name = 4;
+  string pod_uid = 5;
+  string ports = 6;
+  string upstream_host = 7;
+}
+
+message CreateEndpointSliceRequest {
+  EndpointSlice endpoint_slice = 1;
+}
+
+message CreateEndpointSliceResponse {
+  uint32 endpoint_slice_id = 1;
+  EndpointSlice endpoint_slice = 2;
+}
+
+service EndpointSliceService {
+  rpc CreateEndpointSlice(CreateEndpointSliceRequest) returns (CreateEndpointSliceResponse);
+}

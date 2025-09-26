@@ -10,11 +10,14 @@ metadata:
   name: wafie-control-plane
 rules:
   - apiGroups: [ "" ]
-    resources: [ "services" ]
-    verbs: [ "get", "list", "update" ]
+    resources: [ "services"]
+    verbs: [ "get", "list"]
+  - apiGroups: [ "discovery.k8s.io" ]
+    resources: [ "endpointslices"]
+    verbs: [ "get", "list", "watch" ]
   - apiGroups: [ "networking.k8s.io" ]
     resources: [ "ingresses" ]
-    verbs: [ "create","get","list","update","watch","delete" ]
+    verbs: [ "get","list","watch" ]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

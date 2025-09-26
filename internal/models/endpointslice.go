@@ -3,6 +3,7 @@ package models
 import (
 	"time"
 
+	v1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	"github.com/Dimss/wafie/internal/applogger"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -17,19 +18,17 @@ type EndpointSlice struct {
 	PodUID       string
 	Ports        string `gorm:"type:text"`
 	UpstreamHost string // Foreign key field referencing Ingress.UpstreamHost
-	//Ingress      Ingress `gorm:"foreignKey:UpstreamHost;references:UpstreamHost"`
-	//Posts        []Post `gorm:"foreignKey:UserNumber;references:MemberNumber"` // Define the one-to-many relationship
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 type EndpointSliceSvc struct {
-	db      *gorm.DB
-	logger  *zap.Logger
-	Ingress Ingress
+	db            *gorm.DB
+	logger        *zap.Logger
+	EndpointSlice EndpointSlice
 }
 
-func NewEndpointSlice(tx *gorm.DB, logger *zap.Logger) *EndpointSliceSvc {
+func NewEndpointSliceModelSvc(tx *gorm.DB, logger *zap.Logger) *EndpointSliceSvc {
 	modelSvc := &EndpointSliceSvc{db: tx, logger: logger}
 
 	if tx == nil {
@@ -40,4 +39,33 @@ func NewEndpointSlice(tx *gorm.DB, logger *zap.Logger) *EndpointSliceSvc {
 	}
 
 	return modelSvc
+}
+
+func (s *EndpointSlice) ToProto() *v1.EndpointSlice {
+	return &v1.EndpointSlice{
+		Ip:           s.IP,
+		PodName:      s.PodName,
+		Namespace:    s.Namespace,
+		NodeName:     s.NodeName,
+		PodUid:       s.PodUID,
+		Ports:        s.Ports,
+		UpstreamHost: s.UpstreamHost,
+	}
+}
+
+func (s *EndpointSliceSvc) NewEndpointSliceFromRequest(req *v1.CreateEndpointSliceRequest) (*EndpointSlice, error) {
+	eps := &EndpointSlice{
+		IP:           req.EndpointSlice.Ip,
+		PodName:      req.EndpointSlice.PodName,
+		Namespace:    req.EndpointSlice.Namespace,
+		NodeName:     req.EndpointSlice.NodeName,
+		PodUID:       req.EndpointSlice.PodUid,
+		Ports:        req.EndpointSlice.Ports,
+		UpstreamHost: req.EndpointSlice.UpstreamHost,
+	}
+
+	if err := s.db.Create(eps).Error; err != nil {
+		return nil, err
+	}
+	return eps, nil
 }
