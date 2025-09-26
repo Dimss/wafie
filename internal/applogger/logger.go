@@ -12,6 +12,7 @@ func NewLogger() *zap.Logger {
 		return logger
 	}
 	config := zap.NewDevelopmentConfig()
+	//logger, err := zap.NewProduction()
 	config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	logger, err := config.Build()
 	if err != nil {
