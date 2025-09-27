@@ -82,11 +82,13 @@ func (r *Controller) getContainerId(eps *discoveryv1.EndpointSlice) []*relay.Inj
 			r.logger.Warn("pod does not contain container status", zap.String("podName", pod.Name))
 			continue
 		}
-		injectors = append(injectors,
-			relay.NewInjector(pod.Status.ContainerStatuses[0].ContainerID, *ep.NodeName),
-		)
+		i, err := relay.NewInjector(pod.Status.ContainerStatuses[0].ContainerID, *ep.NodeName, r.logger)
+		if err != nil {
+			r.logger.Error(err.Error())
+			continue
+		}
+		injectors = append(injectors, i)
 	}
-	injectors[0].GetPids()
 	return injectors
 }
 
