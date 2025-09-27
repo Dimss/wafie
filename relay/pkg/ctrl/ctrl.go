@@ -69,8 +69,8 @@ func (r *Controller) Run() {
 	}()
 }
 
-func (r *Controller) getContainerId(eps *discoveryv1.EndpointSlice) []relay.Injector {
-	var injectors []relay.Injector
+func (r *Controller) getContainerId(eps *discoveryv1.EndpointSlice) []*relay.Injector {
+	var injectors []*relay.Injector
 	podsClient := r.clientset.CoreV1().Pods(eps.Namespace)
 	for _, ep := range eps.Endpoints {
 		pod, err := podsClient.Get(context.Background(), ep.TargetRef.Name, metav1.GetOptions{})
@@ -82,11 +82,11 @@ func (r *Controller) getContainerId(eps *discoveryv1.EndpointSlice) []relay.Inje
 			r.logger.Warn("pod does not contain container status", zap.String("podName", pod.Name))
 			continue
 		}
-		injectors = append(injectors, relay.Injector{
-			ContainerId: pod.Status.ContainerStatuses[0].ContainerID,
-			NodeName:    *ep.NodeName,
-		})
+		injectors = append(injectors,
+			relay.NewInjector(pod.Status.ContainerStatuses[0].ContainerID, *ep.NodeName),
+		)
 	}
+	injectors[0].GetPids()
 	return injectors
 }
 
