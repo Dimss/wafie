@@ -26,11 +26,15 @@ var controllerCmd = &cobra.Command{
 		zap.S().Info("starting relay instance controller")
 		epsCh := make(chan *discoveryv1.EndpointSlice, 100)
 		// start relay controller
-		ctrl.NewController(
+		relayCtrl, err := ctrl.NewController(
 			viper.GetString("api-addr"),
 			epsCh,
 			applogger.NewLogger(),
-		).Run()
+		)
+		if err != nil {
+			panic(err)
+		}
+		relayCtrl.Run()
 		// start relay controller endpoint slice informer
 		ctrl.NewInformer(
 			epsCh,
