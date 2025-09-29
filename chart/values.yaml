@@ -2,6 +2,11 @@ image:
   api: dimssss/wafie-control-plane
   gateway: dimssss/wafie-gateway
 postgresql:
+  global:
+    security:
+      allowInsecureImages: true
+  image:
+    repository: bitnamilegacy/postgresql
   auth:
     postgresPassword: "cwafpg"
     username: "cwafpg"
@@ -11,4 +16,4 @@ postgresql:
     persistence:
       size: 20Gi
   volumePermissions:
-    enabled: true
+    enabled: false

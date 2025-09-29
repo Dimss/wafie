@@ -4,6 +4,7 @@ metadata:
   name: devpod-default
   namespace: default
 spec:
+  hostPID: true
   containers:
     - args:
         - -c
@@ -25,13 +26,12 @@ spec:
       imagePullPolicy: Always
       name: devpod
       securityContext:
-        runAsGroup: 0
-        runAsNonRoot: false
-        runAsUser: 0
         privileged: true
+        capabilities:
+          add: ["SYS_ADMIN"]  # Only what's needed
       volumeMounts:
-        - mountPath: /run/containerd
-          name: cri-socket
+        - name: cri-socket
+          mountPath: /run/containerd
         - name: procfs
           mountPath: /host/proc
         - name: netns
@@ -41,12 +41,10 @@ spec:
     - name: cri-socket
       hostPath:
         path: /run/containerd
-    - name: cri-socket
-      hostPath:
-        path: /run/containerd
     - name: procfs
       hostPath:
         path: /proc
     - name: netns
       hostPath:
         path: /var/run/netns
+

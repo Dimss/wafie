@@ -1,3 +1,13 @@
+helm install wp oci://registry-1.docker.io/bitnamicharts/wordpress \
+  --set image.repository=bitnamilegacy/wordpress \
+  --set mariadb.image.repository=bitnamilegacy/mariadb \
+  --set global.security.allowInsecureImages=true \
+  --set ingress.enabled=true \
+  --set ingress.hostname=wp.10.100.102.89.nip.io \
+  --set service.type=ClusterIP
+
+
+
 helm install cwaf-pg oci://registry-1.docker.io/bitnamicharts/postgresql \
   --set auth.postgresPassword=cwafpg \
   --set auth.username=cwafpg \
@@ -15,10 +25,15 @@ helm install wp oci://registry-1.docker.io/bitnamicharts/wordpress \
 
 
 
-helm install wp oci://registry-1.docker.io/bitnamicharts/wordpress \
+
+
+helm template oci://registry-1.docker.io/bitnamicharts/wordpress \
+  --set image.repository=bitnamilegacy/wordpress \
+  --set mariadb.image.repository=bitnamilegacy/mariadb \
+  --set global.security.allowInsecureImages=true \
   --set ingress.enabled=true \
   --set ingress.hostname=wp.10.100.102.89.nip.io \
-  --set service.type=ClusterIP
+  --set service.type=ClusterIP | grep image
 
 
 helm repo add runix https://helm.runix.net

@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wafie-devpod
+  labels:
+    app: wafie-devpod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wafie-devpod
+  template:
+    metadata:
+      labels:
+        app: wafie-devpod
+    spec:
+      hostPID: true
+      containers:
+        - name: wafie-devpod
+          command:
+            - /bin/bash
+            - -c
+            - /usr/bin/sshd -D
+          image: dimssss/wafie-devpod
+          imagePullPolicy: Always
+          ports:
+            - name: ssh
+              containerPort: 22
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+            privileged: true
+          volumeMounts:
+            - name: cri-socket
+              mountPath: /run/containerd
+            - name: procfs
+              mountPath: /host/proc
+            - name: netns
+              mountPath: /host/var/run/netns
+      volumes:
+        - name: cri-socket
+          hostPath:
+            path: /run/containerd
+        - name: procfs
+          hostPath:
+            path: /proc
+        - name: netns
+          hostPath:
+            path: /var/run/netns
