@@ -4,6 +4,8 @@ shell:
 	@$(RUN) /bin/bash
 
 
+
+
 build:
 	go build \
       -ldflags="-X 'github.com/Dimss/wafie/cmd/agent/discovery/cmd.Build=$$(git rev-parse --short HEAD)'" \
