@@ -15,6 +15,7 @@ spec:
         app: wafie-devpod
     spec:
       hostPID: true
+      serviceAccountName: wafie-control-plane
       containers:
         - name: wafie-devpod
           command:

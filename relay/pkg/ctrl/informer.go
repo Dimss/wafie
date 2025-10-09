@@ -91,7 +91,7 @@ func (i *Informer) Start() {
 				continue
 			}
 
-			fmt.Println("EndpointSlice informer running...")
+			i.logger.Info("EndpointSlice informer running")
 			<-ctx.Done()
 		}
 	}()

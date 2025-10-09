@@ -35,7 +35,7 @@ var controllerCmd = &cobra.Command{
 			panic(err)
 		}
 		relayCtrl.Run()
-		// start relay controller endpoint slice informer
+		// start endpoint slice informer
 		ctrl.NewInformer(
 			epsCh,
 			applogger.NewLogger(),

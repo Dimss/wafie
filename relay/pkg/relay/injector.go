@@ -5,11 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
+	"github.com/containernetworking/plugins/pkg/ns"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -18,6 +21,7 @@ import (
 
 const (
 	CRISocketPath = "unix:///run/containerd/containerd.sock" // Adjust for your specific runtime
+	NetNsBasePath = "/host/var/run/netns/"
 )
 
 type Injector struct {
@@ -31,7 +35,7 @@ type Injector struct {
 
 func NewInjector(containerId, nodeName string, logger *zap.Logger) (*Injector, error) {
 	var err error
-	i := &Injector{logger: logger}
+	i := &Injector{logger: logger, nodeName: nodeName}
 	// set container id
 	if i.containerId, err = parseContainerId(containerId); err != nil {
 		return nil, err
@@ -43,8 +47,62 @@ func NewInjector(containerId, nodeName string, logger *zap.Logger) (*Injector, e
 	if err = i.pidNsRefToNetId(); err != nil {
 		return nil, err
 	}
+	if err = i.setNamedNetNs(); err != nil {
+		return nil, err
+	}
 	logger.Debug(fmt.Sprintf("%+v", i))
 	return i, nil
+}
+
+func (i *Injector) Start() error {
+	ctx, _ := context.WithCancel(context.Background())
+	var netNs ns.NetNS
+	defer func(netNs ns.NetNS) {
+		if netNs != nil {
+			netNs.Close()
+		}
+	}(netNs)
+
+	netNs, err := ns.GetNS(i.namedNetNs)
+	if err != nil {
+		return err
+	}
+	return netNs.Do(func(_ ns.NetNS) error {
+		i.logger.Info("network namespace set", zap.String("path", i.namedNetNs))
+		cmd := exec.CommandContext(ctx,
+			"wafie-relay",
+			"start",
+			"relay-instance",
+		)
+		return cmd.Start()
+	})
+}
+
+func (i *Injector) setNamedNetNs() error {
+
+	netNsEntries, err := os.ReadDir(NetNsBasePath)
+	if err != nil {
+		return err
+	}
+	for _, entry := range netNsEntries {
+		if entry.IsDir() {
+			continue
+		}
+		fileInfo, err := os.Stat(NetNsBasePath + entry.Name())
+		if err != nil {
+			return err
+		}
+		stat, ok := fileInfo.Sys().(*syscall.Stat_t)
+		if !ok {
+			return fmt.Errorf("could not get syscall.Stat_t from FileInfo")
+		}
+		// find the NetNs mount path base on the net id (inode)
+		if stat.Ino == i.netId {
+			i.namedNetNs = NetNsBasePath + entry.Name()
+			return nil
+		}
+	}
+	return nil
 }
 
 func (i *Injector) pidNsRefToNetId() error {
@@ -107,7 +165,7 @@ func getContainerNetworkNs(containerStatusResponse *runtimeapi.ContainerStatusRe
 	var namespaces []namespace
 	err = json.Unmarshal(res, &namespaces)
 	if err != nil {
-		fmt.Printf("Failed to unmarshal namespaces: %v\n", err)
+		fmt.Printf("failed to unmarshal namespaces: %v\n", err)
 	}
 	for _, ns := range namespaces {
 		if ns.Key == "network" {

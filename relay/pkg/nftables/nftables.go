@@ -36,7 +36,7 @@ func Program(errChan chan error) {
 	tx.Add(&table)
 	tx.Add(&chain)
 
-	ingressPodIp := "10.244.0.16"
+	ingressPodIp := "10.244.0.7"
 	dstPort := "8080"
 
 	rule := knftables.Rule{

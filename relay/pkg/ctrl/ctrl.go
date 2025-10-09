@@ -16,6 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
+// Controller is responsible for manging a lifecycle (start,stop,restart) of relay instances
 type Controller struct {
 	logger              *zap.Logger
 	epsCh               chan *discoveryv1.EndpointSlice
@@ -86,6 +87,9 @@ func (r *Controller) getContainerId(eps *discoveryv1.EndpointSlice) []*relay.Inj
 		if err != nil {
 			r.logger.Error(err.Error())
 			continue
+		}
+		if err := i.Start(); err != nil {
+			r.logger.Error(err.Error())
 		}
 		injectors = append(injectors, i)
 	}

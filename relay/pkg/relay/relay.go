@@ -17,7 +17,7 @@ type Relay struct {
 
 func New(errChan chan error) *Relay {
 	ctx, cancel := context.WithCancel(context.Background())
-	cmd := exec.CommandContext(ctx, "socat", "-dddd", "TCP-LISTEN:9090,fork", "TCP:10.96.109.104:8888")
+	cmd := exec.CommandContext(ctx, "socat", "-dddd", "TCP-LISTEN:9090,fork", "TCP:10.244.0.12:8888")
 	return &Relay{
 		cmd:     cmd,
 		cancel:  cancel,
