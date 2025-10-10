@@ -44,12 +44,12 @@ func NewController(apiAddr string, epsCh chan *discoveryv1.EndpointSlice, logger
 	}, nil
 }
 
-func (r *Controller) Run() {
+func (c *Controller) Run() {
 	go func() {
 		{
 			for {
-				eps := <-r.epsCh
-				l := r.logger.With(zap.String("endpointSliceName", eps.Name))
+				eps := <-c.epsCh
+				l := c.logger.With(zap.String("endpointSliceName", eps.Name))
 				l.Debug("received endpoint slice")
 				// get upstream host from endpoint slice
 				upstreamHost := upstreamHostFromEndpointSlice(eps)
@@ -58,46 +58,42 @@ func (r *Controller) Run() {
 					continue
 				}
 				// check if protection enabled for given upstream host
-				if !r.protectionRequired(upstreamHost) {
+				if !c.protectionRequired(upstreamHost) {
 					l.Debug("upstream host protection is off")
 					continue
 				}
-				// get container id for protection enabled upstream host
-				r.getContainerId(eps)
-
+				// inject relay instance
+				c.injectRelayInstance(eps)
 			}
 		}
 	}()
 }
 
-func (r *Controller) getContainerId(eps *discoveryv1.EndpointSlice) []*relay.Injector {
-	var injectors []*relay.Injector
-	podsClient := r.clientset.CoreV1().Pods(eps.Namespace)
+func (c *Controller) injectRelayInstance(eps *discoveryv1.EndpointSlice) {
+	podsClient := c.clientset.CoreV1().Pods(eps.Namespace)
 	for _, ep := range eps.Endpoints {
 		pod, err := podsClient.Get(context.Background(), ep.TargetRef.Name, metav1.GetOptions{})
 		if err != nil {
-			r.logger.Error(err.Error())
+			c.logger.Error(err.Error())
 			continue
 		}
 		if len(pod.Status.ContainerStatuses) == 0 {
-			r.logger.Warn("pod does not contain container status", zap.String("podName", pod.Name))
+			c.logger.Warn("pod does not contain container status", zap.String("podName", pod.Name))
 			continue
 		}
-		i, err := relay.NewInjector(pod.Status.ContainerStatuses[0].ContainerID, *ep.NodeName, r.logger)
+		i, err := relay.NewInjector(pod.Status.ContainerStatuses[0].ContainerID, *ep.NodeName, c.logger)
 		if err != nil {
-			r.logger.Error(err.Error())
+			c.logger.Error(err.Error())
 			continue
 		}
 		if err := i.Start(); err != nil {
-			r.logger.Error(err.Error())
+			c.logger.Error(err.Error())
 		}
-		injectors = append(injectors, i)
 	}
-	return injectors
 }
 
-func (r *Controller) protectionRequired(upstreamHost string) bool {
-	l := r.logger.With(zap.String("upstreamHost", upstreamHost))
+func (c *Controller) protectionRequired(upstreamHost string) bool {
+	l := c.logger.With(zap.String("upstreamHost", upstreamHost))
 	includeApps := true
 	modeOn := wafiev1.ProtectionMode_PROTECTION_MODE_ON
 	req := connect.NewRequest(&wafiev1.ListProtectionsRequest{
@@ -108,7 +104,7 @@ func (r *Controller) protectionRequired(upstreamHost string) bool {
 			UpstreamHost:   &upstreamHost,
 		},
 	})
-	protections, err := r.protectionSvcClient.ListProtections(context.Background(), req)
+	protections, err := c.protectionSvcClient.ListProtections(context.Background(), req)
 	if err != nil {
 		l.Error(fmt.Sprintf("failed to list protections: %v", err))
 		return false

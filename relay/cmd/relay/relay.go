@@ -31,37 +31,11 @@ var relayCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		errChan := make(chan error)
 		relay := relay.New(errChan)
-		//var netNs ns.NetNS
-		//defer func(netNs ns.NetNS) {
-		//	if netNs != nil {
-		//		netNs.Close()
-		//	}
-		//}(netNs)
-		//var err error
-		//run := func() {
 		// Program NFTables
 		go nftables.Program(errChan)
 		// Start TCP relay
 		go relay.Run()
-		//}
-		// if netns not set, exit with error
-		//netNsPath := viper.GetString("netns")
-		//if netNsPath == "" {
-		//	log.Fatal("network namespace not set")
-		//}
-		//go func(netNs ns.NetNS) {
-		//	// netns is set, enter the network namespace
-		//	netNs, err = ns.GetNS(viper.GetString("netns"))
-		//	if err != nil {
-		//		errChan <- err
-		//	}
-		//	_ = netNs.Do(func(_ ns.NetNS) error {
-		//		log.Printf("network namespace set: %s\n", viper.GetString("netns"))
-		//		run()
-		//		return nil
-		//	})
-		//}(netNs)
-
+		// gracefully wait for shutdown
 		shutdown(relay, errChan)
 	},
 }

@@ -54,6 +54,8 @@ func NewInjector(containerId, nodeName string, logger *zap.Logger) (*Injector, e
 	return i, nil
 }
 
+// Start idempotent method, will do nothing if instance already injected and running
+// otherwise will clean up previous instance and start a new one
 func (i *Injector) Start() error {
 	ctx, _ := context.WithCancel(context.Background())
 	var netNs ns.NetNS
