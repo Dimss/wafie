@@ -4,38 +4,47 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
+	"connectrpc.com/connect"
+	healthv1 "github.com/Dimss/wafie/api/gen/grpc/health/v1"
+	"github.com/Dimss/wafie/api/gen/grpc/health/v1/healthv1connect"
 	"github.com/containernetworking/plugins/pkg/ns"
 	"go.uber.org/zap"
+	"golang.org/x/sys/unix"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1"
 )
 
 const (
-	CRISocketPath = "unix:///run/containerd/containerd.sock" // Adjust for your specific runtime
-	NetNsBasePath = "/host/var/run/netns/"
+	CRISocketPath       = "unix:///run/containerd/containerd.sock" // Adjust for your specific runtime
+	NetNsBasePath       = "/host/var/run/netns/"
+	HealthCheckEndpoint = "http://127.0.0.1:8081"
 )
 
 type Injector struct {
-	containerId string
-	nodeName    string
-	pidNsRef    string // i.e /proc/2871780/ns/net
-	netId       uint64 // net ns inode
-	namedNetNs  string // i.e
-	logger      *zap.Logger
+	containerId     string
+	nodeName        string
+	pidNsRef        string // i.e /proc/2871780/ns/net
+	netId           uint64 // net ns inode
+	namedNetNs      string // i.e
+	logger          *zap.Logger
+	healthCheckAddr string
 }
 
 func NewInjector(containerId, nodeName string, logger *zap.Logger) (*Injector, error) {
 	var err error
-	i := &Injector{logger: logger, nodeName: nodeName}
+	i := &Injector{logger: logger, nodeName: nodeName, healthCheckAddr: HealthCheckEndpoint}
 	// set container id
 	if i.containerId, err = parseContainerId(containerId); err != nil {
 		return nil, err
@@ -57,6 +66,12 @@ func NewInjector(containerId, nodeName string, logger *zap.Logger) (*Injector, e
 // Start idempotent method, will do nothing if instance already injected and running
 // otherwise will clean up previous instance and start a new one
 func (i *Injector) Start() error {
+	if i.relayRunning() {
+		i.logger.Info("relay running, no need to start",
+			zap.String("containerId", i.containerId),
+			zap.String("netns", i.namedNetNs))
+		return nil
+	}
 	ctx, _ := context.WithCancel(context.Background())
 	var netNs ns.NetNS
 	defer func(netNs ns.NetNS) {
@@ -78,6 +93,56 @@ func (i *Injector) Start() error {
 		)
 		return cmd.Start()
 	})
+}
+
+func (i *Injector) namespacedHttpClient() *http.Client {
+	dialer := &net.Dialer{}
+	return &http.Client{
+		Transport: &http.Transport{
+			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				runtime.LockOSThread()
+				defer runtime.UnlockOSThread()
+				// Save current namespace (optional but safer)
+				currentNS, err := os.Open("/proc/self/ns/net")
+				if err != nil {
+					return nil, err
+				}
+				defer currentNS.Close()
+				// Switch to target namespace
+				nsFile, err := os.Open(i.pidNsRef)
+				if err != nil {
+					return nil, err
+				}
+				defer nsFile.Close()
+				err = unix.Setns(int(nsFile.Fd()), unix.CLONE_NEWNET)
+				if err != nil {
+					return nil, err
+				}
+				// Restore original namespace when done
+				defer unix.Setns(int(currentNS.Fd()), unix.CLONE_NEWNET)
+				return dialer.DialContext(ctx, network, addr)
+			},
+		},
+	}
+}
+
+func (i *Injector) relayRunning() (isRunning bool) {
+	relayHealthCheck := healthv1connect.NewHealthClient(i.namespacedHttpClient(), i.healthCheckAddr)
+	resp, err := relayHealthCheck.Check(context.Background(), connect.NewRequest(&healthv1.HealthCheckRequest{}))
+	// if relay no running, expecting to get CodeUnavailable (ECONNREFUSED)
+	if connect.CodeOf(err) == connect.CodeUnavailable {
+		return false
+	}
+	// TODO: need a way to monitor an errors and reactively fix them
+	// in case of any error do nothing, i.e return true
+	if err != nil {
+		i.logger.Error("health check failed", zap.Error(err))
+		return true
+	}
+	if resp.Msg.GetStatus() == healthv1.HealthCheckResponse_SERVING {
+		return true
+	}
+	return false
 }
 
 func (i *Injector) setNamedNetNs() error {
@@ -164,6 +229,7 @@ func getContainerNetworkNs(containerStatusResponse *runtimeapi.ContainerStatusRe
 		Key  string `json:"type"`
 		Path string `json:"path,omitempty"`
 	}
+
 	var namespaces []namespace
 	err = json.Unmarshal(res, &namespaces)
 	if err != nil {

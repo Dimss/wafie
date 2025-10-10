@@ -6,7 +6,7 @@ import (
 	"syscall"
 
 	"github.com/Dimss/wafie/internal/applogger"
-	"github.com/Dimss/wafie/relay/pkg/ctrl"
+	"github.com/Dimss/wafie/relay/pkg/control"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -26,7 +26,7 @@ var controllerCmd = &cobra.Command{
 		zap.S().Info("starting relay instance controller")
 		epsCh := make(chan *discoveryv1.EndpointSlice, 100)
 		// start relay controller
-		relayCtrl, err := ctrl.NewController(
+		relayCtrl, err := control.NewController(
 			viper.GetString("api-addr"),
 			epsCh,
 			applogger.NewLogger(),
@@ -36,7 +36,7 @@ var controllerCmd = &cobra.Command{
 		}
 		relayCtrl.Run()
 		// start endpoint slice informer
-		ctrl.NewInformer(
+		control.NewInformer(
 			epsCh,
 			applogger.NewLogger(),
 		).Start()

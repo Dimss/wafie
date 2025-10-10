@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/Dimss/wafie/relay/pkg/healthchecksrv"
 	"github.com/Dimss/wafie/relay/pkg/nftables"
 	"github.com/Dimss/wafie/relay/pkg/relay"
 	"github.com/spf13/cobra"
@@ -31,6 +32,10 @@ var relayCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		errChan := make(chan error)
 		relay := relay.New(errChan)
+		// start health check server
+		healthchecksrv.
+			NewServer("localhost:8081").
+			Serve()
 		// Program NFTables
 		go nftables.Program(errChan)
 		// Start TCP relay
