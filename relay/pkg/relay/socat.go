@@ -19,7 +19,7 @@ func NewSocat(errChan chan error) *Socat {
 	ctx, cancel := context.WithCancel(context.Background())
 	cmd := exec.CommandContext(ctx,
 		"socat",
-		"-dd",
+		"-d",
 		"TCP-LISTEN:9090,reuseaddr,fork,backlog=2048,rcvbuf=262144,sndbuf=262144,keepalive,nodelay,quickack",
 		"TCP:10.244.0.12:8888,rcvbuf=262144,sndbuf=262144,keepalive,nodelay,quickack,connect-timeout=3")
 	return &Socat{
@@ -29,7 +29,7 @@ func NewSocat(errChan chan error) *Socat {
 	}
 }
 
-func (r *Socat) Run() {
+func (r *Socat) Start() {
 	r.setupLogs()
 	if err := r.cmd.Start(); err != nil {
 		log.Printf("failed to start command: %v\n", err)
