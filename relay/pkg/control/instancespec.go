@@ -1,4 +1,4 @@
-package relay
+package control
 
 import (
 	"context"
@@ -18,6 +18,8 @@ import (
 	"connectrpc.com/connect"
 	healthv1 "github.com/Dimss/wafie/api/gen/grpc/health/v1"
 	"github.com/Dimss/wafie/api/gen/grpc/health/v1/healthv1connect"
+	wafiev1 "github.com/Dimss/wafie/api/gen/wafie/v1"
+	"github.com/Dimss/wafie/api/gen/wafie/v1/wafiev1connect"
 	"github.com/containernetworking/plugins/pkg/ns"
 	"go.uber.org/zap"
 	"golang.org/x/sys/unix"
@@ -27,24 +29,24 @@ import (
 )
 
 const (
-	CRISocketPath       = "unix:///run/containerd/containerd.sock" // Adjust for your specific runtime
-	NetNsBasePath       = "/host/var/run/netns/"
-	HealthCheckEndpoint = "http://127.0.0.1:8081"
+	CRISocketPath   = "unix:///run/containerd/containerd.sock" // Adjust for your specific runtime
+	NetNsBasePath   = "/host/var/run/netns/"
+	InstanceApiAddr = "http://127.0.0.1:8081"
 )
 
-type Injector struct {
-	containerId     string
-	nodeName        string
-	pidNsRef        string // i.e /proc/2871780/ns/net
-	netId           uint64 // net ns inode
-	namedNetNs      string // i.e
-	logger          *zap.Logger
-	healthCheckAddr string
+type RelayInstanceSpec struct {
+	containerId string
+	nodeName    string
+	pidNsRef    string // i.e /proc/2871780/ns/net
+	netId       uint64 // net ns inode
+	namedNetNs  string // i.e /host/var/run/netns/cni-52d62ed1-ad22-d5fa-332e-21b9d0e82250
+	logger      *zap.Logger
+	apiAddr     string
 }
 
-func NewInjector(containerId, nodeName string, logger *zap.Logger) (*Injector, error) {
+func NewRelayInstanceSpec(containerId, nodeName string, logger *zap.Logger) (*RelayInstanceSpec, error) {
 	var err error
-	i := &Injector{logger: logger, nodeName: nodeName, healthCheckAddr: HealthCheckEndpoint}
+	i := &RelayInstanceSpec{logger: logger, nodeName: nodeName, apiAddr: InstanceApiAddr}
 	// set container id
 	if i.containerId, err = parseContainerId(containerId); err != nil {
 		return nil, err
@@ -59,20 +61,35 @@ func NewInjector(containerId, nodeName string, logger *zap.Logger) (*Injector, e
 	if err = i.setNamedNetNs(); err != nil {
 		return nil, err
 	}
-	logger.Debug(fmt.Sprintf("%+v", i))
+	i.logger = logger.With(
+		zap.String("containerId", containerId),
+		zap.String("nodeName", nodeName),
+		zap.String("netns", i.namedNetNs),
+	)
+	i.logger.Debug(fmt.Sprintf("%+v", i))
 	return i, nil
+}
+
+func (s *RelayInstanceSpec) Stop() error {
+	if !s.relayRunning() {
+		return nil
+	}
+	_, err := wafiev1connect.NewRelayServiceClient(s.namespacedHttpClient(), s.apiAddr).
+		StopRelay(context.Background(), connect.NewRequest(&wafiev1.StopRelayRequest{}))
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // Start idempotent method, will do nothing if instance already injected and running
 // otherwise will clean up previous instance and start a new one
-func (i *Injector) Start() error {
-	if i.relayRunning() {
-		i.logger.Info("relay running, no need to start",
-			zap.String("containerId", i.containerId),
-			zap.String("netns", i.namedNetNs))
+func (s *RelayInstanceSpec) Start() error {
+	if s.relayRunning() {
+		s.logger.Info("relay running, no need to start")
 		return nil
 	}
-	ctx, _ := context.WithCancel(context.Background())
+	//ctx, _ := context.WithCancel(context.Background())
 	var netNs ns.NetNS
 	defer func(netNs ns.NetNS) {
 		if netNs != nil {
@@ -80,22 +97,22 @@ func (i *Injector) Start() error {
 		}
 	}(netNs)
 
-	netNs, err := ns.GetNS(i.namedNetNs)
+	netNs, err := ns.GetNS(s.namedNetNs)
 	if err != nil {
 		return err
 	}
 	return netNs.Do(func(_ ns.NetNS) error {
-		i.logger.Info("network namespace set", zap.String("path", i.namedNetNs))
-		cmd := exec.CommandContext(ctx,
-			"wafie-relay",
-			"start",
-			"relay-instance",
+		s.logger.Info("network namespace set", zap.String("path", s.namedNetNs))
+		cmd := exec.Command(
+			"/usr/local/bin/wafie-relay",
+			"start", "relay-instance",
 		)
+		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 		return cmd.Start()
 	})
 }
 
-func (i *Injector) namespacedHttpClient() *http.Client {
+func (s *RelayInstanceSpec) namespacedHttpClient() *http.Client {
 	dialer := &net.Dialer{}
 	return &http.Client{
 		Transport: &http.Transport{
@@ -109,7 +126,7 @@ func (i *Injector) namespacedHttpClient() *http.Client {
 				}
 				defer currentNS.Close()
 				// Switch to target namespace
-				nsFile, err := os.Open(i.pidNsRef)
+				nsFile, err := os.Open(s.pidNsRef)
 				if err != nil {
 					return nil, err
 				}
@@ -126,17 +143,17 @@ func (i *Injector) namespacedHttpClient() *http.Client {
 	}
 }
 
-func (i *Injector) relayRunning() (isRunning bool) {
-	relayHealthCheck := healthv1connect.NewHealthClient(i.namespacedHttpClient(), i.healthCheckAddr)
+func (s *RelayInstanceSpec) relayRunning() (isRunning bool) {
+	relayHealthCheck := healthv1connect.NewHealthClient(s.namespacedHttpClient(), s.apiAddr)
 	resp, err := relayHealthCheck.Check(context.Background(), connect.NewRequest(&healthv1.HealthCheckRequest{}))
 	// if relay no running, expecting to get CodeUnavailable (ECONNREFUSED)
 	if connect.CodeOf(err) == connect.CodeUnavailable {
 		return false
 	}
 	// TODO: need a way to monitor an errors and reactively fix them
-	// in case of any error do nothing, i.e return true
+	// in case of any error do nothing, s.e return true
 	if err != nil {
-		i.logger.Error("health check failed", zap.Error(err))
+		s.logger.Error("health check failed", zap.Error(err))
 		return true
 	}
 	if resp.Msg.GetStatus() == healthv1.HealthCheckResponse_SERVING {
@@ -145,7 +162,7 @@ func (i *Injector) relayRunning() (isRunning bool) {
 	return false
 }
 
-func (i *Injector) setNamedNetNs() error {
+func (s *RelayInstanceSpec) setNamedNetNs() error {
 
 	netNsEntries, err := os.ReadDir(NetNsBasePath)
 	if err != nil {
@@ -164,16 +181,16 @@ func (i *Injector) setNamedNetNs() error {
 			return fmt.Errorf("could not get syscall.Stat_t from FileInfo")
 		}
 		// find the NetNs mount path base on the net id (inode)
-		if stat.Ino == i.netId {
-			i.namedNetNs = NetNsBasePath + entry.Name()
+		if stat.Ino == s.netId {
+			s.namedNetNs = NetNsBasePath + entry.Name()
 			return nil
 		}
 	}
 	return nil
 }
 
-func (i *Injector) pidNsRefToNetId() error {
-	entry, err := os.Readlink(i.pidNsRef)
+func (s *RelayInstanceSpec) pidNsRefToNetId() error {
+	entry, err := os.Readlink(s.pidNsRef)
 	if err != nil {
 		return err
 	}
@@ -182,11 +199,11 @@ func (i *Injector) pidNsRefToNetId() error {
 		return err
 	}
 	res := strings.Join(r.FindAllString(entry, -1), "")
-	i.netId, err = strconv.ParseUint(res, 10, 64)
+	s.netId, err = strconv.ParseUint(res, 10, 64)
 	return err
 }
 
-func (i *Injector) setPidNsRef() error {
+func (s *RelayInstanceSpec) setPidNsRef() error {
 	conn, err := grpc.NewClient(
 		CRISocketPath,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -199,14 +216,14 @@ func (i *Injector) setPidNsRef() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	request := &runtimeapi.ContainerStatusRequest{
-		ContainerId: i.containerId,
+		ContainerId: s.containerId,
 		Verbose:     true,
 	}
 	response, err := client.ContainerStatus(ctx, request)
 	if err != nil {
 		return fmt.Errorf("Failed to get container status: %v\n", err)
 	}
-	if i.pidNsRef, err = getContainerNetworkNs(response); err != nil {
+	if s.pidNsRef, err = getContainerNetworkNs(response); err != nil {
 		return err
 	}
 	return nil

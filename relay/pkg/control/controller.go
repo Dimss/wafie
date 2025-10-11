@@ -8,7 +8,6 @@ import (
 	"connectrpc.com/connect"
 	wafiev1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	v1 "github.com/Dimss/wafie/api/gen/wafie/v1/wafiev1connect"
-	"github.com/Dimss/wafie/relay/pkg/relay"
 	"go.uber.org/zap"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -57,19 +56,21 @@ func (c *Controller) Run() {
 					l.Debug("upstream host is empty")
 					continue
 				}
-				// check if protection enabled for given upstream host
-				if !c.protectionRequired(upstreamHost) {
-					l.Debug("upstream host protection is off")
-					continue
+				specs := c.getRelayInstanceSpecs(eps)
+				switch c.appProtectionMode(upstreamHost) {
+				case wafiev1.ProtectionMode_PROTECTION_MODE_UNSPECIFIED:
+					l.Debug("app protection mode unspecified, skipping")
+				case wafiev1.ProtectionMode_PROTECTION_MODE_ON:
+					c.deployRelayInstances(specs)
+				case wafiev1.ProtectionMode_PROTECTION_MODE_OFF:
+					c.destroyRelayInstances(specs)
 				}
-				// inject relay instance
-				c.injectRelayInstance(eps)
 			}
 		}
 	}()
 }
 
-func (c *Controller) injectRelayInstance(eps *discoveryv1.EndpointSlice) {
+func (c *Controller) getRelayInstanceSpecs(eps *discoveryv1.EndpointSlice) (rInstances []*RelayInstanceSpec) {
 	podsClient := c.clientset.CoreV1().Pods(eps.Namespace)
 	for _, ep := range eps.Endpoints {
 		pod, err := podsClient.Get(context.Background(), ep.TargetRef.Name, metav1.GetOptions{})
@@ -81,40 +82,54 @@ func (c *Controller) injectRelayInstance(eps *discoveryv1.EndpointSlice) {
 			c.logger.Warn("pod does not contain container status", zap.String("podName", pod.Name))
 			continue
 		}
-		i, err := relay.NewInjector(pod.Status.ContainerStatuses[0].ContainerID, *ep.NodeName, c.logger)
+		i, err := NewRelayInstanceSpec(pod.Status.ContainerStatuses[0].ContainerID, *ep.NodeName, c.logger)
 		if err != nil {
 			c.logger.Error(err.Error())
 			continue
 		}
-		if err := i.Start(); err != nil {
+		rInstances = append(rInstances, i)
+	}
+	return rInstances
+}
+
+func (c *Controller) destroyRelayInstances(relayInstanceSpecs []*RelayInstanceSpec) {
+	for _, spec := range relayInstanceSpecs {
+		if err := spec.Stop(); err != nil {
 			c.logger.Error(err.Error())
 		}
 	}
 }
 
-func (c *Controller) protectionRequired(upstreamHost string) bool {
+func (c *Controller) deployRelayInstances(relayInstanceSpecs []*RelayInstanceSpec) {
+	for _, spec := range relayInstanceSpecs {
+		if err := spec.Start(); err != nil {
+			c.logger.Error(err.Error())
+		}
+	}
+}
+
+func (c *Controller) appProtectionMode(upstreamHost string) wafiev1.ProtectionMode {
 	l := c.logger.With(zap.String("upstreamHost", upstreamHost))
 	includeApps := true
-	modeOn := wafiev1.ProtectionMode_PROTECTION_MODE_ON
 	req := connect.NewRequest(&wafiev1.ListProtectionsRequest{
 		Options: &wafiev1.ListProtectionsOptions{
-			ProtectionMode: &modeOn,
-			ModSecMode:     &modeOn,
-			IncludeApps:    &includeApps,
-			UpstreamHost:   &upstreamHost,
+			//ProtectionMode: &modeOn,
+			//ModSecMode:     &modeOn,
+			IncludeApps:  &includeApps,
+			UpstreamHost: &upstreamHost,
 		},
 	})
 	protections, err := c.protectionSvcClient.ListProtections(context.Background(), req)
 	if err != nil {
 		l.Error(fmt.Sprintf("failed to list protections: %v", err))
-		return false
+		return wafiev1.ProtectionMode_PROTECTION_MODE_UNSPECIFIED
 	}
 	if len(protections.Msg.Protections) == 0 {
 		l.Debug("no protections found")
-		return false
+		return wafiev1.ProtectionMode_PROTECTION_MODE_UNSPECIFIED
 	}
-	l.Debug("protection enabled, injecting relay is needed")
-	return true
+	l.Debug("protection enabled, relay injection required")
+	return protections.Msg.Protections[0].ProtectionMode
 }
 
 func upstreamHostFromEndpointSlice(eps *discoveryv1.EndpointSlice) string {

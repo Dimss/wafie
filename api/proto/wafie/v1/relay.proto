@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package wafie.v1;
+
+message StopRelayRequest{}
+message StopRelayResponse{}
+
+service RelayService {
+  rpc StopRelay(StopRelayRequest) returns (StopRelayResponse);
+}
