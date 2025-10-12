@@ -84,6 +84,7 @@ func (c *Controller) getRelayInstanceSpecs(eps *discoveryv1.EndpointSlice) (rIns
 		}
 		i, err := NewRelayInstanceSpec(pod.Status.ContainerStatuses[0].ContainerID, *ep.NodeName, c.logger)
 		if err != nil {
+			// TODO: handle an error when container not found due to running on another node
 			c.logger.Error(err.Error())
 			continue
 		}

@@ -90,8 +90,6 @@ func (i *Informer) Start() {
 				cancel()
 				continue
 			}
-
-			i.logger.Info("EndpointSlice informer running")
 			<-ctx.Done()
 		}
 	}()
