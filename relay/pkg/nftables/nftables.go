@@ -6,24 +6,53 @@ import (
 	"sigs.k8s.io/knftables"
 )
 
-const (
-	WafieGatewayNatTable        = "wafie-gateway"
-	WafieGatewayPreroutingChain = "prerouting"
+type (
+	operation string
 )
 
-func Program(errChan chan error) {
+const (
+	WafieGatewayNatTable                  = "wafie-gateway"
+	WafieGatewayPreroutingChain           = "prerouting"
+	AddOp                       operation = "add"
+	DeleteOp                    operation = "delete"
+)
+
+func Program(op operation) error {
 	nft, err := knftables.New(knftables.InetFamily, WafieGatewayNatTable)
 	if err != nil {
-		errChan <- err
-		return
+		return err
 	}
+	tx := nft.NewTransaction()
+	if op == AddOp {
+		add(tx)
+	}
+	if op == DeleteOp {
+		delete(tx)
+	}
+	return nft.Run(context.Background(), tx)
+}
 
-	table := knftables.Table{
+func add(tx *knftables.Transaction) {
+	tx.Add(table())
+	tx.Add(chain())
+	tx.Add(rule())
+}
+
+func delete(tx *knftables.Transaction) {
+	//tx.Delete(rule())
+	//tx.Delete(chain())
+	tx.Delete(table())
+}
+
+func table() *knftables.Table {
+	return &knftables.Table{
 		Family: knftables.InetFamily,
 		Name:   WafieGatewayNatTable,
 	}
+}
 
-	chain := knftables.Chain{
+func chain() *knftables.Chain {
+	return &knftables.Chain{
 		Name:     WafieGatewayPreroutingChain,
 		Table:    WafieGatewayNatTable,
 		Family:   knftables.InetFamily,
@@ -31,15 +60,12 @@ func Program(errChan chan error) {
 		Hook:     knftables.PtrTo(knftables.PreroutingHook),
 		Priority: knftables.PtrTo(knftables.DNATPriority),
 	}
+}
 
-	tx := nft.NewTransaction()
-	tx.Add(&table)
-	tx.Add(&chain)
-
+func rule() *knftables.Rule {
 	ingressPodIp := "10.244.0.7"
 	dstPort := "8080"
-
-	rule := knftables.Rule{
+	return &knftables.Rule{
 		Table: WafieGatewayNatTable,
 		Chain: WafieGatewayPreroutingChain,
 		Rule: knftables.Concat(
@@ -48,8 +74,4 @@ func Program(errChan chan error) {
 			"redirect to :9090",
 		),
 	}
-
-	tx.Add(&rule)
-	errChan <- nft.Run(context.Background(), tx)
-
 }

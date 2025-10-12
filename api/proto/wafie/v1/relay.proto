@@ -2,9 +2,17 @@ syntax = "proto3";
 
 package wafie.v1;
 
+message StartRelayRequest{}
+message StartRelayResponse{
+  string tcp_relay_status = 1;
+  string nft_status = 2;
+}
+
 message StopRelayRequest{}
 message StopRelayResponse{}
 
+
 service RelayService {
+  rpc StartRelay(StartRelayRequest) returns (StartRelayResponse);
   rpc StopRelay(StopRelayRequest) returns (StopRelayResponse);
 }

@@ -7,16 +7,17 @@ import (
 
 	"github.com/Dimss/wafie/internal/applogger"
 	"github.com/Dimss/wafie/relay/pkg/apisrv"
-	"github.com/Dimss/wafie/relay/pkg/nftables"
 	"github.com/Dimss/wafie/relay/pkg/relay"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"go.uber.org/zap"
 )
 
 var logger *zap.Logger
 
 func init() {
-	logger = applogger.NewLoggerToFile()
+	relayCmd.PersistentFlags().BoolP("logs-to-stdout", "l", false, "Print logs to stdout instead of file")
+	viper.BindPFlag("logs-to-stdout", relayCmd.PersistentFlags().Lookup("logs-to-stdout"))
 	startCmd.AddCommand(relayCmd)
 }
 
@@ -24,22 +25,30 @@ var relayCmd = &cobra.Command{
 	Use:   "relay-instance",
 	Short: "start wafie relay instance",
 	Run: func(cmd *cobra.Command, args []string) {
+		logger := initLogger()
 		errChan := make(chan error)
 		socatRelay := relay.NewSocat(errChan)
 		// start relay api server
 		apisrv.
 			NewServer("localhost:8081", logger, socatRelay).
-			Serve()
-		// Program NFTables
-		go nftables.Program(errChan)
-		// Start TCP relay
-		go socatRelay.Start()
+			Start()
+		//// Program NFTables
+		//go nftables.Program(errChan)
+		//// Start TCP relay
+		//go socatRelay.Start()
 		// gracefully wait for shutdown
-		shutdown(socatRelay, errChan)
+		shutdown(socatRelay)
 	},
 }
 
-func shutdown(s relay.Relay, errChan chan error) {
+func initLogger() *zap.Logger {
+	if viper.GetBool("logs-to-stdout") {
+		return applogger.NewLogger()
+	}
+	return applogger.NewLoggerToFile()
+}
+
+func shutdown(s relay.Relay) {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	gracefullyExit := func(s relay.Relay, sig os.Signal) {
@@ -52,11 +61,11 @@ func shutdown(s relay.Relay, errChan chan error) {
 	}
 	for {
 		select {
-		case err := <-errChan:
-			if err != nil {
-				logger.Error("received an error on errChan", zap.Error(err))
-				gracefullyExit(s, os.Signal(syscall.SIGABRT))
-			}
+		//case err := <-errChan:
+		//	if err != nil {
+		//		logger.Error("received an error on errChan", zap.Error(err))
+		//		gracefullyExit(s, os.Signal(syscall.SIGTERM))
+		//	}
 		case sig := <-sigCh:
 			gracefullyExit(s, sig)
 		}
