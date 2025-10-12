@@ -47,7 +47,7 @@ var controllerCmd = &cobra.Command{
 		//	viper.GetString("api-addr"),
 		//	applogger.NewLogger(),
 		//)
-		//protection.Start()
+		//protection.StartSpec()
 		controllerShutdown()
 	},
 }

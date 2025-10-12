@@ -18,7 +18,7 @@ func init() {
 
 var startCmd = &cobra.Command{
 	Use:   "start",
-	Short: "Start Proxy Control Plane gRPC server",
+	Short: "StartSpec Proxy Control Plane gRPC server",
 	Run: func(cmd *cobra.Command, args []string) {
 		logger := applogger.NewLogger()
 		defer logger.Sync()

@@ -143,7 +143,7 @@ func (c *Cache) Start() {
 				cancel()
 				continue
 			}
-			// Start informer
+			// StartSpec informer
 			informerFactory.Start(ctx.Done())
 
 			// Wait for cache sync

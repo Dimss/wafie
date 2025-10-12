@@ -31,11 +31,6 @@ var relayCmd = &cobra.Command{
 		apisrv.
 			NewServer("localhost:8081", logger, socatRelay).
 			Start()
-		//// Program NFTables
-		//go nftables.Program(errChan)
-		//// Start TCP relay
-		//go socatRelay.Start()
-		// gracefully wait for shutdown
 		shutdown(socatRelay)
 	},
 }

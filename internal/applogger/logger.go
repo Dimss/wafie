@@ -24,7 +24,7 @@ func NewLogger() *zap.Logger {
 
 func NewLoggerToFile() *zap.Logger {
 	rotatingWriter := &lumberjack.Logger{
-		Filename:   "relay.log",
+		Filename:   "/tmp/relay.log",
 		MaxSize:    5,
 		MaxBackups: 1,
 		MaxAge:     3,

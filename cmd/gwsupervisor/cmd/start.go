@@ -23,7 +23,7 @@ func init() {
 
 var startCmd = &cobra.Command{
 	Use:   "start",
-	Short: "Start WAFie Gateway Supervisor",
+	Short: "StartSpec WAFie Gateway Supervisor",
 	Run: func(cmd *cobra.Command, args []string) {
 		logger := applogger.NewLogger()
 		gwsupervisor.

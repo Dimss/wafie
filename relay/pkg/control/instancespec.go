@@ -70,7 +70,7 @@ func NewRelayInstanceSpec(containerId, nodeName string, logger *zap.Logger) (*Re
 	return i, nil
 }
 
-func (s *RelayInstanceSpec) Stop() error {
+func (s *RelayInstanceSpec) StopSpec() error {
 	if !s.relayRunning() {
 		return nil
 	}
@@ -82,35 +82,27 @@ func (s *RelayInstanceSpec) Stop() error {
 	return nil
 }
 
-// Start idempotent method, will do nothing if instance already injected and running
-// otherwise will clean up previous instance and start a new one
-func (s *RelayInstanceSpec) Start() error {
-	if s.relayRunning() {
-		s.logger.Info("relay running, no need to start")
+func (s *RelayInstanceSpec) startRelay() error {
+	if !s.relayRunning() {
 		return nil
 	}
-
-	//ctx, _ := context.WithCancel(context.Background())
-	var netNs ns.NetNS
-	defer func(netNs ns.NetNS) {
-		if netNs != nil {
-			netNs.Close()
-		}
-	}(netNs)
-
-	netNs, err := ns.GetNS(s.namedNetNs)
+	_, err := wafiev1connect.NewRelayServiceClient(s.namespacedHttpClient(), s.apiAddr).
+		StartRelay(context.Background(), connect.NewRequest(&wafiev1.StartRelayRequest{}))
 	if err != nil {
 		return err
 	}
-	return netNs.Do(func(_ ns.NetNS) error {
-		s.logger.Info("network namespace set", zap.String("path", s.namedNetNs))
-		cmd := exec.Command(
-			"/usr/local/bin/wafie-relay",
-			"start", "relay-instance",
-		)
-		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-		return cmd.Start()
-	})
+	return nil
+}
+
+// StartSpec idempotent method, will do nothing if instance already injected and running
+// otherwise will clean up previous instance and start a new one
+func (s *RelayInstanceSpec) StartSpec() error {
+	if !s.relayRunning() {
+		if err := s.runRelayBinary(); err != nil {
+			return err
+		}
+	}
+	return s.startRelay()
 }
 
 func (s *RelayInstanceSpec) runRelayBinary() error {

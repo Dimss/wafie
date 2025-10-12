@@ -94,7 +94,7 @@ func (c *Controller) getRelayInstanceSpecs(eps *discoveryv1.EndpointSlice) (rIns
 
 func (c *Controller) destroyRelayInstances(relayInstanceSpecs []*RelayInstanceSpec) {
 	for _, spec := range relayInstanceSpecs {
-		if err := spec.Stop(); err != nil {
+		if err := spec.StopSpec(); err != nil {
 			c.logger.Error(err.Error())
 		}
 	}
@@ -102,7 +102,7 @@ func (c *Controller) destroyRelayInstances(relayInstanceSpecs []*RelayInstanceSp
 
 func (c *Controller) deployRelayInstances(relayInstanceSpecs []*RelayInstanceSpec) {
 	for _, spec := range relayInstanceSpecs {
-		if err := spec.Start(); err != nil {
+		if err := spec.StartSpec(); err != nil {
 			c.logger.Error(err.Error())
 		}
 	}

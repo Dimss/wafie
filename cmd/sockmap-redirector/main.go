@@ -11,14 +11,14 @@ func main() {
 	//if err != nil {
 	//	log.Fatalf("Failed to create sockmap manager: %v", err)
 	//}
-	//defer manager.Stop()
+	//defer manager.StopSpec()
 	//
 	//// Create context for graceful shutdown
 	//ctx, cancel := context.WithCancel(context.Background())
 	//defer cancel()
 	//
-	//// Start the manager
-	//if err := manager.Start(ctx); err != nil {
+	//// StartSpec the manager
+	//if err := manager.StartSpec(ctx); err != nil {
 	//	log.Fatalf("Failed to start sockmap manager: %v", err)
 	//}
 	//
