@@ -5,6 +5,8 @@ import (
 	"io"
 	"log"
 	"os/exec"
+
+	"go.uber.org/zap"
 )
 
 type Socat struct {
@@ -12,16 +14,16 @@ type Socat struct {
 	command string
 	args    []string
 	cancel  context.CancelFunc
-	errChan chan error
+	logger  *zap.Logger
 }
 
-func NewSocat(errChan chan error) *Socat {
-	return &Socat{errChan: errChan}
+func NewSocat(logger *zap.Logger) *Socat {
+	return &Socat{logger: logger}
 }
 
 func (r *Socat) Start() {
 	// relay already running, do nothing
-	if r.cmd != nil && r.cmd.Process != nil {
+	if r.cmd != nil && r.cmd.Process != nil && r.cmd.ProcessState == nil {
 		return
 	}
 	var ctx context.Context
@@ -35,10 +37,11 @@ func (r *Socat) Start() {
 	go func() {
 		r.setupLogs()
 		if err := r.cmd.Start(); err != nil {
-			log.Printf("failed to start command: %v\n", err)
-			r.errChan <- err
+			r.logger.Error("socat start error", zap.Error(err))
 		}
-		r.errChan <- r.cmd.Wait()
+		if err := r.cmd.Wait(); err != nil {
+			r.logger.Error("socat run error", zap.Error(err))
+		}
 	}()
 }
 
@@ -48,9 +51,7 @@ func (r *Socat) Stop() {
 	}
 }
 
-func (r *Socat) Status() {
-
-}
+func (r *Socat) Status() {}
 
 func (r *Socat) setupLogs() {
 	stdout, _ := r.cmd.StdoutPipe()

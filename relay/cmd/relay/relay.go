@@ -26,8 +26,7 @@ var relayCmd = &cobra.Command{
 	Short: "start wafie relay instance",
 	Run: func(cmd *cobra.Command, args []string) {
 		logger := initLogger()
-		errChan := make(chan error)
-		socatRelay := relay.NewSocat(errChan)
+		socatRelay := relay.NewSocat(logger)
 		// start relay api server
 		apisrv.
 			NewServer("localhost:8081", logger, socatRelay).

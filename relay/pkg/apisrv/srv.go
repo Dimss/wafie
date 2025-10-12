@@ -72,8 +72,6 @@ func (s *Server) StartRelay(
 
 func (s *Server) Check(context.Context, *grpchealth.CheckRequest) (*grpchealth.CheckResponse, error) {
 	s.logger.Debug("health check request received")
-
-	s.relay.Status()
 	return &grpchealth.CheckResponse{Status: grpchealth.StatusServing}, nil
 }
 

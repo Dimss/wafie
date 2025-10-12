@@ -89,6 +89,7 @@ func (s *RelayInstanceSpec) Start() error {
 		s.logger.Info("relay running, no need to start")
 		return nil
 	}
+
 	//ctx, _ := context.WithCancel(context.Background())
 	var netNs ns.NetNS
 	defer func(netNs ns.NetNS) {
@@ -97,6 +98,28 @@ func (s *RelayInstanceSpec) Start() error {
 		}
 	}(netNs)
 
+	netNs, err := ns.GetNS(s.namedNetNs)
+	if err != nil {
+		return err
+	}
+	return netNs.Do(func(_ ns.NetNS) error {
+		s.logger.Info("network namespace set", zap.String("path", s.namedNetNs))
+		cmd := exec.Command(
+			"/usr/local/bin/wafie-relay",
+			"start", "relay-instance",
+		)
+		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+		return cmd.Start()
+	})
+}
+
+func (s *RelayInstanceSpec) runRelayBinary() error {
+	var netNs ns.NetNS
+	defer func(netNs ns.NetNS) {
+		if netNs != nil {
+			netNs.Close()
+		}
+	}(netNs)
 	netNs, err := ns.GetNS(s.namedNetNs)
 	if err != nil {
 		return err
