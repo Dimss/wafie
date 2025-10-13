@@ -92,15 +92,17 @@ func (s *IngressModelSvc) NewIngressFromRequest(req *v1.CreateIngressRequest) er
 
 func (i *Ingress) ToProto() *v1.Ingress {
 	return &v1.Ingress{
-		Name:           i.Name,
-		Namespace:      i.Namespace,
-		Path:           i.Path,
-		Host:           i.Host,
-		UpstreamHost:   i.UpstreamHost,
-		UpstreamPort:   i.UpstreamPort,
-		RawIngressSpec: i.RawIngressSpec,
-		IngressType:    v1.IngressType(i.IngressType),
-		ApplicationId:  int32(i.ApplicationID),
+		Name:             i.Name,
+		Namespace:        i.Namespace,
+		Path:             i.Path,
+		Host:             i.Host,
+		UpstreamHost:     i.UpstreamHost,
+		UpstreamPort:     i.UpstreamPort,
+		ContainerPort:    i.ContainerPort,
+		IngressType:      v1.IngressType(i.IngressType),
+		DiscoveryMessage: i.DiscoveryMessage,
+		DiscoveryStatus:  v1.DiscoveryStatusType(i.DiscoveryStatus),
+		ApplicationId:    int32(i.ApplicationID),
 	}
 }
 
