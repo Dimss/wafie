@@ -9,6 +9,7 @@ import (
 	"github.com/Dimss/wafie/internal/applogger"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type IngressModelSvc struct {
@@ -31,20 +32,23 @@ func NewIngressModelSvc(tx *gorm.DB, logger *zap.Logger) *IngressModelSvc {
 }
 
 type Ingress struct {
-	ID             uint `gorm:"primaryKey"`
-	Name           string
-	Namespace      string
-	Host           string `gorm:"uniqueIndex:idx_ing_host"`
-	Port           string
-	Path           string
-	UpstreamHost   string `gorm:"uniqueIndex:idx_ing_upstream_host"`
-	UpstreamPort   int32
-	ApplicationID  uint `gorm:"not null"`
-	Application    Application
-	RawIngressSpec string `gorm:"type:text"`
-	IngressType    uint32
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID               uint `gorm:"primaryKey"`
+	Name             string
+	Namespace        string
+	Host             string `gorm:"uniqueIndex:idx_ing_host"`
+	Port             int32
+	Path             string
+	UpstreamHost     string `gorm:"uniqueIndex:idx_ing_upstream_host"`
+	UpstreamPort     int32
+	ContainerPort    int32
+	ApplicationID    uint `gorm:"not null"`
+	Application      Application
+	RawIngressSpec   string `gorm:"type:text"`
+	IngressType      uint32
+	DiscoveryStatus  uint32
+	DiscoveryMessage string `gorm:"type:text"`
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 
 	// Association based on UpstreamHost
 	EndpointSlices []EndpointSlice `gorm:"foreignKey:UpstreamHost;references:UpstreamHost"`
@@ -52,37 +56,43 @@ type Ingress struct {
 
 func (s *IngressModelSvc) NewIngressFromRequest(req *v1.CreateIngressRequest) error {
 	ingress := &Ingress{
-		Name:           req.Ingress.Name,
-		Namespace:      req.Ingress.Namespace,
-		Path:           req.Ingress.Path,
-		Host:           req.Ingress.Host,
-		UpstreamHost:   req.Ingress.UpstreamHost,
-		UpstreamPort:   req.Ingress.UpstreamPort,
-		RawIngressSpec: req.Ingress.RawIngressSpec,
-		IngressType:    uint32(req.Ingress.IngressType),
-		ApplicationID:  uint(req.Ingress.ApplicationId),
+		Name:             req.Ingress.Name,
+		Namespace:        req.Ingress.Namespace,
+		Path:             req.Ingress.Path,
+		Host:             req.Ingress.Host,
+		Port:             req.Ingress.Port,
+		UpstreamHost:     req.Ingress.UpstreamHost,
+		UpstreamPort:     req.Ingress.UpstreamPort,
+		ContainerPort:    req.Ingress.ContainerPort,
+		RawIngressSpec:   req.Ingress.RawIngressSpec,
+		IngressType:      uint32(req.Ingress.IngressType),
+		ApplicationID:    uint(req.Ingress.ApplicationId),
+		DiscoveryMessage: req.Ingress.DiscoveryMessage,
+		DiscoveryStatus:  uint32(req.Ingress.DiscoveryStatus),
 	}
 
-	//if res := s.db.Clauses(clause.OnConflict{
-	//	Columns:   []clause.Column{{Name: "host"}},
-	//	DoNothing: true, // Ingress object is immutable! No updates can be done after creation
-	//DoUpdates: clause.AssignmentColumns(
-	//	[]string{
-	//		//"name",
-	//		//"namespace",
-	//		//"host",
-	//		//"port",
-	//		//"path",
-	//		//"upstream_host",
-	//		//"upstream_port",
-	//	},
-	//),
-	//}).Create(ingress); res.Error != nil {
-	//	return connect.NewError(connect.CodeUnknown, res.Error)
-	//}
-	if res := s.db.Create(ingress); res.Error != nil {
+	if res := s.db.Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "host"}},
+		DoUpdates: clause.AssignmentColumns(
+			[]string{
+				"name",
+				"namespace",
+				"path",
+				"port",
+				"upstream_host",
+				"upstream_port",
+				"container_port",
+				"ingress_type",
+				"discovery_message",
+				"discovery_status",
+			},
+		),
+	}).Create(ingress); res.Error != nil {
 		return connect.NewError(connect.CodeUnknown, res.Error)
 	}
+	//if res := s.db.Create(ingress); res.Error != nil {
+	//	return connect.NewError(connect.CodeUnknown, res.Error)
+	//}
 	return nil
 }
 

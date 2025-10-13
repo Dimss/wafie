@@ -1,6 +1,7 @@
 package ingresscache
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
@@ -27,7 +28,7 @@ const (
 
 type normalizer interface {
 	gvr() schema.GroupVersionResource
-	normalize(*unstructured.Unstructured) (*wafiev1.CreateIngressRequest, error)
+	normalize(*unstructured.Unstructured) (*wafiev1.Ingress, error)
 }
 
 func newParser(ingressType IngressType) normalizer {
@@ -91,7 +92,7 @@ func (c *IngressCache) Start() {
 				continue
 			}
 			genericInformer, err := dynamicinformer.NewFilteredDynamicInformer(dc, c.normalizer.gvr(),
-				c.namespace, 1*time.Hour, nil, nil), nil
+				c.namespace, 1*time.Minute, nil, nil), nil
 			if err != nil {
 				informerStartError = err
 				continue
@@ -124,21 +125,16 @@ func (c *IngressCache) Start() {
 }
 
 func (c *IngressCache) createIngress(obj *unstructured.Unstructured) error {
-	req, err := c.
-		normalizer.
-		normalize(obj)
-	if err != nil {
-		return err
-	}
-	if req == nil {
+	ing, normalizerErr := c.normalizer.normalize(obj)
+	if ing == nil {
 		return nil
 	}
-	_, err = c.
-		ingressSvcClient.
-		CreateIngress(
-			context.Background(),
-			connect.NewRequest(req),
-		)
-	return err
+	_, createIngressErr := c.ingressSvcClient.CreateIngress(
+		context.Background(),
+		connect.NewRequest(
+			&wafiev1.CreateIngressRequest{Ingress: ing},
+		),
+	)
+	return errors.Join(normalizerErr, createIngressErr)
 
 }

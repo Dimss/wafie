@@ -15,6 +15,6 @@ func (s *vs) gvr() schema.GroupVersionResource {
 		Resource: "virtualservices",
 	}
 }
-func (s *vs) normalize(obj *unstructured.Unstructured) (*wafiev1.CreateIngressRequest, error) {
+func (s *vs) normalize(obj *unstructured.Unstructured) (*wafiev1.Ingress, error) {
 	return nil, nil
 }

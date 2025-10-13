@@ -15,6 +15,6 @@ func (r *route) gvr() schema.GroupVersionResource {
 		Resource: "routes",
 	}
 }
-func (r *route) normalize(obj *unstructured.Unstructured) (*cwafv1.CreateIngressRequest, error) {
+func (r *route) normalize(obj *unstructured.Unstructured) (*cwafv1.Ingress, error) {
 	return nil, nil
 }

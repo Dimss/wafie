@@ -7,7 +7,6 @@ import (
 	"syscall"
 
 	"github.com/Dimss/wafie/internal/applogger"
-	"github.com/Dimss/wafie/pkg/agent/discovery/endpointslicescache"
 	"github.com/Dimss/wafie/pkg/agent/discovery/ingresscache"
 	hsrv "github.com/Dimss/wafie/pkg/healthchecksrv"
 	"github.com/spf13/cobra"
@@ -42,11 +41,6 @@ var startCmd = &cobra.Command{
 		// start ingress cache
 		ingresscache.NewIngressCache(
 			viper.GetString("ingress-type"),
-			viper.GetString("api-addr"),
-			applogger.NewLogger(),
-		).Start()
-		// start endpoints slice cache
-		endpointslicescache.NewCache(
 			viper.GetString("api-addr"),
 			applogger.NewLogger(),
 		).Start()

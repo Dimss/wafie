@@ -2,7 +2,11 @@ syntax = "proto3";
 
 package wafie.v1;
 
-message StartRelayRequest{}
+message StartRelayRequest{
+  repeated string src_ips = 1;
+  string upstream_port = 2;
+  string wafie_gateway_svc_fqdn = 3;
+}
 
 message StartRelayResponse{
   string tcp_relay_status = 1;

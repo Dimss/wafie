@@ -2,6 +2,13 @@ syntax = "proto3";
 
 package wafie.v1;
 
+enum DiscoveryStatusType {
+  DISCOVERY_STATUS_TYPE_UNSPECIFIED = 0;
+  DISCOVERY_STATUS_TYPE_SUCCESS = 1;
+  DISCOVERY_STATUS_TYPE_INCOMPLETE = 2;
+  DISCOVERY_STATUS_TYPE_DISABLED = 3;
+}
+
 enum IngressType {
   INGRESS_TYPE_UNSPECIFIED = 0;
   INGRESS_TYPE_NGINX = 1;
@@ -17,9 +24,13 @@ message Ingress {
   string path = 5;
   string upstream_host = 6;
   int32 upstream_port = 7;
-  int32 application_id = 8;
-  string raw_ingress_spec = 9;
-  IngressType ingress_type = 10;
+  int32 container_port = 8;
+  int32 application_id = 9;
+  string raw_ingress_spec = 10;
+  IngressType ingress_type = 11;
+  DiscoveryStatusType discovery_status = 12;
+  string discovery_message = 13;
+
 }
 
 message CreateIngressRequest {
