@@ -73,12 +73,6 @@ func (s *ApiServer) registerHandlers(mux *http.ServeMux) {
 			compress1KB,
 		),
 	)
-	mux.Handle(
-		v1.NewEndpointSliceServiceHandler(
-			NewEndpointSliceService(s.logger),
-			compress1KB,
-		),
-	)
 }
 
 func (s *ApiServer) enableReflection(mux *http.ServeMux) {
