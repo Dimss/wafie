@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 type ingress struct {
@@ -103,26 +104,16 @@ func (i *ingress) discoverUpstreamPort(ing *v1.Ingress) (int32, error) {
 }
 
 func (i *ingress) discoverContainerPort(ing *v1.Ingress) (int32, error) {
-	if ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number == 0 {
-		if port, err := getContainerPortBySvcPortName(
-			ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Name,
-			ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name,
-			ing.Namespace,
-		); err != nil {
-
-			return 0, err
-		} else {
-			return port, nil
-		}
+	if port, err := getContainerPortBySvcPort(
+		intstr.IntOrString{
+			IntVal: ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number,
+			StrVal: ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Name,
+		},
+		ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name,
+		ing.Namespace,
+	); err != nil {
+		return 0, err
 	} else {
-		if port, err := getContainerPortBySvcPortNumber(
-			ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number,
-			ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name,
-			ing.Namespace,
-		); err != nil {
-			return 0, err
-		} else {
-			return port, nil
-		}
+		return port, nil
 	}
 }

@@ -7,6 +7,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
@@ -41,59 +42,28 @@ func getSvcPortNumberBySvcPortName(portName, svcName, namespace string) (int32, 
 	return 0, nil
 }
 
-func getContainerPortBySvcPortNumber(portNumber int32, svcName, namespace string) (int32, error) {
+func getContainerPortBySvcPort(kPort intstr.IntOrString, svcName, namespace string) (int32, error) {
 	service, err := getSvc(svcName, namespace)
 	if err != nil {
 		return 0, err
 	}
 	for _, p := range service.Spec.Ports {
-		if p.Port == portNumber {
-			// if target port is set no further discovery is needed
-			if p.TargetPort.IntVal != 0 {
-				return p.TargetPort.IntVal, nil
-			}
-			// target port is not set,
-			// need to query endpoint
-			// to get actual port number
-			endpointSlice, err := getEndpointSliceBySvcName(svcName, namespace)
-			if err != nil {
-				return 0, err
-			}
-			for _, port := range endpointSlice.Ports {
-				if *port.Port == portNumber {
-					return *port.Port, nil
-				}
-			}
-			return p.Port, nil
+		// equal either by port name or port number and target port number is set
+		if (p.Name == kPort.StrVal || p.Port == kPort.IntVal) && p.TargetPort.IntVal != 0 {
+			return p.TargetPort.IntVal, nil
 		}
-	}
-	return 0, fmt.Errorf("can not find container port for service: %s", svcName)
-}
-
-func getContainerPortBySvcPortName(portName, svcName, namespace string) (int32, error) {
-	service, err := getSvc(svcName, namespace)
-	if err != nil {
-		return 0, err
-	}
-	for _, p := range service.Spec.Ports {
-		if p.Name == portName {
-			// if target port is set to number, no further discovery is needed
-			if p.TargetPort.IntVal != 0 {
-				return p.TargetPort.IntVal, nil
-			}
-			// target port is set to name,
-			// need to query endpoint
-			// to get actual port number
+		// equal either by port name or port number and target port name is set
+		// in that case further discovery required with endpoints slices
+		if (p.Name == kPort.StrVal || p.Port == kPort.IntVal) && p.TargetPort.StrVal != "" {
 			endpointSlice, err := getEndpointSliceBySvcName(svcName, namespace)
 			if err != nil {
 				return 0, err
 			}
 			for _, port := range endpointSlice.Ports {
-				if *port.Name == portName {
+				if *port.Port == kPort.IntVal || *port.Name == kPort.StrVal {
 					return *port.Port, nil
 				}
 			}
-			return p.Port, nil
 		}
 	}
 	return 0, fmt.Errorf("can not find container port for service: %s", svcName)
