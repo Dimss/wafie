@@ -40,7 +40,7 @@ func (i *ingress) normalizedWithError(cwafv1Ing *wafiev1.Ingress, err error) (*w
 func (i *ingress) normalize(obj *unstructured.Unstructured) (*wafiev1.Ingress, error) {
 
 	ingObj := &v1.Ingress{}
-	cwafv1Ing := &wafiev1.Ingress{DiscoveryStatus: wafiev1.DiscoveryStatusType_DISCOVERY_STATUS_TYPE_SUCCESS}
+	cwafv1Ing := &wafiev1.Ingress{}
 	if err := runtime.
 		DefaultUnstructuredConverter.
 		FromUnstructured(obj.Object, ingObj); err != nil {
@@ -68,10 +68,11 @@ func (i *ingress) normalize(obj *unstructured.Unstructured) (*wafiev1.Ingress, e
 			UpstreamHost: fmt.Sprintf("%s.%s.svc",
 				ingObj.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name,
 				ingObj.Namespace),
-			Path:           ingObj.Spec.Rules[0].HTTP.Paths[0].Path,
-			Host:           ingObj.Spec.Rules[0].Host,
-			RawIngressSpec: string(objJson),
-			IngressType:    wafiev1.IngressType_INGRESS_TYPE_NGINX,
+			Path:            ingObj.Spec.Rules[0].HTTP.Paths[0].Path,
+			Host:            ingObj.Spec.Rules[0].Host,
+			RawIngressSpec:  string(objJson),
+			IngressType:     wafiev1.IngressType_INGRESS_TYPE_NGINX,
+			DiscoveryStatus: wafiev1.DiscoveryStatusType_DISCOVERY_STATUS_TYPE_SUCCESS,
 		}
 		cwafv1Ing.UpstreamPort, err = i.discoverUpstreamPort(ingObj)
 		if err != nil {
