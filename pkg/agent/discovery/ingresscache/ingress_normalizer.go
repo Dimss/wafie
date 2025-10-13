@@ -39,7 +39,7 @@ func (i *ingress) normalizedWithError(cwafv1Ing *wafiev1.Ingress, err error) (*w
 func (i *ingress) normalize(obj *unstructured.Unstructured) (*wafiev1.Ingress, error) {
 
 	ingObj := &v1.Ingress{}
-	cwafv1Ing := &wafiev1.Ingress{}
+	cwafv1Ing := &wafiev1.Ingress{DiscoveryStatus: wafiev1.DiscoveryStatusType_DISCOVERY_STATUS_TYPE_SUCCESS}
 	if err := runtime.
 		DefaultUnstructuredConverter.
 		FromUnstructured(obj.Object, ingObj); err != nil {

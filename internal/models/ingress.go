@@ -38,7 +38,7 @@ type Ingress struct {
 	Host             string `gorm:"uniqueIndex:idx_ing_host"`
 	Port             int32
 	Path             string
-	UpstreamHost     string `gorm:"uniqueIndex:idx_ing_upstream_host"`
+	UpstreamHost     string
 	UpstreamPort     int32
 	ContainerPort    int32
 	ApplicationID    uint `gorm:"not null"`
@@ -49,9 +49,6 @@ type Ingress struct {
 	DiscoveryMessage string `gorm:"type:text"`
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
-
-	// Association based on UpstreamHost
-	EndpointSlices []EndpointSlice `gorm:"foreignKey:UpstreamHost;references:UpstreamHost"`
 }
 
 func (s *IngressModelSvc) NewIngressFromRequest(req *v1.CreateIngressRequest) error {
@@ -90,9 +87,6 @@ func (s *IngressModelSvc) NewIngressFromRequest(req *v1.CreateIngressRequest) er
 	}).Create(ingress); res.Error != nil {
 		return connect.NewError(connect.CodeUnknown, res.Error)
 	}
-	//if res := s.db.Create(ingress); res.Error != nil {
-	//	return connect.NewError(connect.CodeUnknown, res.Error)
-	//}
 	return nil
 }
 
