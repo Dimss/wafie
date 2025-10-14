@@ -115,8 +115,12 @@ func chain() *knftables.Chain {
 	}
 }
 
+// iptables -t nat -A PREROUTING -p tcp --dport 80 ! -s 192.168.1.100 -j DNAT --to-destination 10.0.0.10:8080
+// nft replace rule inet nat prerouting ip saddr != 10.244.0.29 tcp dport 8080 redirect to :9090 comment "wafie-owned-object"
+
 func rule() *knftables.Rule {
-	ingressPodIp := "10.244.0.7"
+	//ingressPodIp := "10.244.0.7"
+	wafieGwIP := "10.244.0.29"
 	dstPort := "8080"
 	comment := WafieOwnedComment
 	return &knftables.Rule{
@@ -124,7 +128,7 @@ func rule() *knftables.Rule {
 		Chain:   WafieGatewayPreroutingChain,
 		Comment: &comment,
 		Rule: knftables.Concat(
-			"ip saddr", ingressPodIp,
+			"ip saddr != ", wafieGwIP,
 			"tcp dport", dstPort,
 			"redirect to :9090",
 		),

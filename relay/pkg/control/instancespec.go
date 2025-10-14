@@ -42,11 +42,17 @@ type RelayInstanceSpec struct {
 	namedNetNs  string // i.e /host/var/run/netns/cni-52d62ed1-ad22-d5fa-332e-21b9d0e82250
 	logger      *zap.Logger
 	apiAddr     string
+	podName     string
 }
 
-func NewRelayInstanceSpec(containerId, nodeName string, logger *zap.Logger) (*RelayInstanceSpec, error) {
+func NewRelayInstanceSpec(containerId, podName, nodeName string, logger *zap.Logger) (*RelayInstanceSpec, error) {
 	var err error
-	i := &RelayInstanceSpec{logger: logger, nodeName: nodeName, apiAddr: InstanceApiAddr}
+	i := &RelayInstanceSpec{
+		logger:   logger.With(zap.String("podName", podName)),
+		nodeName: nodeName,
+		apiAddr:  InstanceApiAddr,
+		podName:  podName,
+	}
 	// set container id
 	if i.containerId, err = parseContainerId(containerId); err != nil {
 		return nil, err
@@ -64,6 +70,7 @@ func NewRelayInstanceSpec(containerId, nodeName string, logger *zap.Logger) (*Re
 	i.logger = logger.With(
 		zap.String("containerId", containerId),
 		zap.String("nodeName", nodeName),
+		zap.String("podName", podName),
 		zap.String("netns", i.namedNetNs),
 	)
 	i.logger.Debug(fmt.Sprintf("%+v", i))
@@ -261,7 +268,6 @@ func getContainerNetworkNs(containerStatusResponse *runtimeapi.ContainerStatusRe
 		Key  string `json:"type"`
 		Path string `json:"path,omitempty"`
 	}
-
 	var namespaces []namespace
 	err = json.Unmarshal(res, &namespaces)
 	if err != nil {

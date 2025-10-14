@@ -48,7 +48,7 @@ func (c *Controller) Run() {
 		{
 			for {
 				eps := <-c.epsCh
-				l := c.logger.With(zap.String("endpointSliceName", eps.Name))
+				l := c.logger.With(zap.String("endpointslicesname", eps.Name))
 				l.Debug("received endpoint slice")
 				// get upstream host from endpoint slice
 				upstreamHost := upstreamHostFromEndpointSlice(eps)
@@ -82,7 +82,7 @@ func (c *Controller) getRelayInstanceSpecs(eps *discoveryv1.EndpointSlice) (rIns
 			c.logger.Warn("pod does not contain container status", zap.String("podName", pod.Name))
 			continue
 		}
-		i, err := NewRelayInstanceSpec(pod.Status.ContainerStatuses[0].ContainerID, *ep.NodeName, c.logger)
+		i, err := NewRelayInstanceSpec(pod.Status.ContainerStatuses[0].ContainerID, pod.Name, *ep.NodeName, c.logger)
 		if err != nil {
 			// TODO: handle an error when container not found due to running on another node
 			c.logger.Error(err.Error())
@@ -104,7 +104,7 @@ func (c *Controller) destroyRelayInstances(relayInstanceSpecs []*RelayInstanceSp
 func (c *Controller) deployRelayInstances(relayInstanceSpecs []*RelayInstanceSpec) {
 	for _, spec := range relayInstanceSpecs {
 		if err := spec.StartSpec(); err != nil {
-			c.logger.Error(err.Error())
+			c.logger.Error(err.Error(), zap.String("podName", spec.podName))
 		}
 	}
 }

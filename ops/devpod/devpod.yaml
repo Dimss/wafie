@@ -48,3 +48,6 @@ spec:
         - name: netns
           hostPath:
             path: /var/run/netns
+        - name: data
+          persistentVolumeClaim:
+            claimName: pvc-todo-app
