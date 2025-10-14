@@ -11,8 +11,13 @@ RUN dnf update -y \
                       nft \
                       socat \
                       procps \
+                      bash-completion \
+                      iproute \
+    && echo 'source /usr/share/git-core/contrib/completion/git-prompt.sh' >> /root/.bashrc \
+    && echo "export PS1='\[\033[1;32m\]\W\[\033[1;96m\]\$(__git_ps1 \" (%s)\") #\[\033[m\] '" >> /root/.bashrc \
     && mkdir -p $HOME/.go/bin \
     && mkdir -p $HOME/.go/src/github.com \
+    && go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest \
     && ssh-keygen -A \
     && echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH70dUHZIm2HemGywbFAdERdjm4Jh8gonsUv4xw5wqk2 dimssss@gmail.com" > /root/.ssh/authorized_keys \
     && BIN="/usr/local/bin" \

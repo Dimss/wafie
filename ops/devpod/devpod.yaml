@@ -1,3 +1,14 @@
+#apiVersion: v1
+#kind: PersistentVolumeClaim
+#metadata:
+#  name: wafie-devpod-data
+#spec:
+#  accessModes:
+#    - ReadWriteOnce
+#  resources:
+#    requests:
+#      storage: 10Gi
+#---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -14,7 +25,7 @@ spec:
       labels:
         app: wafie-devpod
     spec:
-      hostPID: true
+      hostNetwork: true
       serviceAccountName: wafie-control-plane
       containers:
         - name: wafie-devpod
@@ -32,22 +43,15 @@ spec:
             runAsGroup: 0
             privileged: true
           volumeMounts:
-            - name: cri-socket
-              mountPath: /run/containerd
-            - name: procfs
-              mountPath: /host/proc
             - name: netns
-              mountPath: /host/var/run/netns
+              mountPath: /var/run/netns
+              readOnly: true
+            - name: data
+              mountPath: /root/.go/src/github.com
       volumes:
-        - name: cri-socket
-          hostPath:
-            path: /run/containerd
-        - name: procfs
-          hostPath:
-            path: /proc
         - name: netns
           hostPath:
             path: /var/run/netns
         - name: data
           persistentVolumeClaim:
-            claimName: pvc-todo-app
+            claimName: wafie-devpod-data
