@@ -1,9 +1,14 @@
 package controlplane
 
 import (
-	"connectrpc.com/connect"
 	"context"
 	"fmt"
+	"math/rand"
+	"net"
+	"net/http"
+	"time"
+
+	"connectrpc.com/connect"
 	wafiev1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	"github.com/Dimss/wafie/api/gen/wafie/v1/wafiev1connect"
 	"github.com/Dimss/wafie/internal/applogger"
@@ -23,10 +28,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 	"k8s.io/client-go/kubernetes"
-	"math/rand"
-	"net"
-	"net/http"
-	"time"
 )
 
 type EnvoyControlPlane struct {

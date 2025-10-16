@@ -32,23 +32,24 @@ func NewIngressModelSvc(tx *gorm.DB, logger *zap.Logger) *IngressModelSvc {
 }
 
 type Ingress struct {
-	ID               uint `gorm:"primaryKey"`
-	Name             string
-	Namespace        string
-	Host             string `gorm:"uniqueIndex:idx_ing_host"`
-	Port             int32
-	Path             string
-	UpstreamHost     string
-	UpstreamPort     int32
-	ContainerPort    int32
-	ApplicationID    uint `gorm:"not null"`
-	Application      Application
-	RawIngressSpec   string `gorm:"type:text"`
-	IngressType      uint32
-	DiscoveryStatus  uint32
-	DiscoveryMessage string `gorm:"type:text"`
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	ID                uint `gorm:"primaryKey"`
+	Name              string
+	Namespace         string
+	Host              string `gorm:"uniqueIndex:idx_ing_host"`
+	Port              int32
+	Path              string
+	UpstreamHost      string
+	UpstreamPort      int32
+	ContainerPort     int32
+	ApplicationID     uint `gorm:"not null"`
+	Application       Application
+	RawIngressSpec    string `gorm:"type:text"`
+	IngressType       uint32
+	DiscoveryStatus   uint32
+	DiscoveryMessage  string `gorm:"type:text"`
+	UpstreamRouteType uint32
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 func (s *IngressModelSvc) NewIngressFromRequest(req *v1.CreateIngressRequest) error {

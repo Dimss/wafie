@@ -2,6 +2,12 @@ syntax = "proto3";
 
 package wafie.v1;
 
+enum UpstreamRouteType {
+  UPSTREAM_ROUTE_TYPE_UNSPECIFIED = 0;
+  UPSTREAM_ROUTE_TYPE_DOMAIN = 1;
+  UPSTREAM_ROUTE_TYPE_PORT = 2;
+}
+
 enum DiscoveryStatusType {
   DISCOVERY_STATUS_TYPE_UNSPECIFIED = 0;
   DISCOVERY_STATUS_TYPE_SUCCESS = 1;
@@ -30,7 +36,7 @@ message Ingress {
   IngressType ingress_type = 11;
   DiscoveryStatusType discovery_status = 12;
   string discovery_message = 13;
-
+  UpstreamRouteType upstream_route_type = 14;
 }
 
 message CreateIngressRequest {

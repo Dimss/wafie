@@ -127,7 +127,8 @@ func (s *state) listeners() []types.Resource {
 							PortValue: 8888,
 						},
 					},
-				}},
+				},
+			},
 			FilterChains: []*v3listener.FilterChain{
 				{
 					Filters: []*v3listener.Filter{

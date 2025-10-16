@@ -73,6 +73,8 @@ func (i *ingress) normalize(obj *unstructured.Unstructured) (*wafiev1.Ingress, e
 			RawIngressSpec:  string(objJson),
 			IngressType:     wafiev1.IngressType_INGRESS_TYPE_NGINX,
 			DiscoveryStatus: wafiev1.DiscoveryStatusType_DISCOVERY_STATUS_TYPE_SUCCESS,
+			// TODO: upstream route type should be configurable
+			UpstreamRouteType: wafiev1.UpstreamRouteType_UPSTREAM_ROUTE_TYPE_PORT,
 		}
 		cwafv1Ing.UpstreamPort, err = i.discoverUpstreamPort(ingObj)
 		if err != nil {
