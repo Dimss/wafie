@@ -48,7 +48,7 @@ spec:
           image: {{.Values.image.gateway}}
           imagePullPolicy: Always
           ports:
-            - name: appsecgw-control-plan-grpc-srv
+            - name: grpc-srv
               containerPort: 18000
           volumeMounts:
             - mountPath: /data/audit

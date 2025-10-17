@@ -1,15 +1,16 @@
 package cmd
 
 import (
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"os"
 	"strings"
+
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var (
 	rootCmd = &cobra.Command{
-		Use:   "gwctrl",
+		Use:   "appsecgw",
 		Short: "WAFie Gateway Control Plane gRPC Server",
 	}
 )
@@ -24,7 +25,7 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(func() {
 		viper.AutomaticEnv()
-		viper.SetEnvPrefix("WAFIE_GWCTRL_SERVER")
+		viper.SetEnvPrefix("WAFIE_APPSECGW_SERVER")
 		viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	})
 }

@@ -1,6 +1,6 @@
 package main
 
-import "github.com/Dimss/wafie/cmd/gwctrl/cmd"
+import "github.com/Dimss/wafie/appsecgw/cmd/cmd"
 
 func main() {
 	cmd.Execute()

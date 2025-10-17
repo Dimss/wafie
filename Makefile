@@ -18,10 +18,6 @@ build:
 		-ldflags="-X 'github.com/Dimss/wafie/appsecgw/cmd.Build=$$(git rev-parse --short HEAD)'" \
 		-o bin/appsecgw appsecgw/cmd/main.go
 
-#	go build \
-#		-ldflags="-X 'github.com/Dimss/wafie/cmd/gwsupervisor/cmd.Build=$$(git rev-parse --short HEAD)'" \
-#		-o bin/gwsupervisor cmd/gwsupervisor/main.go
-
 build-api:
 	go build \
       -ldflags="-X 'github.com/Dimss/wafie/cmd/apiserver/cmd.Build=$$(git rev-parse --short HEAD)'" \
