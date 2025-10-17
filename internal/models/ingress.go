@@ -130,25 +130,24 @@ func (i *Ingress) createApplicationIfNotExists(tx *gorm.DB) error {
 			return err
 		}
 	}
+	i.ApplicationID = app.ID
 	return nil
 }
 
 func (i *Ingress) allocateProxyListenerPort(tx *gorm.DB) error {
 	// TODO: add test for this stuff!
-	if i.UpstreamRouteType == uint32(v1.UpstreamRouteType_UPSTREAM_ROUTE_TYPE_PORT) {
-		allocationAttempts := 10
-		for allocationAttempts > 0 {
-			proxyListenerPort := getRandomPort()
-			ingress := &Ingress{}
-			if err := tx.Where("proxy_listener_port = ?", proxyListenerPort).First(ingress).Error; err != nil {
-				if errors.Is(err, gorm.ErrRecordNotFound) {
-					i.ProxyListenerPort = proxyListenerPort
-					return nil
-				}
-				return err
+	allocationAttempts := 10
+	for allocationAttempts > 0 {
+		proxyListenerPort := getRandomPort()
+		ingress := &Ingress{}
+		if err := tx.Where("proxy_listener_port = ?", proxyListenerPort).First(ingress).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				i.ProxyListenerPort = proxyListenerPort
+				return nil
 			}
-			allocationAttempts--
+			return err
 		}
+		allocationAttempts--
 	}
 	return fmt.Errorf("error allocating proxy listener port, allocations attempts exceeded")
 }
