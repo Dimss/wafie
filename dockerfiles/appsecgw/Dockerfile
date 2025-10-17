@@ -1,0 +1,72 @@
+FROM dimssss/modsec AS libwafie
+
+FROM envoyproxy/envoy:contrib-v1.34.1 AS modsecfilter-builder
+ARG ARCH
+ENV GO_VERSION="go1.24.4.linux-${ARCH}.tar.gz"
+ENV GOBIN="/go/bin"
+ENV PATH="${PATH}:${GOBIN}:/usr/local/go/bin"
+ENV GOPATH="/go"
+WORKDIR /go/src
+RUN apt -y update \
+    && apt -y install \
+      libxml2-dev \
+      libyajl-dev \
+      libgeoip-dev \
+      libcurl4-openssl-dev \
+      gcc \
+      vim \
+      wget \
+      unzip
+RUN wget "https://go.dev/dl/${GO_VERSION}" \
+    && tar -C /usr/local -xzf ${GO_VERSION} \
+    && rm ${GO_VERSION} \
+    && mkdir -p /go/bin \
+    && go install github.com/go-delve/delve/cmd/dlv@latest
+COPY cmd/modsecfilter/include/ /usr/local/include/
+COPY --from=libwafie /wafie/build/libwafie.so /usr/local/lib/libwafie.so
+ADD go.mod go.sum ./
+ADD cmd/modsecfilter ./cmd/modsecfilter/
+ADD internal/applogger ./internal/applogger/
+RUN go build -ldflags='-s -w' -o ./wafie-modsec.so -buildmode=c-shared ./cmd/modsecfilter
+
+FROM bufbuild/buf AS protobuf-builder
+WORKDIR /app
+ADD ../api ./api
+ADD ../Makefile ./
+RUN cd api \
+    && buf dep update \
+    && buf lint \
+    && buf generate
+
+FROM golang:1.24-bookworm AS builder
+WORKDIR /app
+COPY ../go.mod go.sum ./
+COPY ../Makefile ./
+COPY --from=protobuf-builder /app/api/ ./api/
+COPY cmd/ ./cmd/
+COPY ../internal ./internal/
+COPY ../pkg ./pkg/
+RUN make build
+
+FROM envoyproxy/envoy:contrib-v1.34.1
+RUN apt -y update \
+    && apt -y install \
+        libxml2-dev \
+        libyajl-dev \
+        libgeoip-dev \
+        libcurl4-openssl-dev \
+        gcc \
+        vim \
+        wget \
+        logrotate \
+    && rm -rf /var/lib/apt/lists/*
+COPY cmd/modsecfilter/config/ /config/
+COPY cmd/modsecfilter/include/ /usr/local/include/
+COPY --from=libwafie /wafie/build/libwafie.so /usr/local/lib/libwafie.so
+COPY --from=modsecfilter-builder /go/src/wafie-modsec.so /usr/local/lib/wafie-modsec.so
+RUN ldconfig \
+     && chown -R envoy:envoy /var/lib/logrotate
+USER envoy
+COPY ops/envoy/ /etc/envoy/
+COPY --from=builder /app/bin/appsecgw /usr/local/bin/appsecgw
+CMD ["/usr/local/bin/appsecgw", "start"]

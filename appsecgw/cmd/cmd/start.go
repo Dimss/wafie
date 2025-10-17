@@ -1,8 +1,14 @@
 package cmd
 
 import (
+	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/Dimss/wafie/appsecgw/pkg/controlplane"
 	"github.com/Dimss/wafie/internal/applogger"
-	"github.com/Dimss/wafie/pkg/controlplane"
+	"go.uber.org/zap"
+
 	hsrv "github.com/Dimss/wafie/pkg/healthchecksrv"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -25,10 +31,26 @@ var startCmd = &cobra.Command{
 		hsrv.NewHealthCheckServer(
 			":8082", viper.GetString("api-addr"),
 		).Serve()
-		logger.Info("starting PCP gRPC server")
-		controlplane.NewEnvoyControlPlane(
-			viper.GetString("api-addr"),
-			viper.GetString("namespace"),
-		).Start()
+		logger.Info("starting AppSec Gateway gRPC server")
+		go controlplane.
+			NewEnvoyControlPlane(
+				viper.GetString("api-addr"),
+				viper.GetString("namespace"),
+			).Start()
+		// start envoy proxy and modsec (wafie-modsec.so) log rotation
+		go controlplane.
+			NewSupervisor(logger).
+			Start()
+		// handle interrupts
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+		for {
+			select {
+			case s := <-sigCh:
+				logger.Info("signal received, shutting down", zap.String("signal", s.String()))
+				logger.Info("bye bye 👋")
+				os.Exit(0)
+			}
+		}
 	},
 }

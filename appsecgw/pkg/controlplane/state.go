@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	"fmt"
 	"time"
 
 	cwafv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
@@ -65,7 +66,7 @@ func (s *state) httpFilters() []*hcm.HttpFilter {
 	return filters
 }
 
-func (s *state) httpConnectionManager() *hcm.HttpConnectionManager {
+func (s *state) httpConnectionManager(protection *cwafv1.Protection) *hcm.HttpConnectionManager {
 	stdoutLogs, _ := anypb.New(&stream.StdoutAccessLog{})
 	return &hcm.HttpConnectionManager{
 		CodecType:  hcm.HttpConnectionManager_AUTO,
@@ -87,45 +88,51 @@ func (s *state) httpConnectionManager() *hcm.HttpConnectionManager {
 				UpgradeType: "websocket",
 			},
 		},
-		RouteSpecifier: &hcm.HttpConnectionManager_Rds{
-			Rds: &hcm.Rds{
-				RouteConfigName: "local_route",
-				ConfigSource: &core.ConfigSource{
-					ConfigSourceSpecifier: &core.ConfigSource_ApiConfigSource{
-						ApiConfigSource: &core.ApiConfigSource{
-							ApiType:                   core.ApiConfigSource_GRPC,
-							TransportApiVersion:       resource.DefaultAPIVersion,
-							SetNodeOnFirstMessageOnly: true,
-							GrpcServices: []*core.GrpcService{
-								{
-									TargetSpecifier: &core.GrpcService_EnvoyGrpc_{
-										EnvoyGrpc: &core.GrpcService_EnvoyGrpc{
-											ClusterName: "pcp_xds_cluster",
+		RouteSpecifier: &hcm.HttpConnectionManager_RouteConfig{
+			RouteConfig: &route.RouteConfiguration{
+				Name: "local_route",
+				VirtualHosts: []*route.VirtualHost{
+					{
+						Name:    protection.Application.Name,
+						Domains: []string{protection.Application.Ingress[0].Host},
+						Routes: []*route.Route{
+							{
+								Name: protection.Application.Name,
+								Match: &route.RouteMatch{
+									PathSpecifier: &route.RouteMatch_Prefix{
+										Prefix: "/",
+									},
+								},
+								Action: &route.Route_Route{
+									Route: &route.RouteAction{
+										Timeout: durationpb.New(0 * time.Second), // zero meaning disabled
+										ClusterSpecifier: &route.RouteAction_Cluster{
+											Cluster: protection.Application.Name,
 										},
 									},
 								},
 							},
 						},
 					},
-					ResourceApiVersion: resource.DefaultAPIVersion,
 				},
 			},
 		},
 	}
 }
 
-func (s *state) listeners() []types.Resource {
-	httpConnectionMgr, _ := anypb.New(s.httpConnectionManager())
-	return []types.Resource{
-		&v3listener.Listener{
-			Name: "listener-1",
+func (s *state) listeners(protections []*cwafv1.Protection) []types.Resource {
+	var listeners = make([]types.Resource, len(protections))
+	for i := 0; i < len(protections); i++ {
+		httpConnectionMgr, _ := anypb.New(s.httpConnectionManager(protections[i]))
+		listeners[i] = &v3listener.Listener{
+			Name: fmt.Sprintf("listener-%d", i),
 			Address: &core.Address{
 				Address: &core.Address_SocketAddress{
 					SocketAddress: &core.SocketAddress{
 						Protocol: core.SocketAddress_TCP,
 						Address:  "0.0.0.0",
 						PortSpecifier: &core.SocketAddress_PortValue{
-							PortValue: 8888,
+							PortValue: uint32(protections[i].Application.Ingress[0].ProxyListenerPort),
 						},
 					},
 				},
@@ -141,9 +148,9 @@ func (s *state) listeners() []types.Resource {
 						},
 					},
 				},
-			},
-		},
+			}}
 	}
+	return listeners
 }
 
 func (s *state) clusters(protections []*cwafv1.Protection) (clusters []types.Resource) {
@@ -191,47 +198,9 @@ func (s *state) clusters(protections []*cwafv1.Protection) (clusters []types.Res
 	return clusters
 }
 
-func (s *state) routes(protections []*cwafv1.Protection) (routes []types.Resource) {
-	routes = make([]types.Resource, 0, len(protections))
-	for _, protection := range protections {
-		if shouldSkipProtection(protection) {
-			continue
-		}
-		routes = append(routes, &route.RouteConfiguration{
-			Name: "local_route",
-			VirtualHosts: []*route.VirtualHost{
-				{
-					Name:    protection.Application.Name,
-					Domains: []string{protection.Application.Ingress[0].Host},
-					Routes: []*route.Route{
-						{
-							Name: protection.Application.Name,
-							Match: &route.RouteMatch{
-								PathSpecifier: &route.RouteMatch_Prefix{
-									Prefix: "/",
-								},
-							},
-							Action: &route.Route_Route{
-								Route: &route.RouteAction{
-									Timeout: durationpb.New(0 * time.Second), // zero meaning disabled
-									ClusterSpecifier: &route.RouteAction_Cluster{
-										Cluster: protection.Application.Name,
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		})
-	}
-	return routes
-}
-
 func (s *state) buildResources(protections []*cwafv1.Protection) map[resource.Type][]types.Resource {
 	return map[resource.Type][]types.Resource{
-		resource.ListenerType: s.listeners(),
+		resource.ListenerType: s.listeners(protections),
 		resource.ClusterType:  s.clusters(protections),
-		resource.RouteType:    s.routes(protections),
 	}
 }
