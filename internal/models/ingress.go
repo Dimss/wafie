@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"fmt"
 	"math/rand"
 	"time"
 
@@ -49,7 +50,7 @@ type Ingress struct {
 	DiscoveryStatus   uint32
 	DiscoveryMessage  string `gorm:"type:text"`
 	UpstreamRouteType uint32
-	ProxyListenerPort uint32
+	ProxyListenerPort uint32 // immutable, note - it is not a part of clause.AssignmentColumns
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 }
@@ -87,7 +88,6 @@ func (s *IngressModelSvc) NewIngressFromRequest(req *v1.CreateIngressRequest) er
 				"discovery_message",
 				"discovery_status",
 				"upstream_route_type",
-				"proxy_listener_port",
 			},
 		),
 	}).Create(ingress); res.Error != nil {
@@ -134,23 +134,23 @@ func (i *Ingress) createApplicationIfNotExists(tx *gorm.DB) error {
 }
 
 func (i *Ingress) allocateProxyListenerPort(tx *gorm.DB) error {
+	// TODO: add test for this stuff!
 	if i.UpstreamRouteType == uint32(v1.UpstreamRouteType_UPSTREAM_ROUTE_TYPE_PORT) {
-		iterations := 10
-		for iterations > 0 {
+		allocationAttempts := 10
+		for allocationAttempts > 0 {
 			proxyListenerPort := getRandomPort()
 			ingress := &Ingress{}
 			if err := tx.Where("proxy_listener_port = ?", proxyListenerPort).First(ingress).Error; err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
 					i.ProxyListenerPort = proxyListenerPort
-					break
+					return nil
 				}
 				return err
 			}
-			iterations--
+			allocationAttempts--
 		}
-
 	}
-	return nil
+	return fmt.Errorf("error allocating proxy listener port, allocations attempts exceeded")
 }
 
 func (i *Ingress) BeforeCreate(tx *gorm.DB) error {
