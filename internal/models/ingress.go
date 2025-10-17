@@ -54,19 +54,20 @@ type Ingress struct {
 
 func (s *IngressModelSvc) NewIngressFromRequest(req *v1.CreateIngressRequest) error {
 	ingress := &Ingress{
-		Name:             req.Ingress.Name,
-		Namespace:        req.Ingress.Namespace,
-		Path:             req.Ingress.Path,
-		Host:             req.Ingress.Host,
-		Port:             req.Ingress.Port,
-		UpstreamHost:     req.Ingress.UpstreamHost,
-		UpstreamPort:     req.Ingress.UpstreamPort,
-		ContainerPort:    req.Ingress.ContainerPort,
-		RawIngressSpec:   req.Ingress.RawIngressSpec,
-		IngressType:      uint32(req.Ingress.IngressType),
-		ApplicationID:    uint(req.Ingress.ApplicationId),
-		DiscoveryMessage: req.Ingress.DiscoveryMessage,
-		DiscoveryStatus:  uint32(req.Ingress.DiscoveryStatus),
+		Name:              req.Ingress.Name,
+		Namespace:         req.Ingress.Namespace,
+		Path:              req.Ingress.Path,
+		Host:              req.Ingress.Host,
+		Port:              req.Ingress.Port,
+		UpstreamHost:      req.Ingress.UpstreamHost,
+		UpstreamPort:      req.Ingress.UpstreamPort,
+		ContainerPort:     req.Ingress.ContainerPort,
+		RawIngressSpec:    req.Ingress.RawIngressSpec,
+		IngressType:       uint32(req.Ingress.IngressType),
+		ApplicationID:     uint(req.Ingress.ApplicationId),
+		DiscoveryMessage:  req.Ingress.DiscoveryMessage,
+		DiscoveryStatus:   uint32(req.Ingress.DiscoveryStatus),
+		UpstreamRouteType: uint32(req.Ingress.UpstreamRouteType),
 	}
 
 	if res := s.db.Clauses(clause.OnConflict{
@@ -83,6 +84,7 @@ func (s *IngressModelSvc) NewIngressFromRequest(req *v1.CreateIngressRequest) er
 				"ingress_type",
 				"discovery_message",
 				"discovery_status",
+				"upstream_route_type",
 			},
 		),
 	}).Create(ingress); res.Error != nil {
@@ -93,17 +95,18 @@ func (s *IngressModelSvc) NewIngressFromRequest(req *v1.CreateIngressRequest) er
 
 func (i *Ingress) ToProto() *v1.Ingress {
 	return &v1.Ingress{
-		Name:             i.Name,
-		Namespace:        i.Namespace,
-		Path:             i.Path,
-		Host:             i.Host,
-		UpstreamHost:     i.UpstreamHost,
-		UpstreamPort:     i.UpstreamPort,
-		ContainerPort:    i.ContainerPort,
-		IngressType:      v1.IngressType(i.IngressType),
-		DiscoveryMessage: i.DiscoveryMessage,
-		DiscoveryStatus:  v1.DiscoveryStatusType(i.DiscoveryStatus),
-		ApplicationId:    int32(i.ApplicationID),
+		Name:              i.Name,
+		Namespace:         i.Namespace,
+		Path:              i.Path,
+		Host:              i.Host,
+		UpstreamHost:      i.UpstreamHost,
+		UpstreamPort:      i.UpstreamPort,
+		ContainerPort:     i.ContainerPort,
+		IngressType:       v1.IngressType(i.IngressType),
+		DiscoveryMessage:  i.DiscoveryMessage,
+		DiscoveryStatus:   v1.DiscoveryStatusType(i.DiscoveryStatus),
+		ApplicationId:     int32(i.ApplicationID),
+		UpstreamRouteType: v1.UpstreamRouteType(i.UpstreamRouteType),
 	}
 }
 
