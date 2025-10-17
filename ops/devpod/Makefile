@@ -1,5 +1,5 @@
 build:
-	podman buildx build -t docker.io/dimssss/wafie-devpod --platform linux/arm64 .
+	podman buildx build -t docker.io/dimssss/wafie-devpod --platform linux/arm64,linux/amd64 .
 	podman push docker.io/dimssss/wafie-devpod
 
 apply:

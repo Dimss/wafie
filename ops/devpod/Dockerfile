@@ -13,6 +13,7 @@ RUN dnf update -y \
                       procps \
                       bash-completion \
                       iproute \
+                      wget \
     && echo 'source /usr/share/git-core/contrib/completion/git-prompt.sh' >> /root/.bashrc \
     && echo "export PS1='\[\033[1;32m\]\W\[\033[1;96m\]\$(__git_ps1 \" (%s)\") #\[\033[m\] '" >> /root/.bashrc \
     && mkdir -p $HOME/.go/bin \

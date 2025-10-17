@@ -1,13 +1,24 @@
-#apiVersion: v1
-#kind: PersistentVolumeClaim
-#metadata:
-#  name: wafie-devpod-ide-cache
-#spec:
-#  accessModes:
-#    - ReadWriteOnce
-#  resources:
-#    requests:
-#      storage: 10Gi
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wafie-devpod-ide-cache
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wafie-src
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -43,13 +54,13 @@ spec:
             privileged: true
           volumeMounts:
             - name: wafie-src
-              mountPath: /root/.go/src/github.com/Dimss/wafie
+              mountPath: /root/.go/src/github.com/Dimss
             - name: cache
               mountPath: /root/.cache
       volumes:
         - name: wafie-src
-          hostPath:
-            path: /wafie-code
+          persistentVolumeClaim:
+            claimName: wafie-src
         - name: cache
           persistentVolumeClaim:
             claimName: wafie-devpod-ide-cache
