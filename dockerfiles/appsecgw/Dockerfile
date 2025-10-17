@@ -46,6 +46,7 @@ COPY --from=protobuf-builder /app/api/ ./api/
 COPY cmd/ ./cmd/
 COPY ../internal ./internal/
 COPY ../pkg ./pkg/
+COPY appsecgw ./appsecgw/
 RUN make build
 
 FROM envoyproxy/envoy:contrib-v1.34.1
