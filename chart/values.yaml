@@ -1,6 +1,6 @@
 image:
   api: dimssss/wafie-control-plane
-  gateway: dimssss/wafie-gateway
+  gateway: dimssss/wafie-appsecgw:latest
 postgresql:
   global:
     security:

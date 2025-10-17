@@ -6,7 +6,6 @@ metadata:
   labels:
     app: wafie-control-plane
 spec:
-  replicas: 1
   selector:
     matchLabels:
       app: wafie-control-plane
@@ -33,26 +32,6 @@ spec:
           livenessProbe:
             grpc:
               port: 8080
-        - name: gwctrl
-          image: {{.Values.image.api}}
-          imagePullPolicy: Always
-          command:
-            - /usr/local/bin/gwctrl
-            - start
-          ports:
-            - name: gwctrl-server
-              containerPort: 18000
-          env:
-            - name: WAFIE_GWCTRL_SERVER_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-          readinessProbe:
-            grpc:
-              port: 8082
-          livenessProbe:
-            grpc:
-              port: 8082
         - name: discovery-agent
           image: {{.Values.image.api}}
           imagePullPolicy: Always
@@ -69,11 +48,17 @@ spec:
           image: {{.Values.image.gateway}}
           imagePullPolicy: Always
           ports:
-            - name: waf-gateway
-              containerPort: 8888
+            - name: appsecgw-control-plan-grpc-srv
+              containerPort: 18000
           volumeMounts:
             - mountPath: /data/audit
               name: gateway-audit-data
+          readinessProbe:
+            grpc:
+              port: 8082
+          livenessProbe:
+            grpc:
+              port: 8082
         - name: fluent-bit
           image: cr.fluentbit.io/fluent/fluent-bit:4.0.3
           imagePullPolicy: IfNotPresent
