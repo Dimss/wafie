@@ -93,8 +93,9 @@ func (s *state) httpConnectionManager(protection *cwafv1.Protection) *hcm.HttpCo
 				Name: "local_route",
 				VirtualHosts: []*route.VirtualHost{
 					{
-						Name:    protection.Application.Name,
-						Domains: []string{protection.Application.Ingress[0].Host},
+						Name: protection.Application.Name,
+						// TODO: when route by virtual host, real app domain should be used, i.e protection.Application.Ingress[0].Host
+						Domains: []string{"*"},
 						Routes: []*route.Route{
 							{
 								Name: protection.Application.Name,
