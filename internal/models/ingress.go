@@ -110,6 +110,7 @@ func (i *Ingress) ToProto() *v1.Ingress {
 		DiscoveryStatus:   v1.DiscoveryStatusType(i.DiscoveryStatus),
 		ApplicationId:     int32(i.ApplicationID),
 		UpstreamRouteType: v1.UpstreamRouteType(i.UpstreamRouteType),
+		ProxyListenerPort: int32(i.ProxyListenerPort),
 	}
 }
 
