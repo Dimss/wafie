@@ -15,6 +15,7 @@ COPY --from=protobuf-builder /app/api/ ./api/
 COPY cmd/ ./cmd/
 COPY ../internal ./internal/
 COPY ../pkg ./pkg/
+COPY appsecgw ./appsecgw/
 RUN make build
 
 FROM debian:bookworm-slim
