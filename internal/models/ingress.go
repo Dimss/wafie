@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"math/rand"
 	"time"
 
 	"connectrpc.com/connect"
@@ -48,6 +49,7 @@ type Ingress struct {
 	DiscoveryStatus   uint32
 	DiscoveryMessage  string `gorm:"type:text"`
 	UpstreamRouteType uint32
+	ProxyListenerPort uint32
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 }
@@ -85,6 +87,7 @@ func (s *IngressModelSvc) NewIngressFromRequest(req *v1.CreateIngressRequest) er
 				"discovery_message",
 				"discovery_status",
 				"upstream_route_type",
+				"proxy_listener_port",
 			},
 		),
 	}).Create(ingress); res.Error != nil {
@@ -110,7 +113,7 @@ func (i *Ingress) ToProto() *v1.Ingress {
 	}
 }
 
-func (i *Ingress) BeforeCreate(tx *gorm.DB) error {
+func (i *Ingress) createApplicationIfNotExists(tx *gorm.DB) error {
 	app := &Application{}
 	if err := tx.Where("name = ?", i.Host).First(app).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -127,37 +130,42 @@ func (i *Ingress) BeforeCreate(tx *gorm.DB) error {
 			return err
 		}
 	}
-	// if application ID is set,
-	// meaning this is an explicit update operator
-	// nothing needs to be done
-	//if i.ApplicationID != 0 {
-	//	return nil
-	//}
-	// on upsert of ingress the application ID might not bet set
-	// thus extra checks needs to be done
-	//existingIngress := &Ingress{}
-	//if err := tx.Where("host = ?", i.Host).First(existingIngress).Error; err != nil {
-	//	// if the ingress with the host name not found,
-	//	// meaning it is a new ingress request
-	//	// new application needs to be created
-	//	if errors.Is(err, gorm.ErrRecordNotFound) {
-	//		appModelSvc := NewApplicationModelSvc(tx, nil)
-	//		newAppReq := &v1.CreateApplicationRequest{Name: i.Host}
-	//		appId, err := appModelSvc.CreateApplication(newAppReq)
-	//		if err != nil {
-	//			return err
-	//		}
-	//		i.ApplicationID = appId.ID
-	//		return nil
-	//	} else {
-	//		// in case of error, return and do nothing
-	//		return err
-	//	}
-	//}
-	// if the ingress with the host name found,
-	// meaning application already exists
-	// set the application ID and return
-	//i.ApplicationID = app.ID
 	return nil
+}
 
+func (i *Ingress) allocateProxyListenerPort(tx *gorm.DB) error {
+	if i.UpstreamRouteType == uint32(v1.UpstreamRouteType_UPSTREAM_ROUTE_TYPE_PORT) {
+		iterations := 10
+		for iterations > 0 {
+			proxyListenerPort := getRandomPort()
+			ingress := &Ingress{}
+			if err := tx.Where("proxy_listener_port = ?", proxyListenerPort).First(ingress).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					i.ProxyListenerPort = proxyListenerPort
+					break
+				}
+				return err
+			}
+			iterations--
+		}
+
+	}
+	return nil
+}
+
+func (i *Ingress) BeforeCreate(tx *gorm.DB) error {
+	if err := i.createApplicationIfNotExists(tx); err != nil {
+		return err
+	}
+	if err := i.allocateProxyListenerPort(tx); err != nil {
+		return err
+	}
+	return nil
+}
+
+func getRandomPort() uint32 {
+	rand.NewSource(time.Now().UnixNano())
+	minPort := 49152
+	maxPort := 65535
+	return uint32(rand.Intn(maxPort-minPort) + minPort)
 }

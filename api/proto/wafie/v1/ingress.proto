@@ -37,6 +37,7 @@ message Ingress {
   DiscoveryStatusType discovery_status = 12;
   string discovery_message = 13;
   UpstreamRouteType upstream_route_type = 14;
+  int32 proxy_listener_port = 15;
 }
 
 message CreateIngressRequest {

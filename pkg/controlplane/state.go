@@ -1,6 +1,8 @@
 package controlplane
 
 import (
+	"time"
+
 	cwafv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	"github.com/Dimss/wafie/internal/applogger"
 	golangv3alpha "github.com/envoyproxy/go-control-plane/contrib/envoy/extensions/filters/http/golang/v3alpha"
@@ -20,7 +22,6 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/durationpb"
-	"time"
 )
 
 type state struct {
@@ -226,26 +227,6 @@ func (s *state) routes(protections []*cwafv1.Protection) (routes []types.Resourc
 	}
 	return routes
 }
-
-//func (s *state) dumpConfigs() {
-//	configs := ""
-//	buildResources := map[resource.Type][]types.Resource{
-//		resource.ListenerType: s.listeners(),
-//		resource.ClusterType:  s.clusters("wp-host"),
-//		resource.RouteType:    s.routes("wp-host"),
-//	}
-//	for _, resourceList := range buildResources {
-//		for _, res := range resourceList {
-//			jsonBytes, err := protojson.Marshal(res)
-//			if err != nil {
-//				s.logger.Error("failed to marshal buildResources", zap.Error(err))
-//				continue
-//			}
-//			configs += string(jsonBytes) + "\n"
-//		}
-//	}
-//	fmt.Println(configs)
-//}
 
 func (s *state) buildResources(protections []*cwafv1.Protection) map[resource.Type][]types.Resource {
 	return map[resource.Type][]types.Resource{

@@ -2,6 +2,11 @@ package apiserver
 
 import (
 	"context"
+	"math/rand"
+	"os"
+	"testing"
+	"time"
+
 	wafiev1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	"github.com/Dimss/wafie/internal/models"
 	"github.com/docker/docker/api/types/container"
@@ -10,10 +15,6 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
-	"math/rand"
-	"os"
-	"testing"
-	"time"
 )
 
 func setupTest(t *testing.T) (testcontainers.Container, *gorm.DB, *zap.Logger) {

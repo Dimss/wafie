@@ -27,7 +27,6 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
-	"k8s.io/client-go/kubernetes"
 )
 
 type EnvoyControlPlane struct {
@@ -64,9 +63,6 @@ func NewEnvoyControlPlane(apiAddr, namespace string) *EnvoyControlPlane {
 	cp.startControlPlaneDataWatcher()
 	// start envoy snapshot generator
 	cp.startSnapshotGenerator()
-	// start ingress patcher
-	// TODO: this is a hack, need to understand how to properly handle this if at all
-	cp.ingressPatcher()
 	return cp
 }
 
@@ -171,32 +167,4 @@ func (p *EnvoyControlPlane) startSnapshotGenerator() {
 			}
 		}
 	}()
-}
-
-func (p *EnvoyControlPlane) ingressPatcher() {
-	p.logger.Info("starting ingress patcher")
-	go func(kc *kubernetes.Clientset, kcError error) {
-		for protections := range p.ingressPatcherCh {
-			if kcError != nil {
-				p.logger.Error("kube client in error, can't patch ingresses", zap.Error(kcError))
-				continue
-			}
-			for _, protection := range protections {
-				if protection.IngressAutoPatch == wafiev1.IngressAutoPatch_INGRESS_AUTO_PATCH_EBPF {
-					p.logger.Info("auto patching disabled in favor to eBPF TC program")
-					continue
-				}
-				if protection.IngressAutoPatch == wafiev1.IngressAutoPatch_INGRESS_AUTO_PATCH_ON {
-					if err := NewIngressPatcher(kc, protection, p.namespace, p.logger).Patch(); err != nil {
-						p.logger.Error("failed to patch ingress", zap.Error(err))
-					}
-				}
-				if protection.IngressAutoPatch == wafiev1.IngressAutoPatch_INGRESS_AUTO_PATCH_OFF {
-					if err := NewIngressPatcher(kc, protection, p.namespace, p.logger).Unpatch(); err != nil {
-						p.logger.Error("failed to unpatch ingress", zap.Error(err))
-					}
-				}
-			}
-		}
-	}(newKubeClient())
 }
