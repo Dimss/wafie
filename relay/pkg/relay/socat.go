@@ -32,7 +32,7 @@ func (r *Socat) Start() {
 		"socat",
 		"-d",
 		"TCP-LISTEN:9090,reuseaddr,fork,backlog=2048,rcvbuf=262144,sndbuf=262144,keepalive,nodelay,quickack",
-		"TCP:wafie-control-plane.default.svc:8888,rcvbuf=262144,sndbuf=262144,keepalive,nodelay,quickack,connect-timeout=3",
+		"TCP:172.16.0.71:52385,rcvbuf=262144,sndbuf=262144,keepalive,nodelay,quickack,connect-timeout=3",
 	)
 	go func() {
 		r.setupLogs()

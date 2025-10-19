@@ -62,8 +62,8 @@ func (c *Controller) Run() {
 					l.Debug("app protection mode unspecified, skipping")
 				case wafiev1.ProtectionMode_PROTECTION_MODE_ON:
 					c.deployRelayInstances(specs)
-				case wafiev1.ProtectionMode_PROTECTION_MODE_OFF:
-					c.destroyRelayInstances(specs)
+					//case wafiev1.ProtectionMode_PROTECTION_MODE_OFF:
+					//	c.destroyRelayInstances(specs)
 				}
 			}
 		}

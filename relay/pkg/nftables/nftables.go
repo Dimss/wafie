@@ -120,7 +120,7 @@ func chain() *knftables.Chain {
 
 func rule() *knftables.Rule {
 	//ingressPodIp := "10.244.0.7"
-	wafieGwIP := "10.244.0.29"
+	wafieGwIP := "172.16.0.71"
 	dstPort := "8080"
 	comment := WafieOwnedComment
 	return &knftables.Rule{

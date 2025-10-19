@@ -1,4 +1,4 @@
-package ingresscache
+package ingress
 
 import (
 	"errors"
@@ -44,7 +44,7 @@ func newParser(ingressType IngressType) normalizer {
 	return nil
 }
 
-type IngressCache struct {
+type Cache struct {
 	ingressType      IngressType
 	normalizer       normalizer
 	notifier         chan struct{}
@@ -53,8 +53,8 @@ type IngressCache struct {
 	logger           *zap.Logger
 }
 
-func NewIngressCache(ingressType IngressType, apiAddr string, logger *zap.Logger) *IngressCache {
-	cache := &IngressCache{
+func NewIngressCache(ingressType IngressType, apiAddr string, logger *zap.Logger) *Cache {
+	cache := &Cache{
 		ingressType: ingressType,
 		notifier:    make(chan struct{}, 1000),
 		namespace:   "",
@@ -68,7 +68,7 @@ func NewIngressCache(ingressType IngressType, apiAddr string, logger *zap.Logger
 	return cache
 }
 
-func (c *IngressCache) Start() {
+func (c *Cache) Start() {
 
 	go func() {
 		l := c.logger.With(zap.String("parser", c.ingressType))
@@ -124,7 +124,7 @@ func (c *IngressCache) Start() {
 
 }
 
-func (c *IngressCache) createIngress(obj *unstructured.Unstructured) error {
+func (c *Cache) createIngress(obj *unstructured.Unstructured) error {
 	ing, normalizerErr := c.normalizer.normalize(obj)
 	if ing == nil {
 		return nil

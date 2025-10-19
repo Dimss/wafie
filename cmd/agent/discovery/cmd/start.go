@@ -7,7 +7,7 @@ import (
 	"syscall"
 
 	"github.com/Dimss/wafie/internal/applogger"
-	"github.com/Dimss/wafie/pkg/agent/discovery/ingresscache"
+	"github.com/Dimss/wafie/pkg/agent/discovery/ingress"
 	hsrv "github.com/Dimss/wafie/pkg/healthchecksrv"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -20,9 +20,9 @@ func init() {
 		"i",
 		"ingress",
 		fmt.Sprintf("one of %s|%s|%s",
-			ingresscache.VsIngressType,
-			ingresscache.K8sIngressType,
-			ingresscache.RouteIngressType),
+			ingress.VsIngressType,
+			ingress.K8sIngressType,
+			ingress.RouteIngressType),
 	)
 	startCmd.PersistentFlags().StringP("api-addr", "a", "http://localhost:8080", "API address")
 	viper.BindPFlag("ingress-type", startCmd.PersistentFlags().Lookup("ingress-type"))
@@ -39,7 +39,7 @@ var startCmd = &cobra.Command{
 			":8081", viper.GetString("api-addr"),
 		).Serve()
 		// start ingress cache
-		ingresscache.NewIngressCache(
+		ingress.NewIngressCache(
 			viper.GetString("ingress-type"),
 			viper.GetString("api-addr"),
 			applogger.NewLogger(),

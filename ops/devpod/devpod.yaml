@@ -1,25 +1,25 @@
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: wafie-devpod-ide-cache
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 10Gi
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: wafie-src
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 10Gi
----
+#apiVersion: v1
+#kind: PersistentVolumeClaim
+#metadata:
+#  name: wafie-devpod-ide-cache
+#spec:
+#  accessModes:
+#    - ReadWriteOnce
+#  resources:
+#    requests:
+#      storage: 10Gi
+#---
+#apiVersion: v1
+#kind: PersistentVolumeClaim
+#metadata:
+#  name: wafie-src
+#spec:
+#  accessModes:
+#    - ReadWriteOnce
+#  resources:
+#    requests:
+#      storage: 10Gi
+#---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -27,7 +27,6 @@ metadata:
   labels:
     app: wafie-devpod
 spec:
-  replicas: 1
   selector:
     matchLabels:
       app: wafie-devpod
@@ -36,6 +35,7 @@ spec:
       labels:
         app: wafie-devpod
     spec:
+      hostPID: true
       serviceAccountName: wafie-control-plane
       containers:
         - name: wafie-devpod
@@ -57,6 +57,14 @@ spec:
               mountPath: /root/.go/src/github.com/Dimss
             - name: cache
               mountPath: /root/.cache
+            - name: netns
+              mountPath: /var/run/netns
+              mountPropagation: HostToContainer
+              readOnly: true
+            - name: containerd
+              mountPath: /run/containerd/containerd.sock
+            - name: crio
+              mountPath: /var/run/crio/crio.sock
       volumes:
         - name: wafie-src
           persistentVolumeClaim:
@@ -64,3 +72,12 @@ spec:
         - name: cache
           persistentVolumeClaim:
             claimName: wafie-devpod-ide-cache
+        - name: netns
+          hostPath:
+            path: /var/run/netns
+        - name: containerd
+          hostPath:
+            path: /run/containerd/containerd.sock
+        - name: crio
+          hostPath:
+            path: /var/run/crio/crio.sock

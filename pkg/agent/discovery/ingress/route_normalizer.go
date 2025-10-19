@@ -1,4 +1,4 @@
-package ingresscache
+package ingress
 
 import (
 	cwafv1 "github.com/Dimss/wafie/api/gen/wafie/v1"

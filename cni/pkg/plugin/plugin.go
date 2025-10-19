@@ -5,15 +5,12 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"strings"
-	"syscall"
 
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
 	cniv1 "github.com/containernetworking/cni/pkg/types/100"
 	"github.com/containernetworking/cni/pkg/version"
-	"github.com/containernetworking/plugins/pkg/ns"
 )
 
 var logger = log.New(os.Stderr, "[wafie-cni] ", log.LstdFlags)
@@ -57,9 +54,9 @@ func CmdAdd(args *skel.CmdArgs) (err error) {
 			CNIVersion: cniv1.ImplementedSpecVersion,
 		}
 	}
-	if err := StartRelay(args.Netns); err != nil {
-		logger.Printf("failed to start relay: %v", err)
-	}
+	//if err := StartRelay(args.Netns); err != nil {
+	//	logger.Printf("failed to start relay: %v", err)
+	//}
 	logger.Println("Network namespace " + args.Netns)
 	logger.Println("Ifname " + args.IfName)
 	k8sArgs := parseCNIArgs(args.Args)
@@ -76,19 +73,19 @@ func CmdCheck(args *skel.CmdArgs) (err error) {
 	return nil
 }
 
-func StartRelay(netnsPath string) error {
-	targetNs, err := ns.GetNS(netnsPath)
-	if err != nil {
-		logger.Println("error getting netns", netnsPath)
-		return err
-	}
-
-	return targetNs.Do(func(ns.NetNS) error {
-		cmd := exec.Command("/opt/cni/bin/wafie-relay")
-		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-		return cmd.Start()
-	})
-}
+//func StartRelay(netnsPath string) error {
+//	targetNs, err := ns.GetNS(netnsPath)
+//	if err != nil {
+//		logger.Println("error getting netns", netnsPath)
+//		return err
+//	}
+//
+//	return targetNs.Do(func(ns.NetNS) error {
+//		cmd := exec.Command("/opt/cni/bin/wafie-relay")
+//		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+//		return cmd.Start()
+//	})
+//}
 
 func parseCNIArgs(args string) map[string]string {
 	result := make(map[string]string)

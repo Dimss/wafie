@@ -1,4 +1,4 @@
-package ingresscache
+package ingress
 
 import (
 	"fmt"

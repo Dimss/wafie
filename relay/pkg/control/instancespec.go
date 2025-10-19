@@ -8,9 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"regexp"
 	"runtime"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -29,17 +27,16 @@ import (
 )
 
 const (
-	CRISocketPath   = "unix:///run/containerd/containerd.sock" // Adjust for your specific runtime
-	NetNsBasePath   = "/host/var/run/netns/"
-	InstanceApiAddr = "http://127.0.0.1:8081"
+	ContainerdCRISock = "unix:///run/containerd/containerd.sock" // Adjust for your specific runtime
+	CRIoCRISock       = "unix:///var/run/crio/crio.sock"
+	InstanceApiAddr   = "http://127.0.0.1:8081"
 )
 
 type RelayInstanceSpec struct {
 	containerId string
+	runtimeSock string
 	nodeName    string
-	pidNsRef    string // i.e /proc/2871780/ns/net
-	netId       uint64 // net ns inode
-	namedNetNs  string // i.e /host/var/run/netns/cni-52d62ed1-ad22-d5fa-332e-21b9d0e82250
+	netnsPath   string
 	logger      *zap.Logger
 	apiAddr     string
 	podName     string
@@ -54,24 +51,16 @@ func NewRelayInstanceSpec(containerId, podName, nodeName string, logger *zap.Log
 		podName:  podName,
 	}
 	// set container id
-	if i.containerId, err = parseContainerId(containerId); err != nil {
+	if i.containerId, i.runtimeSock, err = parseContainerId(containerId); err != nil {
 		return nil, err
 	}
-	// set ns ref, i.e: /proc/2871780/ns/net
-	if err = i.setPidNsRef(); err != nil {
-		return nil, err
-	}
-	if err = i.pidNsRefToNetId(); err != nil {
-		return nil, err
-	}
-	if err = i.setNamedNetNs(); err != nil {
+	if err := i.discoverNetnsPath(); err != nil {
 		return nil, err
 	}
 	i.logger = logger.With(
 		zap.String("containerId", containerId),
 		zap.String("nodeName", nodeName),
 		zap.String("podName", podName),
-		zap.String("netns", i.namedNetNs),
 	)
 	i.logger.Debug(fmt.Sprintf("%+v", i))
 	return i, nil
@@ -119,12 +108,12 @@ func (s *RelayInstanceSpec) runRelayBinary() error {
 			netNs.Close()
 		}
 	}(netNs)
-	netNs, err := ns.GetNS(s.namedNetNs)
+	netNs, err := ns.GetNS(s.netnsPath)
 	if err != nil {
 		return err
 	}
 	return netNs.Do(func(_ ns.NetNS) error {
-		s.logger.Info("network namespace set", zap.String("path", s.namedNetNs))
+		s.logger.Info("network namespace set", zap.String("path", s.netnsPath))
 		cmd := exec.Command(
 			"/usr/local/bin/wafie-relay",
 			"start", "relay-instance",
@@ -148,7 +137,7 @@ func (s *RelayInstanceSpec) namespacedHttpClient() *http.Client {
 				}
 				defer currentNS.Close()
 				// Switch to target namespace
-				nsFile, err := os.Open(s.pidNsRef)
+				nsFile, err := os.Open(s.netnsPath)
 				if err != nil {
 					return nil, err
 				}
@@ -184,50 +173,9 @@ func (s *RelayInstanceSpec) relayRunning() (isRunning bool) {
 	return false
 }
 
-func (s *RelayInstanceSpec) setNamedNetNs() error {
-
-	netNsEntries, err := os.ReadDir(NetNsBasePath)
-	if err != nil {
-		return err
-	}
-	for _, entry := range netNsEntries {
-		if entry.IsDir() {
-			continue
-		}
-		fileInfo, err := os.Stat(NetNsBasePath + entry.Name())
-		if err != nil {
-			return err
-		}
-		stat, ok := fileInfo.Sys().(*syscall.Stat_t)
-		if !ok {
-			return fmt.Errorf("could not get syscall.Stat_t from FileInfo")
-		}
-		// find the NetNs mount path base on the net id (inode)
-		if stat.Ino == s.netId {
-			s.namedNetNs = NetNsBasePath + entry.Name()
-			return nil
-		}
-	}
-	return nil
-}
-
-func (s *RelayInstanceSpec) pidNsRefToNetId() error {
-	entry, err := os.Readlink(s.pidNsRef)
-	if err != nil {
-		return err
-	}
-	r, err := regexp.Compile("\\d")
-	if err != nil {
-		return err
-	}
-	res := strings.Join(r.FindAllString(entry, -1), "")
-	s.netId, err = strconv.ParseUint(res, 10, 64)
-	return err
-}
-
-func (s *RelayInstanceSpec) setPidNsRef() error {
+func (s *RelayInstanceSpec) discoverNetnsPath() error {
 	conn, err := grpc.NewClient(
-		CRISocketPath,
+		s.runtimeSock,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
@@ -243,9 +191,9 @@ func (s *RelayInstanceSpec) setPidNsRef() error {
 	}
 	response, err := client.ContainerStatus(ctx, request)
 	if err != nil {
-		return fmt.Errorf("Failed to get container status: %v\n", err)
+		return fmt.Errorf("failed to get container status: %v\n", err)
 	}
-	if s.pidNsRef, err = getContainerNetworkNs(response); err != nil {
+	if s.netnsPath, err = getContainerNetworkNs(response); err != nil {
 		return err
 	}
 	return nil
@@ -281,10 +229,17 @@ func getContainerNetworkNs(containerStatusResponse *runtimeapi.ContainerStatusRe
 	return "", fmt.Errorf("failed to find network namespace")
 }
 
-func parseContainerId(containerId string) (string, error) {
+func parseContainerId(containerId string) (id string, runtimeSock string, err error) {
 	slice := strings.Split(containerId, "://")
 	if len(slice) != 2 {
-		return "", fmt.Errorf("unable to parse container id")
+		return "", "", fmt.Errorf("unable to parse container id")
 	}
-	return slice[1], nil
+	if slice[0] == "cri-o" {
+		return slice[1], CRIoCRISock, nil
+	}
+	if slice[0] == "containerd" {
+		return slice[1], ContainerdCRISock, nil
+	}
+	return "", "", fmt.Errorf("unable to detect container runtime")
+
 }
