@@ -9,9 +9,10 @@ RUN cd api \
 
 FROM golang:1.24-bookworm AS builder
 WORKDIR /app
+COPY ../../logger ./
 COPY ../../go.mod go.sum ./
 COPY ../../Makefile ./
-COPY --from=protobuf-builder /app/api/ ./api/
+COPY --from=protobuf-builder /app/api ./api
 COPY ../../apisrv ./apisrv
 COPY ../../discovery ./discovery
 RUN make build
