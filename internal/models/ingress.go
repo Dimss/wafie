@@ -2,8 +2,6 @@ package models
 
 import (
 	"errors"
-	"fmt"
-	"math/rand"
 	"time"
 
 	"connectrpc.com/connect"
@@ -40,19 +38,19 @@ type Ingress struct {
 	Host              string `gorm:"uniqueIndex:idx_ing_host"`
 	Port              int32
 	Path              string
-	UpstreamHost      string
-	UpstreamPort      int32
-	ContainerPort     int32
 	ApplicationID     uint `gorm:"not null"`
 	Application       Application
-	RawIngressSpec    string `gorm:"type:text"`
 	IngressType       uint32
 	DiscoveryStatus   uint32
 	DiscoveryMessage  string `gorm:"type:text"`
 	UpstreamRouteType uint32
-	ProxyListenerPort uint32 // immutable, note - it is not a part of clause.AssignmentColumns
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
+
+	// Foreign key to Service
+	ServiceID uint    `gorm:"not null;index"`
+	Service   Service `gorm:"foreignKey:ServiceID"`
+
+	CreatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP"`
+	UpdatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP"`
 }
 
 func (s *IngressModelSvc) NewIngressFromRequest(req *v1.CreateIngressRequest) error {
@@ -62,10 +60,6 @@ func (s *IngressModelSvc) NewIngressFromRequest(req *v1.CreateIngressRequest) er
 		Path:              req.Ingress.Path,
 		Host:              req.Ingress.Host,
 		Port:              req.Ingress.Port,
-		UpstreamHost:      req.Ingress.UpstreamHost,
-		UpstreamPort:      req.Ingress.UpstreamPort,
-		ContainerPort:     req.Ingress.ContainerPort,
-		RawIngressSpec:    req.Ingress.RawIngressSpec,
 		IngressType:       uint32(req.Ingress.IngressType),
 		ApplicationID:     uint(req.Ingress.ApplicationId),
 		DiscoveryMessage:  req.Ingress.DiscoveryMessage,
@@ -81,9 +75,6 @@ func (s *IngressModelSvc) NewIngressFromRequest(req *v1.CreateIngressRequest) er
 				"namespace",
 				"path",
 				"port",
-				"upstream_host",
-				"upstream_port",
-				"container_port",
 				"ingress_type",
 				"discovery_message",
 				"discovery_status",
@@ -102,15 +93,11 @@ func (i *Ingress) ToProto() *v1.Ingress {
 		Namespace:         i.Namespace,
 		Path:              i.Path,
 		Host:              i.Host,
-		UpstreamHost:      i.UpstreamHost,
-		UpstreamPort:      i.UpstreamPort,
-		ContainerPort:     i.ContainerPort,
 		IngressType:       v1.IngressType(i.IngressType),
 		DiscoveryMessage:  i.DiscoveryMessage,
 		DiscoveryStatus:   v1.DiscoveryStatusType(i.DiscoveryStatus),
 		ApplicationId:     int32(i.ApplicationID),
 		UpstreamRouteType: v1.UpstreamRouteType(i.UpstreamRouteType),
-		ProxyListenerPort: int32(i.ProxyListenerPort),
 	}
 }
 
@@ -135,37 +122,9 @@ func (i *Ingress) createApplicationIfNotExists(tx *gorm.DB) error {
 	return nil
 }
 
-func (i *Ingress) allocateProxyListenerPort(tx *gorm.DB) error {
-	// TODO: add test for this stuff!
-	allocationAttempts := 10
-	for allocationAttempts > 0 {
-		proxyListenerPort := getRandomPort()
-		ingress := &Ingress{}
-		if err := tx.Where("proxy_listener_port = ?", proxyListenerPort).First(ingress).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				i.ProxyListenerPort = proxyListenerPort
-				return nil
-			}
-			return err
-		}
-		allocationAttempts--
-	}
-	return fmt.Errorf("error allocating proxy listener port, allocations attempts exceeded")
-}
-
 func (i *Ingress) BeforeCreate(tx *gorm.DB) error {
 	if err := i.createApplicationIfNotExists(tx); err != nil {
 		return err
 	}
-	if err := i.allocateProxyListenerPort(tx); err != nil {
-		return err
-	}
 	return nil
-}
-
-func getRandomPort() uint32 {
-	rand.NewSource(time.Now().UnixNano())
-	minPort := 49152
-	maxPort := 65535
-	return uint32(rand.Intn(maxPort-minPort) + minPort)
 }

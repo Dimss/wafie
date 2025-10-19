@@ -10,14 +10,9 @@ import (
 )
 
 type EndpointSlice struct {
-	ID           uint `gorm:"primary_key"`
-	IP           string
-	PodName      string
-	Namespace    string
-	NodeName     string
-	PodUID       string
-	Ports        string `gorm:"type:text"`
-	UpstreamHost string // Foreign key field referencing Ingress.UpstreamHost
+	ID           uint     `gorm:"primary_key"`
+	IPs          []string `gorm:"type:text"`
+	UpstreamHost string   // Foreign key field referencing Ingress.UpstreamHost
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }
@@ -43,27 +38,16 @@ func NewEndpointSliceModelSvc(tx *gorm.DB, logger *zap.Logger) *EndpointSliceSvc
 
 func (s *EndpointSlice) ToProto() *v1.EndpointSlice {
 	return &v1.EndpointSlice{
-		Ip:           s.IP,
-		PodName:      s.PodName,
-		Namespace:    s.Namespace,
-		NodeName:     s.NodeName,
-		PodUid:       s.PodUID,
-		Ports:        s.Ports,
+		Ips:          s.IPs,
 		UpstreamHost: s.UpstreamHost,
 	}
 }
 
 func (s *EndpointSliceSvc) NewEndpointSliceFromRequest(req *v1.CreateEndpointSliceRequest) (*EndpointSlice, error) {
 	eps := &EndpointSlice{
-		IP:           req.EndpointSlice.Ip,
-		PodName:      req.EndpointSlice.PodName,
-		Namespace:    req.EndpointSlice.Namespace,
-		NodeName:     req.EndpointSlice.NodeName,
-		PodUID:       req.EndpointSlice.PodUid,
-		Ports:        req.EndpointSlice.Ports,
+		IPs:          req.EndpointSlice.Ips,
 		UpstreamHost: req.EndpointSlice.UpstreamHost,
 	}
-
 	if err := s.db.Create(eps).Error; err != nil {
 		return nil, err
 	}

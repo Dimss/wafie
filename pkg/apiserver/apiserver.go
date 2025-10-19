@@ -62,12 +62,6 @@ func (s *ApiServer) registerHandlers(mux *http.ServeMux) {
 		),
 	)
 	mux.Handle(
-		v1.NewVirtualHostServiceHandler(
-			NewVirtualHostService(s.logger),
-			compress1KB,
-		),
-	)
-	mux.Handle(
 		v1.NewDataVersionServiceHandler(
 			NewDataVersionService(s.logger),
 			compress1KB,

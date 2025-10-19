@@ -2,13 +2,8 @@ syntax = "proto3";
 package wafie.v1;
 
 message EndpointSlice {
-  string ip = 1;
-  string pod_name = 2;
-  string namespace = 3;
-  string node_name = 4;
-  string pod_uid = 5;
-  string ports = 6;
-  string upstream_host = 7;
+  repeated string ips = 1;
+  string upstream_host = 2;
 }
 
 message CreateEndpointSliceRequest {

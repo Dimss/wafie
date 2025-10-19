@@ -67,7 +67,6 @@ func migrate(db *gorm.DB) error {
 		&EndpointSlice{},
 		&Ingress{},
 		&Protection{},
-		&VirtualHost{},
 		&DataVersion{},
 	); err != nil {
 		return err
