@@ -18,7 +18,7 @@ COPY ../../discovery ./discovery
 RUN make build
 
 FROM debian:bookworm-slim
-COPY --from=builder /app/bin/discovery-agent /usr/local/bin/discovery-agent
-COPY --from=builder /app/bin/api-server /usr/local/bin/api-server
+COPY --from=builder /app/.bin/discovery-agent /usr/local/bin/discovery-agent
+COPY --from=builder /app/.bin/api-server /usr/local/bin/api-server
 
 
