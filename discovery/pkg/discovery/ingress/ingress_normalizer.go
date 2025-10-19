@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	wafiev1 "github.com/Dimss/wafie/api/gen/wafie/v1"
-	"github.com/Dimss/wafie/internal/applogger"
+	applogger "github.com/Dimss/wafie/logger"
 	"go.uber.org/zap"
 	v1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"

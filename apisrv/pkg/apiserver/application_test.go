@@ -4,7 +4,7 @@ import (
 	"connectrpc.com/connect"
 	"context"
 	cwafv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
-	"github.com/Dimss/wafie/internal/applogger"
+	applogger "github.com/Dimss/wafie/logger"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )

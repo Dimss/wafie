@@ -8,7 +8,7 @@ import (
 	"connectrpc.com/grpchealth"
 	healthv1 "github.com/Dimss/wafie/api/gen/grpc/health/v1"
 	"github.com/Dimss/wafie/api/gen/grpc/health/v1/healthv1connect"
-	"github.com/Dimss/wafie/apisrv/internal/applogger"
+	"github.com/Dimss/wafie/logger"
 	"go.uber.org/zap"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
@@ -22,7 +22,7 @@ type Server struct {
 
 func NewHealthCheckServer(listenAddr, apiAddr string) *Server {
 	return &Server{
-		logger:     applogger.NewLogger(),
+		logger:     logger.NewLogger(),
 		listenAddr: listenAddr,
 		apiAddr:    apiAddr,
 	}

@@ -5,7 +5,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/Dimss/wafie/internal/applogger"
+	applogger "github.com/Dimss/wafie/logger"
 	"github.com/Dimss/wafie/relay/pkg/apisrv"
 	"github.com/Dimss/wafie/relay/pkg/relay"
 	"github.com/spf13/cobra"

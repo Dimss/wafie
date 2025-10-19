@@ -1,16 +1,13 @@
 package cmd
 
 import (
-	"github.com/Dimss/wafie/apisrv/internal/applogger"
 	"github.com/Dimss/wafie/apisrv/internal/models"
 	"github.com/Dimss/wafie/apisrv/pkg/apiserver"
+	"github.com/Dimss/wafie/logger"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
-
-	//"go.uber.org/zap"
-	//"go.uber.org/zap/zapcore"
-	//"gorm.io/gorm/logger"
+	
 	"os"
 	"os/signal"
 	"syscall"
@@ -36,8 +33,7 @@ var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "start api server",
 	Run: func(cmd *cobra.Command, args []string) {
-		logger := applogger.NewLogger()
-		defer logger.Sync()
+		logger := logger.NewLogger()
 		logger.Info("starting api server")
 		_, err := models.NewDb(
 			models.NewDbCfg(

@@ -4,7 +4,7 @@ import (
 	"time"
 
 	v1 "github.com/Dimss/wafie/api/gen/wafie/v1"
-	"github.com/Dimss/wafie/apisrv/internal/applogger"
+	applogger "github.com/Dimss/wafie/logger"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"gorm.io/gorm"

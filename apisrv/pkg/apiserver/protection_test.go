@@ -6,7 +6,7 @@ import (
 
 	"connectrpc.com/connect"
 	wafiev1 "github.com/Dimss/wafie/api/gen/wafie/v1"
-	"github.com/Dimss/wafie/apisrv/internal/applogger"
+	applogger "github.com/Dimss/wafie/logger"
 	"github.com/stretchr/testify/assert"
 )
 

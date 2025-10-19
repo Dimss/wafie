@@ -6,14 +6,17 @@ shell:
 
 
 build:
+	# build api server
 	go build \
-      -ldflags="-X 'github.com/Dimss/wafie/cmd/agent/discovery/cmd.Build=$$(git rev-parse --short HEAD)'" \
-      -o bin/discovery-agent cmd/agent/discovery/main.go
-
+      -ldflags="-X 'github.com/Dimss/wafie/apisrv/cmd/apiserver/cmd.Build=$$(git rev-parse --short HEAD)'" \
+      -o .bin/api-server apisrv/cmd/apiserver/main.go
+	# build discovery agent
 	go build \
-      -ldflags="-X 'github.com/Dimss/wafie/cmd/apiserver/cmd.Build=$$(git rev-parse --short HEAD)'" \
-      -o bin/api-server cmd/apiserver/main.go
+      -ldflags="-X 'github.com/Dimss/wafie/discovery/cmd/cmd.Build=$$(git rev-parse --short HEAD)'" \
+      -o .bin/discovery-agent discovery/cmd/discovery/main.go
 
+
+build.appsecgw:
 	go build \
 		-ldflags="-X 'github.com/Dimss/wafie/appsecgw/cmd.Build=$$(git rev-parse --short HEAD)'" \
 		-o bin/appsecgw appsecgw/cmd/main.go

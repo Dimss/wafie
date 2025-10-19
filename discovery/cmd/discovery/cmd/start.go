@@ -6,9 +6,9 @@ import (
 	"os/signal"
 	"syscall"
 
+	hsrv "github.com/Dimss/wafie/apisrv/pkg/healthchecksrv"
 	"github.com/Dimss/wafie/discovery/pkg/discovery/ingress"
-	"github.com/Dimss/wafie/internal/applogger"
-	hsrv "github.com/Dimss/wafie/pkg/healthchecksrv"
+	applogger "github.com/Dimss/wafie/logger"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"

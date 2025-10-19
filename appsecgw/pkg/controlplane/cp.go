@@ -11,7 +11,7 @@ import (
 	"connectrpc.com/connect"
 	wafiev1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	"github.com/Dimss/wafie/api/gen/wafie/v1/wafiev1connect"
-	"github.com/Dimss/wafie/internal/applogger"
+	applogger "github.com/Dimss/wafie/logger"
 	clusterservice "github.com/envoyproxy/go-control-plane/envoy/service/cluster/v3"
 	discoverygrpc "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	endpointservice "github.com/envoyproxy/go-control-plane/envoy/service/endpoint/v3"

@@ -6,10 +6,10 @@ import (
 	"syscall"
 
 	"github.com/Dimss/wafie/appsecgw/pkg/controlplane"
-	"github.com/Dimss/wafie/internal/applogger"
+	"github.com/Dimss/wafie/logger"
 	"go.uber.org/zap"
 
-	hsrv "github.com/Dimss/wafie/pkg/healthchecksrv"
+	hsrv "github.com/Dimss/wafie/apisrv/pkg/healthchecksrv"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -26,7 +26,7 @@ var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Wafie AppSec Gateway control plane envoy gRPC server",
 	Run: func(cmd *cobra.Command, args []string) {
-		logger := applogger.NewLogger()
+		logger := logger.NewLogger()
 		// start health check server
 		hsrv.NewHealthCheckServer(
 			":8082", viper.GetString("api-addr"),

@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/Dimss/wafie/apisrv/internal/applogger"
+	applogger "github.com/Dimss/wafie/logger"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
