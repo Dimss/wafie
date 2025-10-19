@@ -9,5 +9,6 @@ ops/nginx/coreruleset-4.12.0
 api/gen
 api/vendor
 bin
+.bin
 .devspace
 ops/.secrets
