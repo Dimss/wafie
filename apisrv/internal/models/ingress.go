@@ -74,6 +74,8 @@ func (s *IngressModelSvc) Save(ingress *Ingress) error {
 				"ingress_type",
 				"discovery_message",
 				"discovery_status",
+				"created_at",
+				"updated_at",
 			},
 		),
 	}).Create(ingress); res.Error != nil {

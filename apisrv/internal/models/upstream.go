@@ -5,18 +5,20 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-
 	"math/rand"
 	"time"
 
+	"connectrpc.com/connect"
 	v1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	applogger "github.com/Dimss/wafie/logger"
 	"github.com/lib/pq"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type Port struct {
+	ID                 uint   `gorm:"primaryKey"`
 	PortNumber         uint32 `json:"port_number"`
 	PortName           string `json:"port_name"`
 	Status             uint32 `json:"status"`
@@ -24,54 +26,14 @@ type Port struct {
 	Description        string `json:"description"`
 }
 
-func (p *Port) Scan(value interface{}) error {
-	switch v := value.(type) {
-	case []byte:
-		return json.Unmarshal(v, p)
-	case string:
-		return json.Unmarshal([]byte(v), p)
-	default:
-		return fmt.Errorf("unsupported type for Port")
-	}
-}
-
-func (p *Port) Value() (driver.Value, error) {
-	return json.Marshal(p)
-}
-
-func (p *Port) ToProto() *v1.Port {
-	return &v1.Port{
-		Number:      p.PortNumber,
-		Name:        p.PortName,
-		Status:      v1.PortStatusType(p.Status),
-		Description: p.Description,
-	}
-}
-
-func NewPortFromProto(port *v1.Port) Port {
-	return Port{
-		PortNumber:  port.Number,
-		PortName:    port.Name,
-		Status:      uint32(port.Status),
-		Description: port.Description,
-	}
-}
-
-func NewPortsFromProto(protPorts []*v1.Port) (ports []Port) {
-	ports = make([]Port, len(protPorts))
-	for idx, port := range protPorts {
-		ports[idx] = NewPortFromProto(port)
-
-	}
-	return ports
-}
+type PortSlice []Port
 
 type Upstream struct {
 	ID                uint           `gorm:"primaryKey"`
 	SvcFqdn           string         `gorm:"uniqueIndex:idx_svc_fqdn"`
 	ContainerIps      pq.StringArray `gorm:"type:text[]"` // upstream IPS
-	SvcPorts          []Port         `gorm:"type:jsonb"`
-	ContainerPorts    []Port         `gorm:"type:jsonb"` // upstream ports - for routing by Virtual Host
+	SvcPorts          PortSlice      `gorm:"type:jsonb"`
+	ContainerPorts    PortSlice      `gorm:"type:jsonb"` // upstream ports - for routing by Virtual Host
 	UpstreamRouteType uint32
 	// One-to-many relationship
 	Ingresses []Ingress `gorm:"foreignKey:UpstreamID"` // upstream domains came from Ingres definition
@@ -111,8 +73,106 @@ func NewUpstreamFromRequest(upstreamReq *v1.Upstream) *Upstream {
 	}
 }
 
+func NewPortFromProto(port *v1.Port) Port {
+	return Port{
+		PortNumber:  port.Number,
+		PortName:    port.Name,
+		Status:      uint32(port.Status),
+		Description: port.Description,
+	}
+}
+
+func NewPortsFromProto(protPorts []*v1.Port) (ports PortSlice) {
+	ports = make([]Port, len(protPorts))
+	for idx, port := range protPorts {
+		ports[idx] = NewPortFromProto(port)
+
+	}
+	return ports
+}
+
+func (p *Port) ToProto() *v1.Port {
+	return &v1.Port{
+		Number:      p.PortNumber,
+		Name:        p.PortName,
+		Status:      v1.PortStatusType(p.Status),
+		Description: p.Description,
+	}
+}
+
+//goland:noinspection GoMixedReceiverTypes
+func (p PortSlice) Value() (driver.Value, error) {
+	if p == nil {
+		return nil, nil
+	}
+	jsonData, err := json.Marshal(p)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal PortSlice to JSON: %w", err)
+	}
+	return string(jsonData), nil
+}
+
+//goland:noinspection GoMixedReceiverTypes
+func (p *PortSlice) Scan(value interface{}) error {
+	if value == nil {
+		*p = nil
+		return nil
+	}
+	var jsonData []byte
+	switch v := value.(type) {
+	case []byte:
+		jsonData = v
+	case string:
+		jsonData = []byte(v)
+	default:
+		return fmt.Errorf("cannot scan %T into PortSlice", value)
+	}
+	// Unmarshal JSON to PortSlice
+	if err := json.Unmarshal(jsonData, p); err != nil {
+		return fmt.Errorf("failed to unmarshal JSON to PortSlice: %w", err)
+	}
+
+	return nil
+}
+
 func (s *UpstreamSvc) Save(u *Upstream) error {
-	return s.db.Create(u).Error
+	//upstreamToSave := Upstream{
+	//	SvcFqdn:           u.SvcFqdn,
+	//	ContainerIps:      u.ContainerIps,
+	//	SvcPorts:          u.SvcPorts,
+	//	ContainerPorts:    u.ContainerPorts,
+	//	UpstreamRouteType: u.UpstreamRouteType,
+	//}
+	if res := s.db.Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "svc_fqdn"}},
+		DoUpdates: clause.AssignmentColumns(
+			[]string{
+				"container_ips",
+				"svc_ports",
+				"container_ports",
+				"upstream_route_type",
+				"created_at",
+				"updated_at",
+			},
+		),
+	}).Omit("Ingresses").Create(&u); res.Error != nil {
+		return connect.NewError(connect.CodeUnknown, res.Error)
+	}
+	return nil
+}
+
+func (u *Upstream) AfterSave(tx *gorm.DB) error {
+	if u.Ingresses != nil {
+		// TODO: improve to batch operation
+		ingressModelSvc := NewIngressModelSvc(tx, nil)
+		for _, ing := range u.Ingresses {
+			ing.UpstreamID = u.ID
+			if err := ingressModelSvc.Save(&ing); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (u *Upstream) BeforeCreate(tx *gorm.DB) error {
@@ -124,14 +184,26 @@ func (u *Upstream) BeforeCreate(tx *gorm.DB) error {
 
 func (u *Upstream) allocateProxyListenerPort(tx *gorm.DB) error {
 
-	// TODO: add test for this stuff!
-
-	existingUpstream := &Upstream{SvcFqdn: u.SvcFqdn}
-	if err := tx.First(existingUpstream).Error; err != nil {
+	// TODO: TEST THIS WITH UNIT TESTS!
+	existingUpstream := &Upstream{}
+	if err := tx.Where("svc_fqdn = ?", u.SvcFqdn).First(existingUpstream).Error; err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
 	}
+	for _, currentPort := range existingUpstream.ContainerPorts {
+		if currentPort.ProxyListeningPort == 0 {
+			continue
+		}
+		for idx, newPort := range u.ContainerPorts {
+			if (currentPort.PortNumber != 0 && currentPort.PortNumber == newPort.PortNumber) ||
+				(currentPort.PortName != "" && currentPort.PortName == newPort.PortName) {
+				u.ContainerPorts[idx].ProxyListeningPort = currentPort.ProxyListeningPort
+				break
+			}
+		}
+	}
+
 	for idx, port := range u.ContainerPorts {
 		if port.ProxyListeningPort != 0 {
 			continue
