@@ -182,9 +182,7 @@ func (u *Upstream) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-func (u *Upstream) allocateProxyListenerPort(tx *gorm.DB) error {
-
-	// TODO: TEST THIS WITH UNIT TESTS!
+func (u *Upstream) updateCurrentProxyListeningPorts(tx *gorm.DB) error {
 	existingUpstream := &Upstream{}
 	if err := tx.Where("svc_fqdn = ?", u.SvcFqdn).First(existingUpstream).Error; err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -203,7 +201,14 @@ func (u *Upstream) allocateProxyListenerPort(tx *gorm.DB) error {
 			}
 		}
 	}
+	return nil
+}
 
+// TODO: TEST THIS WITH UNIT TESTS!
+func (u *Upstream) allocateProxyListenerPort(tx *gorm.DB) error {
+	if err := u.updateCurrentProxyListeningPorts(tx); err != nil {
+		return err
+	}
 	for idx, port := range u.ContainerPorts {
 		if port.ProxyListeningPort != 0 {
 			continue
