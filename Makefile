@@ -41,7 +41,7 @@ build-relay:
 
 docker.controlplane:
 	podman buildx build -t docker.io/dimssss/wafie-control-plane --platform linux/arm64 -f dockerfiles/controlplane/Dockerfile .
-	# podman push docker.io/dimssss/wafie-control-plane
+	podman push docker.io/dimssss/wafie-control-plane
 
 docker-appsecgw:
 	podman buildx build --build-arg ARCH=arm64 -t docker.io/dimssss/wafie-appsecgw --platform linux/arm64 -f dockerfiles/appsecgw/Dockerfile .

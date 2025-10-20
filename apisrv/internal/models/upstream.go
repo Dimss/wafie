@@ -169,6 +169,10 @@ func (u *Upstream) AfterSave(tx *gorm.DB) error {
 }
 
 func (u *Upstream) BeforeCreate(tx *gorm.DB) error {
+	// set default upstream route type
+	if u.UpstreamRouteType == uint32(v1.UpstreamRouteType_UPSTREAM_ROUTE_TYPE_UNSPECIFIED) {
+		u.UpstreamRouteType = uint32(v1.UpstreamRouteType_UPSTREAM_ROUTE_TYPE_PORT)
+	}
 	if err := u.allocateProxyListenerPort(tx); err != nil {
 		return err
 	}
