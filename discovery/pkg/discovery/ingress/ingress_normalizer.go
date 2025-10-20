@@ -31,67 +31,77 @@ func (i *ingress) gvr() schema.GroupVersionResource {
 	}
 }
 
-func (i *ingress) normalizedWithError(cwafv1Ing *wafiev1.Ingress, err error) (*wafiev1.Ingress, error) {
-	cwafv1Ing.DiscoveryStatus = wafiev1.DiscoveryStatusType_DISCOVERY_STATUS_TYPE_INCOMPLETE
-	cwafv1Ing.DiscoveryMessage = err.Error()
-	return cwafv1Ing, err
+func (i *ingress) normalizedWithError(upstream *wafiev1.Upstream, err error) (*wafiev1.Upstream, error) {
+	if upstream == nil {
+		upstream = &wafiev1.Upstream{}
+	}
+	if upstream.Ingresses == nil || len(upstream.Ingresses) == 0 {
+		upstream.Ingresses = []*wafiev1.Ingress{
+			{
+				DiscoveryStatus:  wafiev1.DiscoveryStatusType_DISCOVERY_STATUS_TYPE_INCOMPLETE,
+				DiscoveryMessage: err.Error(),
+			},
+		}
+		return upstream, err
+	}
+	upstream.Ingresses[0].DiscoveryStatus = wafiev1.DiscoveryStatusType_DISCOVERY_STATUS_TYPE_INCOMPLETE
+	upstream.Ingresses[0].DiscoveryMessage = err.Error()
+	return upstream, err
 }
 
-func (i *ingress) normalize(obj *unstructured.Unstructured) (*wafiev1.Ingress, error) {
-
+func (i *ingress) normalize(obj *unstructured.Unstructured) (upstream *wafiev1.Upstream, err error) {
+	upstream = &wafiev1.Upstream{}
 	ingObj := &v1.Ingress{}
-	cwafv1Ing := &wafiev1.Ingress{}
 	if err := runtime.
 		DefaultUnstructuredConverter.
 		FromUnstructured(obj.Object, ingObj); err != nil {
-		return i.normalizedWithError(cwafv1Ing, err)
+		return i.normalizedWithError(upstream, err)
 	}
-	objJson, err := obj.MarshalJSON()
-	if err != nil {
-		return i.normalizedWithError(cwafv1Ing, err)
-	}
+
 	if len(ingObj.Spec.Rules) > 0 && len(ingObj.Spec.Rules[0].HTTP.Paths) > 0 {
+		//TODO: check what will happen when the host will be empty, i.e ingress with wildcard scenario
 		if ingObj.Spec.Rules[0].Host == "" {
 			i.logger.Info("skipping ingress due to wildcard '*' hostname",
 				zap.String("ingress", ingObj.Name+"."+ingObj.Namespace))
 			return nil, nil
 		}
-		//// TODO: fix this!
-		//if ingObj.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name == controlplane.WafieGatewaySvcName {
-		//	i.logger.Info("skipping, ingress already routing to wafie gateway svc",
-		//		zap.String("ingress", ingObj.Name+"."+ingObj.Namespace))
-		//}
-		cwafv1Ing = &wafiev1.Ingress{
-			Name:      ingObj.Name,
-			Namespace: ingObj.Namespace,
-			Port:      80, // TODO: add support for TLS passthroughs and other protocols later on
-			UpstreamHost: fmt.Sprintf("%s.%s.svc",
-				ingObj.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name,
-				ingObj.Namespace),
-			Path:            ingObj.Spec.Rules[0].HTTP.Paths[0].Path,
-			Host:            ingObj.Spec.Rules[0].Host,
-			RawIngressSpec:  string(objJson),
-			IngressType:     wafiev1.IngressType_INGRESS_TYPE_NGINX,
-			DiscoveryStatus: wafiev1.DiscoveryStatusType_DISCOVERY_STATUS_TYPE_SUCCESS,
-			// TODO: upstream route type should be configurable
-			UpstreamRouteType: wafiev1.UpstreamRouteType_UPSTREAM_ROUTE_TYPE_PORT,
-		}
-		cwafv1Ing.UpstreamPort, err = i.discoverUpstreamPort(ingObj)
+		// set upstream ingress
+		upstream.Ingresses = append(upstream.Ingresses,
+			&wafiev1.Ingress{
+				Name:            ingObj.Name,
+				Namespace:       ingObj.Namespace,
+				Port:            80, // TODO: add support for TLS passthroughs and other protocols later on
+				Path:            ingObj.Spec.Rules[0].HTTP.Paths[0].Path,
+				Host:            ingObj.Spec.Rules[0].Host,
+				IngressType:     wafiev1.IngressType_INGRESS_TYPE_NGINX,
+				DiscoveryStatus: wafiev1.DiscoveryStatusType_DISCOVERY_STATUS_TYPE_SUCCESS,
+			},
+		)
+		upstream.SvcFqdn = fmt.Sprintf("%s.%s.svc",
+			ingObj.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name,
+			ingObj.Namespace)
+
+		upstream.SvcPorts, err = i.discoverSvcPorts(ingObj)
 		if err != nil {
-			return i.normalizedWithError(cwafv1Ing, err)
+			return i.normalizedWithError(upstream, err)
 		}
-		cwafv1Ing.ContainerPort, err = i.discoverContainerPort(ingObj)
+		upstream.ContainerPorts, err = i.discoverContainerPorts(ingObj)
 		if err != nil {
-			return i.normalizedWithError(cwafv1Ing, err)
+			return i.normalizedWithError(upstream, err)
 		}
-		return cwafv1Ing, nil
+		return upstream, nil
 	}
 	return nil, nil
 }
 
-func (i *ingress) discoverUpstreamPort(ing *v1.Ingress) (int32, error) {
+// discoverSvcPorts is in use when envoy making routing by virtual host
+func (i *ingress) discoverSvcPorts(ing *v1.Ingress) (ports []*wafiev1.Port, err error) {
+	//
 	if ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number != 0 {
-		return ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number, nil
+		return append(ports, &wafiev1.Port{
+			Number: uint32(ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number),
+			Status: wafiev1.PortStatusType_PORT_STATUS_TYPE_ENABLED,
+		}), nil
 	}
 	// get service port number by service port name
 	if port, err := getSvcPortNumberBySvcPortName(
@@ -99,15 +109,19 @@ func (i *ingress) discoverUpstreamPort(ing *v1.Ingress) (int32, error) {
 		ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name,
 		ing.Namespace,
 	); err != nil {
-		return 0, err
+		return nil, err
 	} else {
-		return port, nil
+		return append(ports, &wafiev1.Port{
+			Number: uint32(port),
+			Name:   ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Name,
+			Status: wafiev1.PortStatusType_PORT_STATUS_TYPE_ENABLED,
+		}), nil
 	}
-
 }
 
-func (i *ingress) discoverContainerPort(ing *v1.Ingress) (int32, error) {
-	if port, err := getContainerPortBySvcPort(
+// discoverContainerPorts in use when envoy making routing by listeners port
+func (i *ingress) discoverContainerPorts(ing *v1.Ingress) (ports []*wafiev1.Port, err error) {
+	if portNumber, portName, err := getContainerPortBySvcPort(
 		intstr.IntOrString{
 			IntVal: ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number,
 			StrVal: ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Name,
@@ -115,8 +129,12 @@ func (i *ingress) discoverContainerPort(ing *v1.Ingress) (int32, error) {
 		ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name,
 		ing.Namespace,
 	); err != nil {
-		return 0, err
+		return nil, err
 	} else {
-		return port, nil
+		return append(ports, &wafiev1.Port{
+			Number: uint32(portNumber),
+			Name:   portName,
+			Status: wafiev1.PortStatusType_PORT_STATUS_TYPE_ENABLED,
+		}), nil
 	}
 }

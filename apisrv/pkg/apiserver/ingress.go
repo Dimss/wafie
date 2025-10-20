@@ -37,7 +37,7 @@ func (s *IngressService) CreateIngress(
 	//}
 	ingressModelSvc := models.NewIngressModelSvc(nil, l)
 	return connect.NewResponse(&wafiev1.CreateIngressResponse{}),
-		ingressModelSvc.NewIngressFromRequest(req.Msg)
+		ingressModelSvc.Save(models.NewIngressFromProto(req.Msg.Ingress))
 }
 
 func (s *IngressService) getApplicationForIngress(ctx context.Context, name string) (

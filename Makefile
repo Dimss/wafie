@@ -27,10 +27,10 @@ build-api:
       -o bin/api-server cmd/apiserver/main.go
 
 
-build-discovery:
+build.discovery:
 	go build \
-      -ldflags="-X 'github.com/Dimss/wafie/cmd/agent/discovery/cmd.Build=$$(git rev-parse --short HEAD)'" \
-      -o bin/discovery-agent cmd/agent/discovery/main.go
+      -ldflags="-X 'github.com/Dimss/wafie/discovery/cmd/discovery/cmd.Build=$$(git rev-parse --short HEAD)'" \
+      -o .bin/discovery-agent discovery/cmd/discovery/main.go
 
 
 build-cni:

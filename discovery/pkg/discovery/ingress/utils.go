@@ -42,31 +42,31 @@ func getSvcPortNumberBySvcPortName(portName, svcName, namespace string) (int32, 
 	return 0, nil
 }
 
-func getContainerPortBySvcPort(kPort intstr.IntOrString, svcName, namespace string) (int32, error) {
+func getContainerPortBySvcPort(kPort intstr.IntOrString, svcName, namespace string) (portNumber int32, portName string, err error) {
 	service, err := getSvc(svcName, namespace)
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
 	for _, p := range service.Spec.Ports {
 		// equal either by port name or port number and target port number is set
 		if (p.Name == kPort.StrVal || p.Port == kPort.IntVal) && p.TargetPort.IntVal != 0 {
-			return p.TargetPort.IntVal, nil
+			return p.TargetPort.IntVal, "", nil
 		}
 		// equal either by port name or port number and target port name is set
 		// in that case further discovery required with endpoints slices
 		if (p.Name == kPort.StrVal || p.Port == kPort.IntVal) && p.TargetPort.StrVal != "" {
 			endpointSlice, err := getEndpointSliceBySvcName(svcName, namespace)
 			if err != nil {
-				return 0, err
+				return 0, "", err
 			}
 			for _, port := range endpointSlice.Ports {
 				if *port.Port == kPort.IntVal || *port.Name == kPort.StrVal {
-					return *port.Port, nil
+					return *port.Port, *port.Name, nil
 				}
 			}
 		}
 	}
-	return 0, fmt.Errorf("can not find container port for service: %s", svcName)
+	return 0, "", fmt.Errorf("can not find container port for service: %s", svcName)
 }
 
 func getEndpointSliceBySvcName(svcName, namespace string) (*discoveryv1.EndpointSlice, error) {

@@ -20,53 +20,49 @@ type IngressModelSvc struct {
 
 func NewIngressModelSvc(tx *gorm.DB, logger *zap.Logger) *IngressModelSvc {
 	modelSvc := &IngressModelSvc{db: tx, logger: logger}
-
 	if tx == nil {
 		modelSvc.db = db()
 	}
 	if logger == nil {
 		modelSvc.logger = applogger.NewLogger()
 	}
-
 	return modelSvc
 }
 
 type Ingress struct {
-	ID                uint `gorm:"primaryKey"`
-	Name              string
-	Namespace         string
-	Host              string `gorm:"uniqueIndex:idx_ing_host"`
-	Port              int32
-	Path              string
-	ApplicationID     uint `gorm:"not null"`
-	Application       Application
-	IngressType       uint32
-	DiscoveryStatus   uint32
-	DiscoveryMessage  string `gorm:"type:text"`
-	UpstreamRouteType uint32
-
-	// Foreign key to Service
-	ServiceID uint    `gorm:"not null;index"`
-	Service   Service `gorm:"foreignKey:ServiceID"`
-
-	CreatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP"`
-	UpdatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP"`
+	ID               uint `gorm:"primaryKey"`
+	Name             string
+	Namespace        string
+	Host             string `gorm:"uniqueIndex:idx_ing_host"`
+	Port             int32
+	Path             string
+	ApplicationID    uint `gorm:"not null"`
+	Application      Application
+	IngressType      uint32
+	DiscoveryStatus  uint32
+	DiscoveryMessage string `gorm:"type:text"`
+	// Foreign key to Upstream
+	UpstreamID uint      `gorm:"not null;index"`
+	Upstream   Upstream  `gorm:"foreignKey:UpstreamID"`
+	CreatedAt  time.Time `gorm:"default:CURRENT_TIMESTAMP"`
+	UpdatedAt  time.Time `gorm:"default:CURRENT_TIMESTAMP"`
 }
 
-func (s *IngressModelSvc) NewIngressFromRequest(req *v1.CreateIngressRequest) error {
-	ingress := &Ingress{
-		Name:              req.Ingress.Name,
-		Namespace:         req.Ingress.Namespace,
-		Path:              req.Ingress.Path,
-		Host:              req.Ingress.Host,
-		Port:              req.Ingress.Port,
-		IngressType:       uint32(req.Ingress.IngressType),
-		ApplicationID:     uint(req.Ingress.ApplicationId),
-		DiscoveryMessage:  req.Ingress.DiscoveryMessage,
-		DiscoveryStatus:   uint32(req.Ingress.DiscoveryStatus),
-		UpstreamRouteType: uint32(req.Ingress.UpstreamRouteType),
+func NewIngressFromProto(ingReq *v1.Ingress) *Ingress {
+	return &Ingress{
+		Name:             ingReq.Name,
+		Namespace:        ingReq.Namespace,
+		Path:             ingReq.Path,
+		Host:             ingReq.Host,
+		Port:             ingReq.Port,
+		IngressType:      uint32(ingReq.IngressType),
+		ApplicationID:    uint(ingReq.ApplicationId),
+		DiscoveryMessage: ingReq.DiscoveryMessage,
+		DiscoveryStatus:  uint32(ingReq.DiscoveryStatus),
 	}
+}
 
+func (s *IngressModelSvc) Save(ingress *Ingress) error {
 	if res := s.db.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "host"}},
 		DoUpdates: clause.AssignmentColumns(
@@ -78,7 +74,6 @@ func (s *IngressModelSvc) NewIngressFromRequest(req *v1.CreateIngressRequest) er
 				"ingress_type",
 				"discovery_message",
 				"discovery_status",
-				"upstream_route_type",
 			},
 		),
 	}).Create(ingress); res.Error != nil {
@@ -89,15 +84,14 @@ func (s *IngressModelSvc) NewIngressFromRequest(req *v1.CreateIngressRequest) er
 
 func (i *Ingress) ToProto() *v1.Ingress {
 	return &v1.Ingress{
-		Name:              i.Name,
-		Namespace:         i.Namespace,
-		Path:              i.Path,
-		Host:              i.Host,
-		IngressType:       v1.IngressType(i.IngressType),
-		DiscoveryMessage:  i.DiscoveryMessage,
-		DiscoveryStatus:   v1.DiscoveryStatusType(i.DiscoveryStatus),
-		ApplicationId:     int32(i.ApplicationID),
-		UpstreamRouteType: v1.UpstreamRouteType(i.UpstreamRouteType),
+		Name:             i.Name,
+		Namespace:        i.Namespace,
+		Path:             i.Path,
+		Host:             i.Host,
+		IngressType:      v1.IngressType(i.IngressType),
+		DiscoveryMessage: i.DiscoveryMessage,
+		DiscoveryStatus:  v1.DiscoveryStatusType(i.DiscoveryStatus),
+		ApplicationId:    int32(i.ApplicationID),
 	}
 }
 

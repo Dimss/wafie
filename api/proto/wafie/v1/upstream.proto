@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package wafie.v1;
+
+import "wafie/v1/ingress.proto";
+
+enum UpstreamRouteType {
+  UPSTREAM_ROUTE_TYPE_UNSPECIFIED = 0;
+  UPSTREAM_ROUTE_TYPE_DOMAIN = 1;
+  UPSTREAM_ROUTE_TYPE_PORT = 2;
+}
+
+enum PortStatusType {
+  PORT_STATUS_TYPE_UNSPECIFIED = 0;
+  PORT_STATUS_TYPE_ENABLED = 1;
+  PORT_STATUS_TYPE_DISABLED = 2;
+}
+
+message Port  {
+  uint32 number = 1;
+  string name = 2;
+  PortStatusType status = 3;
+  string description = 4;
+}
+
+message Upstream {
+  string svc_fqdn = 1;
+  repeated string container_ips = 2;
+  repeated Port svc_ports = 3;
+  repeated Port container_ports = 4;
+  repeated Ingress ingresses = 5;
+  UpstreamRouteType upstream_route_type = 6;
+}
+
+message CreateUpstreamRequest {
+  Upstream upstream = 1;
+}
+
+message CreateUpstreamResponse {}
+
+service UpstreamService {
+  rpc CreateUpstream(CreateUpstreamRequest) returns(CreateUpstreamResponse);
+}

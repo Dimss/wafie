@@ -28,7 +28,7 @@ const (
 
 type normalizer interface {
 	gvr() schema.GroupVersionResource
-	normalize(*unstructured.Unstructured) (*wafiev1.Ingress, error)
+	normalize(*unstructured.Unstructured) (*wafiev1.Upstream, error)
 }
 
 func newParser(ingressType IngressType) normalizer {
@@ -45,12 +45,12 @@ func newParser(ingressType IngressType) normalizer {
 }
 
 type Cache struct {
-	ingressType      IngressType
-	normalizer       normalizer
-	notifier         chan struct{}
-	namespace        string
-	ingressSvcClient v1.IngressServiceClient
-	logger           *zap.Logger
+	ingressType       IngressType
+	normalizer        normalizer
+	notifier          chan struct{}
+	namespace         string
+	upstreamSvcClient v1.UpstreamServiceClient
+	logger            *zap.Logger
 }
 
 func NewIngressCache(ingressType IngressType, apiAddr string, logger *zap.Logger) *Cache {
@@ -60,7 +60,7 @@ func NewIngressCache(ingressType IngressType, apiAddr string, logger *zap.Logger
 		namespace:   "",
 		normalizer:  newParser(ingressType),
 		logger:      logger,
-		ingressSvcClient: v1.NewIngressServiceClient(
+		upstreamSvcClient: v1.NewUpstreamServiceClient(
 			http.DefaultClient,
 			apiAddr,
 		),
@@ -100,7 +100,7 @@ func (c *Cache) Start() {
 			r, err := genericInformer.Informer().AddEventHandler(cache2.ResourceEventHandlerFuncs{
 				AddFunc: func(obj interface{}) {
 					unstructuredIngress := obj.(*unstructured.Unstructured)
-					if err := c.createIngress(unstructuredIngress); err != nil {
+					if err := c.createUpstream(unstructuredIngress); err != nil {
 						l.With(
 							zap.String("name", unstructuredIngress.GetName()),
 							zap.String("namespace", unstructuredIngress.GetNamespace()),
@@ -124,17 +124,17 @@ func (c *Cache) Start() {
 
 }
 
-func (c *Cache) createIngress(obj *unstructured.Unstructured) error {
-	ing, normalizerErr := c.normalizer.normalize(obj)
-	if ing == nil {
+func (c *Cache) createUpstream(obj *unstructured.Unstructured) error {
+	upstream, normalizerErr := c.normalizer.normalize(obj)
+	if upstream == nil {
 		return nil
 	}
-	_, createIngressErr := c.ingressSvcClient.CreateIngress(
+	_, upstreamCreateErr := c.upstreamSvcClient.CreateUpstream(
 		context.Background(),
 		connect.NewRequest(
-			&wafiev1.CreateIngressRequest{Ingress: ing},
+			&wafiev1.CreateUpstreamRequest{Upstream: upstream},
 		),
 	)
-	return errors.Join(normalizerErr, createIngressErr)
+	return errors.Join(normalizerErr, upstreamCreateErr)
 
 }
