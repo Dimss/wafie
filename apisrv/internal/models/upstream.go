@@ -136,13 +136,6 @@ func (p *PortSlice) Scan(value interface{}) error {
 }
 
 func (s *UpstreamSvc) Save(u *Upstream) error {
-	//upstreamToSave := Upstream{
-	//	SvcFqdn:           u.SvcFqdn,
-	//	ContainerIps:      u.ContainerIps,
-	//	SvcPorts:          u.SvcPorts,
-	//	ContainerPorts:    u.ContainerPorts,
-	//	UpstreamRouteType: u.UpstreamRouteType,
-	//}
 	if res := s.db.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "svc_fqdn"}},
 		DoUpdates: clause.AssignmentColumns(
