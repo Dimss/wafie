@@ -29,6 +29,7 @@ func (s *UpstreamService) CreateUpstream(
 		NewUpstreamModelSvc(nil, s.logger).
 		Save(
 			models.NewUpstreamFromRequest(req.Msg.Upstream),
+			req.Msg.Options,
 		)
 	return connect.NewResponse(&wv1.CreateUpstreamResponse{}), err
 }

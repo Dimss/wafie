@@ -25,8 +25,6 @@ func (s *DataVersionService) GetDataVersion(
 	ctx context.Context,
 	req *connect.Request[wafiev1.GetDataVersionRequest]) (
 	*connect.Response[wafiev1.GetDataVersionResponse], error) {
-	s.logger.Info("getting protection version")
-	defer s.logger.Info("protection version retrieved")
 	version, err := models.
 		NewDataVersionModelSvc(nil, s.logger).
 		GetVersionByTypeId(uint32(req.Msg.TypeId))

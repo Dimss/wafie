@@ -41,7 +41,7 @@ func NewCache(apiAddr string, logger *zap.Logger) *Cache {
 
 func (c *Cache) Run() {
 	// start svc fqdn cacher
-	c.runUpstreamSvcFqdnCache()
+	//c.runUpstreamSvcFqdnCache()
 	// start upstream api syncer
 	c.RunUpstreamIPsSyncer()
 	// start endpointslice K8s informer
@@ -53,18 +53,20 @@ func (c *Cache) RunUpstreamIPsSyncer() {
 		for {
 			select {
 			case eps := <-c.EpsCh:
-				svcName := eps.Labels["kubernetes.io/service-name"]
-				if !c.shouldProtect(svcName) {
+				svcFqdn := fmt.Sprintf("%s.%s.svc", eps.Labels["kubernetes.io/service-name"], eps.Namespace)
+				if !c.shouldProtect(svcFqdn) {
 					continue
 				}
 				req := &wafiev1.CreateUpstreamRequest{
 					Upstream: &wafiev1.Upstream{
-						SvcFqdn:      fmt.Sprintf("%s.%s.svc", svcName, eps.Namespace),
+						SvcFqdn:      svcFqdn,
 						ContainerIps: c.ipAddressFromEndpointSlice(eps),
 					}}
 				if _, err := c.upstreamSvcClient.CreateUpstream(context.Background(), connect.NewRequest(req)); err != nil {
 					c.logger.Info("create upstream failed", zap.Error(err))
 				}
+				c.logger.Info("ips were updated", zap.String("svcFqdn", svcFqdn))
+
 			case c.svcFqdnCache = <-c.svcFqdnCacheUpdaterCh:
 				c.logger.Info("svc fqdn got updated")
 			}

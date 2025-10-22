@@ -92,7 +92,7 @@ func (c *Cache) Run() {
 				continue
 			}
 			genericInformer, err := dynamicinformer.NewFilteredDynamicInformer(dc, c.normalizer.gvr(),
-				c.namespace, 1*time.Minute, nil, nil), nil
+				c.namespace, 30*time.Second, nil, nil), nil
 			if err != nil {
 				informerStartError = err
 				continue
@@ -108,7 +108,13 @@ func (c *Cache) Run() {
 					}
 				},
 				UpdateFunc: func(oldObj, newObj interface{}) {
-					l.Info("updated ingress", zap.Any("object", newObj))
+					unstructuredIngress := newObj.(*unstructured.Unstructured)
+					if err := c.createUpstream(unstructuredIngress); err != nil {
+						l.With(
+							zap.String("name", unstructuredIngress.GetName()),
+							zap.String("namespace", unstructuredIngress.GetNamespace()),
+						).Error("error creating ingress", zap.Error(err))
+					}
 				},
 				DeleteFunc: func(obj interface{}) {
 					l.Info("deleted ingress", zap.Any("object", obj))

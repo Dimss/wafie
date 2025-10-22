@@ -32,8 +32,12 @@ message Upstream {
   UpstreamRouteType upstream_route_type = 6;
 }
 
+message CreateUpstreamOptions {
+  optional bool set_container_ips_only = 1;
+}
 message CreateUpstreamRequest {
   Upstream upstream = 1;
+  optional CreateUpstreamOptions options = 2;
 }
 message CreateUpstreamResponse {}
 

@@ -82,13 +82,12 @@ func NewPortFromProto(port *wv1.Port) Port {
 	}
 }
 
-func NewPortsFromProto(protPorts []*wv1.Port) (ports PortSlice) {
-	ports = make([]Port, len(protPorts))
-	for idx, port := range protPorts {
-		ports[idx] = NewPortFromProto(port)
-
+func NewPortsFromProto(ports []*wv1.Port) PortSlice {
+	portSlice := make(PortSlice, len(ports))
+	for idx, port := range ports {
+		portSlice[idx] = NewPortFromProto(port)
 	}
-	return ports
+	return portSlice
 }
 
 func (p *Port) ToProto() *wv1.Port {
@@ -144,19 +143,26 @@ func (p *PortSlice) ToProto() []*wv1.Port {
 	return ports
 }
 
-func (s *UpstreamSvc) Save(u *Upstream) error {
+func (s *UpstreamSvc) Save(u *Upstream, options *wv1.CreateUpstreamOptions) error {
+	// by default do not upsert container_ips
+	assigmentColumns := []string{
+		"svc_ports",
+		"container_ports",
+		"upstream_route_type",
+		"created_at",
+		"updated_at",
+	}
+	// if set container ips only is true update only container_ips column
+	if options != nil && *options.SetContainerIpsOnly {
+		assigmentColumns = []string{
+			"container_ips",
+			"created_at",
+			"updated_at",
+		}
+	}
 	if res := s.db.Clauses(clause.OnConflict{
-		Columns: []clause.Column{{Name: "svc_fqdn"}},
-		DoUpdates: clause.AssignmentColumns(
-			[]string{
-				"container_ips",
-				"svc_ports",
-				"container_ports",
-				"upstream_route_type",
-				"created_at",
-				"updated_at",
-			},
-		),
+		Columns:   []clause.Column{{Name: "svc_fqdn"}},
+		DoUpdates: clause.AssignmentColumns(assigmentColumns),
 	}).Omit("Ingresses").Create(&u); res.Error != nil {
 		return connect.NewError(connect.CodeUnknown, res.Error)
 	}
@@ -224,15 +230,17 @@ func (u *Upstream) updateCurrentProxyListeningPorts(tx *gorm.DB) error {
 			return err
 		}
 	}
-	for _, currentPort := range existingUpstream.ContainerPorts {
-		if currentPort.ProxyListeningPort == 0 {
-			continue
-		}
-		for idx, newPort := range u.ContainerPorts {
-			if (currentPort.PortNumber != 0 && currentPort.PortNumber == newPort.PortNumber) ||
-				(currentPort.PortName != "" && currentPort.PortName == newPort.PortName) {
-				u.ContainerPorts[idx].ProxyListeningPort = currentPort.ProxyListeningPort
-				break
+	if existingUpstream.ContainerPorts != nil {
+		for _, currentPort := range existingUpstream.ContainerPorts {
+			if currentPort.ProxyListeningPort == 0 {
+				continue
+			}
+			for idx, newPort := range u.ContainerPorts {
+				if (currentPort.PortNumber != 0 && currentPort.PortNumber == newPort.PortNumber) ||
+					(currentPort.PortName != "" && currentPort.PortName == newPort.PortName) {
+					u.ContainerPorts[idx].ProxyListeningPort = currentPort.ProxyListeningPort
+					break
+				}
 			}
 		}
 	}
@@ -256,13 +264,20 @@ func (u *Upstream) allocateProxyListenerPort(tx *gorm.DB) error {
 				maxPort := 65535
 				return int32(rand.Intn(maxPort-minPort) + minPort)
 			}()
-			query := "container_ports -> 'proxy_listening_port' = ?"
-			if err := tx.Where(query, proxyListenerPort).First(&Upstream{}).Error; err != nil {
+			query := `SELECT (port ->> 'proxy_listening_port')::int as proxy_listening_port 
+                        FROM upstreams,jsonb_array_elements(container_ports) as port 
+                        where (port ->> 'proxy_listening_port')::int = ?`
+			var ports []string
+			if err := tx.Raw(query, proxyListenerPort).Pluck("jsonb_array_elements", &ports).Error; err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
 					u.ContainerPorts[idx].ProxyListeningPort = uint32(proxyListenerPort)
 					break
 				}
 				return err
+			}
+			if len(ports) == 0 {
+				u.ContainerPorts[idx].ProxyListeningPort = uint32(proxyListenerPort)
+				break
 			}
 			allocationAttempts--
 		}
