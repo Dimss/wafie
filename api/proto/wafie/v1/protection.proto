@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 import "wafie/v1/application.proto";
-import "wafie/v1/upstream.proto";
+//import "wafie/v1/upstream.proto";
 
 package wafie.v1;
 
@@ -34,7 +34,7 @@ message Protection {
   uint32 id = 1;
   uint32 application_id = 2;
   optional Application application = 3;
-  optional Upstream upstream = 4;
+//  optional Upstream upstream = 4;
   ProtectionMode protection_mode = 5;
   ProtectionDesiredState desired_state = 6;
 }

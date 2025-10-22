@@ -59,17 +59,12 @@ func NewUpstreamModelSvc(tx *gorm.DB, logger *zap.Logger) *UpstreamSvc {
 }
 
 func NewUpstreamFromRequest(upstreamReq *wv1.Upstream) *Upstream {
-	var ingresses = make([]Ingress, len(upstreamReq.Ingresses))
-	for idx, ing := range upstreamReq.Ingresses {
-		ingresses[idx] = *NewIngressFromProto(ing)
-	}
 	return &Upstream{
 		SvcFqdn:           upstreamReq.SvcFqdn,
 		ContainerIps:      upstreamReq.ContainerIps,
 		SvcPorts:          NewPortsFromProto(upstreamReq.SvcPorts),
 		ContainerPorts:    NewPortsFromProto(upstreamReq.ContainerPorts),
 		UpstreamRouteType: uint32(upstreamReq.UpstreamRouteType),
-		Ingresses:         ingresses,
 	}
 }
 

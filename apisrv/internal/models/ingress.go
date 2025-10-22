@@ -97,7 +97,7 @@ func (i *Ingress) ToProto() *wv1.Ingress {
 	}
 }
 
-func (i *Ingress) createApplicationIfNotExists(tx *gorm.DB) error {
+func (i *Ingress) createApplication(tx *gorm.DB) error {
 	app := &Application{}
 	if err := tx.Where("name = ?", i.Host).First(app).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -118,9 +118,19 @@ func (i *Ingress) createApplicationIfNotExists(tx *gorm.DB) error {
 	return nil
 }
 
+func (i *Ingress) createUpstream(tx *gorm.DB) error {
+	setContainerIpsOnly := false
+	return NewUpstreamModelSvc(tx, nil).Save(
+		&i.Upstream,
+		&wv1.CreateUpstreamOptions{
+			SetContainerIpsOnly: &setContainerIpsOnly,
+		},
+	)
+}
+
 func (i *Ingress) BeforeCreate(tx *gorm.DB) error {
-	if err := i.createApplicationIfNotExists(tx); err != nil {
-		return err
-	}
-	return nil
+	return errors.Join(
+		i.createApplication(tx),
+		i.createUpstream(tx),
+	)
 }
