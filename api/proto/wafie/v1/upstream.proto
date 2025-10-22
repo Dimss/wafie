@@ -35,9 +35,19 @@ message Upstream {
 message CreateUpstreamRequest {
   Upstream upstream = 1;
 }
-
 message CreateUpstreamResponse {}
+
+message ListUpstreamsOptions{
+  optional bool include_ingress = 1;
+}
+message ListUpstreamsRequest {
+  optional ListUpstreamsOptions options = 1;
+}
+message ListUpstreamsResponse{
+  repeated Upstream upstreams = 1;
+}
 
 service UpstreamService {
   rpc CreateUpstream(CreateUpstreamRequest) returns(CreateUpstreamResponse);
+  rpc ListUpstreams(ListUpstreamsRequest) returns(ListUpstreamsResponse);
 }

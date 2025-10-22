@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"connectrpc.com/connect"
-	cwafv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
+	wv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	"github.com/Dimss/wafie/api/gen/wafie/v1/wafiev1connect"
 	"github.com/Dimss/wafie/apisrv/internal/models"
 	"go.uber.org/zap"
@@ -23,12 +23,31 @@ func NewUpstreamService(log *zap.Logger) *UpstreamService {
 
 func (s *UpstreamService) CreateUpstream(
 	ctx context.Context,
-	req *connect.Request[cwafv1.CreateUpstreamRequest]) (
-	*connect.Response[cwafv1.CreateUpstreamResponse], error) {
+	req *connect.Request[wv1.CreateUpstreamRequest]) (
+	*connect.Response[wv1.CreateUpstreamResponse], error) {
 	err := models.
 		NewUpstreamModelSvc(nil, s.logger).
 		Save(
 			models.NewUpstreamFromRequest(req.Msg.Upstream),
 		)
-	return connect.NewResponse(&cwafv1.CreateUpstreamResponse{}), err
+	return connect.NewResponse(&wv1.CreateUpstreamResponse{}), err
+}
+
+func (s *UpstreamService) ListUpstreams(
+	ctx context.Context,
+	req *connect.Request[wv1.ListUpstreamsRequest]) (
+	*connect.Response[wv1.ListUpstreamsResponse], error) {
+	upstreams, err := models.
+		NewUpstreamModelSvc(nil, s.logger).
+		List(req.Msg.Options)
+	var upstreamResponse = make([]*wv1.Upstream, len(upstreams))
+	for i, upstream := range upstreams {
+		upstreamResponse[i] = upstream.ToProto()
+	}
+	resp := connect.NewResponse(&wv1.ListUpstreamsResponse{Upstreams: upstreamResponse})
+	if err != nil {
+		return resp,
+			connect.NewError(connect.CodeInternal, err)
+	}
+	return resp, nil
 }

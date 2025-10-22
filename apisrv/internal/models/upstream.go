@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	v1 "github.com/Dimss/wafie/api/gen/wafie/v1"
+	wv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	applogger "github.com/Dimss/wafie/logger"
 	"github.com/lib/pq"
 	"go.uber.org/zap"
@@ -58,7 +58,7 @@ func NewUpstreamModelSvc(tx *gorm.DB, logger *zap.Logger) *UpstreamSvc {
 	return modelSvc
 }
 
-func NewUpstreamFromRequest(upstreamReq *v1.Upstream) *Upstream {
+func NewUpstreamFromRequest(upstreamReq *wv1.Upstream) *Upstream {
 	var ingresses = make([]Ingress, len(upstreamReq.Ingresses))
 	for idx, ing := range upstreamReq.Ingresses {
 		ingresses[idx] = *NewIngressFromProto(ing)
@@ -73,7 +73,7 @@ func NewUpstreamFromRequest(upstreamReq *v1.Upstream) *Upstream {
 	}
 }
 
-func NewPortFromProto(port *v1.Port) Port {
+func NewPortFromProto(port *wv1.Port) Port {
 	return Port{
 		PortNumber:  port.Number,
 		PortName:    port.Name,
@@ -82,7 +82,7 @@ func NewPortFromProto(port *v1.Port) Port {
 	}
 }
 
-func NewPortsFromProto(protPorts []*v1.Port) (ports PortSlice) {
+func NewPortsFromProto(protPorts []*wv1.Port) (ports PortSlice) {
 	ports = make([]Port, len(protPorts))
 	for idx, port := range protPorts {
 		ports[idx] = NewPortFromProto(port)
@@ -91,11 +91,11 @@ func NewPortsFromProto(protPorts []*v1.Port) (ports PortSlice) {
 	return ports
 }
 
-func (p *Port) ToProto() *v1.Port {
-	return &v1.Port{
+func (p *Port) ToProto() *wv1.Port {
+	return &wv1.Port{
 		Number:      p.PortNumber,
 		Name:        p.PortName,
-		Status:      v1.PortStatusType(p.Status),
+		Status:      wv1.PortStatusType(p.Status),
 		Description: p.Description,
 	}
 }
@@ -135,6 +135,15 @@ func (p *PortSlice) Scan(value interface{}) error {
 	return nil
 }
 
+//goland:noinspection GoMixedReceiverTypes
+func (p *PortSlice) ToProto() []*wv1.Port {
+	ports := make([]*wv1.Port, len(*p))
+	for idx, port := range *p {
+		ports[idx] = port.ToProto()
+	}
+	return ports
+}
+
 func (s *UpstreamSvc) Save(u *Upstream) error {
 	if res := s.db.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "svc_fqdn"}},
@@ -154,6 +163,35 @@ func (s *UpstreamSvc) Save(u *Upstream) error {
 	return nil
 }
 
+func (s *UpstreamSvc) List(options *wv1.ListUpstreamsOptions) (upstreams []*Upstream, err error) {
+	query := s.db.Model(&Upstream{})
+	if options.IncludeIngress != nil && *options.IncludeIngress {
+		query = query.
+			Joins("JOIN ingresses ON ingresses.upstream_id = upstreams.id").
+			Preload("Ingresses")
+	}
+
+	return upstreams, query.Find(&upstreams).Error
+}
+
+func (u *Upstream) ToProto() *wv1.Upstream {
+	wv1upstream := &wv1.Upstream{
+		SvcFqdn:           u.SvcFqdn,
+		ContainerIps:      u.ContainerIps,
+		SvcPorts:          u.SvcPorts.ToProto(),
+		ContainerPorts:    u.ContainerPorts.ToProto(),
+		Ingresses:         nil,
+		UpstreamRouteType: wv1.UpstreamRouteType(u.UpstreamRouteType),
+	}
+	if u.Ingresses != nil {
+		wv1upstream.Ingresses = make([]*wv1.Ingress, len(u.Ingresses))
+		for idx, ingress := range u.Ingresses {
+			wv1upstream.Ingresses[idx] = ingress.ToProto()
+		}
+	}
+	return wv1upstream
+}
+
 func (u *Upstream) AfterSave(tx *gorm.DB) error {
 	if u.Ingresses != nil {
 		// TODO: improve to batch operation
@@ -170,8 +208,8 @@ func (u *Upstream) AfterSave(tx *gorm.DB) error {
 
 func (u *Upstream) BeforeCreate(tx *gorm.DB) error {
 	// set default upstream route type
-	if u.UpstreamRouteType == uint32(v1.UpstreamRouteType_UPSTREAM_ROUTE_TYPE_UNSPECIFIED) {
-		u.UpstreamRouteType = uint32(v1.UpstreamRouteType_UPSTREAM_ROUTE_TYPE_PORT)
+	if u.UpstreamRouteType == uint32(wv1.UpstreamRouteType_UPSTREAM_ROUTE_TYPE_UNSPECIFIED) {
+		u.UpstreamRouteType = uint32(wv1.UpstreamRouteType_UPSTREAM_ROUTE_TYPE_PORT)
 	}
 	if err := u.allocateProxyListenerPort(tx); err != nil {
 		return err
