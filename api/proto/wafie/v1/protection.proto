@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 import "wafie/v1/application.proto";
+import "wafie/v1/upstream.proto";
 
 package wafie.v1;
 
@@ -19,12 +20,6 @@ enum ProtectionMode {
   PROTECTION_MODE_OFF = 2;
 }
 
-enum IngressAutoPatch {
-  INGRESS_AUTO_PATCH_UNSPECIFIED = 0;
-  INGRESS_AUTO_PATCH_ON = 1;
-  INGRESS_AUTO_PATCH_OFF = 2;
-  INGRESS_AUTO_PATCH_EBPF = 3;
-}
 
 message ModSec {
   ProtectionMode protection_mode = 1;
@@ -39,17 +34,15 @@ message Protection {
   uint32 id = 1;
   uint32 application_id = 2;
   optional Application application = 3;
-  ProtectionMode protection_mode = 4;
-  ProtectionDesiredState desired_state = 5;
-  IngressAutoPatch ingress_auto_patch = 6;
-
+  optional Upstream upstream = 4;
+  ProtectionMode protection_mode = 5;
+  ProtectionDesiredState desired_state = 6;
 }
 
 message CreateProtectionRequest {
   uint32 application_id = 1;
   ProtectionMode protection_mode = 2;
   ProtectionDesiredState desired_state = 3;
-  IngressAutoPatch ingress_auto_patch = 4;
 }
 
 message CreateProtectionResponse {
@@ -67,8 +60,7 @@ message GetProtectionResponse {
 message PutProtectionRequest {
   uint32 id = 1;
   optional ProtectionMode protection_mode = 2;
-  optional IngressAutoPatch ingress_auto_patch = 3;
-  optional ProtectionDesiredState desired_state = 4;
+  optional ProtectionDesiredState desired_state = 3;
 }
 
 message PutProtectionResponse {

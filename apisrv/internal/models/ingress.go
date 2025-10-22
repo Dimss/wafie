@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	v1 "github.com/Dimss/wafie/api/gen/wafie/v1"
+	wv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	applogger "github.com/Dimss/wafie/logger"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -48,7 +48,7 @@ type Ingress struct {
 	UpdatedAt  time.Time `gorm:"default:CURRENT_TIMESTAMP"`
 }
 
-func NewIngressFromProto(ingReq *v1.Ingress) *Ingress {
+func NewIngressFromProto(ingReq *wv1.Ingress) *Ingress {
 	return &Ingress{
 		Name:             ingReq.Name,
 		Namespace:        ingReq.Namespace,
@@ -84,15 +84,15 @@ func (s *IngressModelSvc) Save(ingress *Ingress) error {
 	return nil
 }
 
-func (i *Ingress) ToProto() *v1.Ingress {
-	return &v1.Ingress{
+func (i *Ingress) ToProto() *wv1.Ingress {
+	return &wv1.Ingress{
 		Name:             i.Name,
 		Namespace:        i.Namespace,
 		Path:             i.Path,
 		Host:             i.Host,
-		IngressType:      v1.IngressType(i.IngressType),
+		IngressType:      wv1.IngressType(i.IngressType),
 		DiscoveryMessage: i.DiscoveryMessage,
-		DiscoveryStatus:  v1.DiscoveryStatusType(i.DiscoveryStatus),
+		DiscoveryStatus:  wv1.DiscoveryStatusType(i.DiscoveryStatus),
 		ApplicationId:    int32(i.ApplicationID),
 	}
 }
@@ -102,7 +102,7 @@ func (i *Ingress) createApplicationIfNotExists(tx *gorm.DB) error {
 	if err := tx.Where("name = ?", i.Host).First(app).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			appModelSvc := NewApplicationModelSvc(tx, nil)
-			newAppReq := &v1.CreateApplicationRequest{Name: i.Host}
+			newAppReq := &wv1.CreateApplicationRequest{Name: i.Host}
 			appId, err := appModelSvc.CreateApplication(newAppReq)
 			if err != nil {
 				return err

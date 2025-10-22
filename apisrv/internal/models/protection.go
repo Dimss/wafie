@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	v1 "github.com/Dimss/wafie/api/gen/wafie/v1"
+	wv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	applogger "github.com/Dimss/wafie/logger"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -30,14 +30,13 @@ type ProtectionDesiredState struct {
 }
 
 type Protection struct {
-	ID               uint                   `gorm:"primaryKey"`
-	Mode             uint32                 `gorm:"default:0"`
-	IngressAutoPatch uint32                 `gorm:"default:2"`
-	ApplicationID    uint                   `gorm:"not null;uniqueIndex:idx_protection_app_id"`
-	Application      Application            `gorm:"foreignKey:ApplicationID"`
-	DesiredState     ProtectionDesiredState `gorm:"type:jsonb"`
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	ID            uint                   `gorm:"primaryKey"`
+	Mode          uint32                 `gorm:"default:0"`
+	ApplicationID uint                   `gorm:"not null;uniqueIndex:idx_protection_app_id"`
+	Application   Application            `gorm:"foreignKey:ApplicationID"`
+	DesiredState  ProtectionDesiredState `gorm:"type:jsonb"`
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 func NewProtectionModelSvc(tx *gorm.DB, logger *zap.Logger) *ProtectionModelSvc {
@@ -68,39 +67,40 @@ func (s *ProtectionDesiredState) Value() (driver.Value, error) {
 	return json.Marshal(s)
 }
 
-func (s *ProtectionDesiredState) FromProto(v1desiredState *v1.ProtectionDesiredState) {
+func (s *ProtectionDesiredState) FromProto(v1desiredState *wv1.ProtectionDesiredState) {
 	s.ModSec = &ModSec{
 		Mode:          uint32(v1desiredState.ModeSec.ProtectionMode),
 		ParanoiaLevel: uint32(v1desiredState.ModeSec.ParanoiaLevel),
 	}
 }
 
-func (s *ProtectionDesiredState) ToProto() *v1.ProtectionDesiredState {
+func (s *ProtectionDesiredState) ToProto() *wv1.ProtectionDesiredState {
 	return nil
 }
 
-func (p *Protection) FromProto(protectionv1 *v1.Protection) error {
+func (p *Protection) FromProto(protectionv1 *wv1.Protection) error {
 	if protectionv1 == nil {
 		return fmt.Errorf("protection is required")
 	}
 	p.Mode = uint32(protectionv1.ProtectionMode)
-	p.IngressAutoPatch = uint32(protectionv1.IngressAutoPatch)
 	p.ApplicationID = uint(protectionv1.ApplicationId)
 	p.DesiredState.FromProto(protectionv1.DesiredState)
 	return nil
 }
 
-func (p *Protection) ToProto() *v1.Protection {
+func (p *Protection) ToProto() *wv1.Protection {
 
-	protection := &v1.Protection{
-		Id:               uint32(p.ID),
-		ApplicationId:    uint32(p.ApplicationID),
-		ProtectionMode:   v1.ProtectionMode(p.Mode),
-		IngressAutoPatch: v1.IngressAutoPatch(p.IngressAutoPatch),
-		DesiredState: &v1.ProtectionDesiredState{ModeSec: &v1.ModSec{
-			ProtectionMode: v1.ProtectionMode(p.DesiredState.ModSec.Mode),
-			ParanoiaLevel:  v1.ParanoiaLevel(p.DesiredState.ModSec.ParanoiaLevel),
+	protection := &wv1.Protection{
+		Id:             uint32(p.ID),
+		ApplicationId:  uint32(p.ApplicationID),
+		ProtectionMode: wv1.ProtectionMode(p.Mode),
+		DesiredState: &wv1.ProtectionDesiredState{ModeSec: &wv1.ModSec{
+			ProtectionMode: wv1.ProtectionMode(p.DesiredState.ModSec.Mode),
+			ParanoiaLevel:  wv1.ParanoiaLevel(p.DesiredState.ModSec.ParanoiaLevel),
 		}},
+	}
+	if len(p.Application.Ingress) > 0 {
+		protection.Upstream = p.Application.Ingress[0].Upstream.ToProto()
 	}
 	if p.Application.ID != 0 {
 		protection.Application = p.Application.ToProto()
@@ -108,11 +108,10 @@ func (p *Protection) ToProto() *v1.Protection {
 	return protection
 }
 
-func (s *ProtectionModelSvc) CreateProtection(req *v1.CreateProtectionRequest) (*Protection, error) {
+func (s *ProtectionModelSvc) CreateProtection(req *wv1.CreateProtectionRequest) (*Protection, error) {
 	protection := &Protection{
-		ApplicationID:    uint(req.ApplicationId),
-		Mode:             uint32(req.ProtectionMode),
-		IngressAutoPatch: uint32(req.IngressAutoPatch),
+		ApplicationID: uint(req.ApplicationId),
+		Mode:          uint32(req.ProtectionMode),
 	}
 	protection.DesiredState.FromProto(req.DesiredState)
 	if err := s.db.Create(protection).Error; err != nil {
@@ -121,7 +120,7 @@ func (s *ProtectionModelSvc) CreateProtection(req *v1.CreateProtectionRequest) (
 	return protection, nil
 }
 
-func (s *ProtectionModelSvc) GetProtection(req *v1.GetProtectionRequest) (*Protection, error) {
+func (s *ProtectionModelSvc) GetProtection(req *wv1.GetProtectionRequest) (*Protection, error) {
 	protection := &Protection{ID: uint(req.GetId())}
 	err := s.db.First(protection).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -132,7 +131,7 @@ func (s *ProtectionModelSvc) GetProtection(req *v1.GetProtectionRequest) (*Prote
 	return protection, nil
 }
 
-func (s *ProtectionModelSvc) UpdateProtection(req *v1.PutProtectionRequest) (*Protection, error) {
+func (s *ProtectionModelSvc) UpdateProtection(req *wv1.PutProtectionRequest) (*Protection, error) {
 	protection := &Protection{ID: uint(req.GetId())}
 	if req.ProtectionMode != nil {
 		protection.Mode = uint32(*req.ProtectionMode)
@@ -141,9 +140,6 @@ func (s *ProtectionModelSvc) UpdateProtection(req *v1.PutProtectionRequest) (*Pr
 		desiredState := &ProtectionDesiredState{}
 		desiredState.FromProto(req.DesiredState)
 		protection.DesiredState = *desiredState
-	}
-	if req.IngressAutoPatch != nil {
-		protection.IngressAutoPatch = uint32(*req.IngressAutoPatch)
 	}
 	// fetch the application id for the given protection
 	res := s.db.Model(&Protection{}).
@@ -169,10 +165,10 @@ func (s *ProtectionModelSvc) UpdateProtection(req *v1.PutProtectionRequest) (*Pr
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("protection id not found"))
 	}
 
-	return s.GetProtection(&v1.GetProtectionRequest{Id: uint32(protection.ID)})
+	return s.GetProtection(&wv1.GetProtectionRequest{Id: uint32(protection.ID)})
 }
 
-func (s *ProtectionModelSvc) ListProtections(options *v1.ListProtectionsOptions) ([]*Protection, error) {
+func (s *ProtectionModelSvc) ListProtections(options *wv1.ListProtectionsOptions) ([]*Protection, error) {
 	if options == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("options are required"))
 	}
@@ -193,12 +189,14 @@ func (s *ProtectionModelSvc) ListProtections(options *v1.ListProtectionsOptions)
 		query = query.
 			Joins("JOIN applications ON protections.application_id = applications.id").
 			Joins("JOIN ingresses ON ingresses.application_id = applications.id").
+			Joins("JOIN upstreams ON upstreams.id = ingresses.upstream_id").
 			Preload("Application").
-			Preload("Application.Ingress")
+			Preload("Application.Ingress").
+			Preload("Application.Ingress.Upstream")
 
-		if options.UpstreamHost != nil {
-			query = query.Where("ingresses.upstream_host = ?", options.UpstreamHost)
-		}
+		//if options.UpstreamHost != nil {
+		//	query = query.Where("ingresses.upstream_host = ?", options.UpstreamHost)
+		//}
 	}
 	res := query.Find(&protections)
 	return protections, res.Error
@@ -209,33 +207,11 @@ func (s *ProtectionModelSvc) DeleteProtection(protectionId uint32) error {
 }
 
 func (p *Protection) AfterCreate(tx *gorm.DB) (err error) {
-	//vhModelSvc := NewVirtualHostModelSvc(tx, nil)
-	//_, err := vhModelSvc.CreateVirtualHost(p.ID)
 	err = NewDataVersionModelSvc(tx, nil).UpdateProtectionVersion()
 	return err
 }
 
 func (p *Protection) AfterUpdate(tx *gorm.DB) (err error) {
-	//vhModelSvc := NewVirtualHostModelSvc(tx, nil)
 	err = NewDataVersionModelSvc(tx, nil).UpdateProtectionVersion()
-	//virtualHost, err := vhModelSvc.GetVirtualHostByProtectionId(p.ID)
-	//if connect.CodeOf(err) == connect.CodeNotFound {
-	//	if _, err := vhModelSvc.CreateVirtualHost(p.ID); err != nil {
-	//		return err
-	//	}
-	//	// update protection data version
-	//	if err := dataVersionSvc.UpdateProtectionVersion(); err != nil {
-	//		return err
-	//	}
-	//	return nil
-	//} else if err != nil {
-	//	return err // unexpected error, rollback transaction and return an error
-	//}
-	//if _, err := vhModelSvc.UpdateVirtualHost(virtualHost.ID); err != nil {
-	//	return err
-	//}
-	//if err := dataVersionSvc.UpdateProtectionVersion(); err != nil {
-	//	return err
-	//}
 	return err
 }

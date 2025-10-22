@@ -85,7 +85,9 @@ func (s *ApplicationModelSvc) ListApplications(options *v1.ListApplicationsOptio
 	var err error
 	var apps []*Application
 	if options.IncludeIngress {
-		err = s.db.Preload("Ingress").Find(&apps).Error
+		err = s.db.Preload("Ingress").
+			Preload("Ingress.Upstream").
+			Find(&apps).Error
 	} else {
 		err = s.db.Find(&apps).Error
 	}
