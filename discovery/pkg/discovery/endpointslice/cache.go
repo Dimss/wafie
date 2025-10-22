@@ -41,7 +41,7 @@ func NewCache(apiAddr string, logger *zap.Logger) *Cache {
 
 func (c *Cache) Run() {
 	// start svc fqdn cacher
-	//c.runUpstreamSvcFqdnCache()
+	c.runUpstreamSvcFqdnCache()
 	// start upstream api syncer
 	c.RunUpstreamIPsSyncer()
 	// start endpointslice K8s informer
@@ -57,11 +57,14 @@ func (c *Cache) RunUpstreamIPsSyncer() {
 				if !c.shouldProtect(svcFqdn) {
 					continue
 				}
+				setContainerIpsOnly := true
 				req := &wafiev1.CreateUpstreamRequest{
 					Upstream: &wafiev1.Upstream{
 						SvcFqdn:      svcFqdn,
 						ContainerIps: c.ipAddressFromEndpointSlice(eps),
-					}}
+					},
+					Options: &wafiev1.CreateUpstreamOptions{SetContainerIpsOnly: &setContainerIpsOnly},
+				}
 				if _, err := c.upstreamSvcClient.CreateUpstream(context.Background(), connect.NewRequest(req)); err != nil {
 					c.logger.Info("create upstream failed", zap.Error(err))
 				}
