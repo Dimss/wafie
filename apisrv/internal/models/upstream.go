@@ -165,7 +165,7 @@ func (s *UpstreamSvc) Save(u *Upstream) error {
 
 func (s *UpstreamSvc) List(options *wv1.ListUpstreamsOptions) (upstreams []*Upstream, err error) {
 	query := s.db.Model(&Upstream{})
-	if options.IncludeIngress != nil && *options.IncludeIngress {
+	if options != nil && options.IncludeIngress != nil && *options.IncludeIngress {
 		query = query.
 			Joins("JOIN ingresses ON ingresses.upstream_id = upstreams.id").
 			Preload("Ingresses")

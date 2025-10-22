@@ -3,8 +3,13 @@ package endpointslice
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"sync"
 	"time"
 
+	"connectrpc.com/connect"
+	wafiev1 "github.com/Dimss/wafie/api/gen/wafie/v1"
+	v1 "github.com/Dimss/wafie/api/gen/wafie/v1/wafiev1connect"
 	"go.uber.org/zap"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	"k8s.io/client-go/informers"
@@ -14,16 +19,96 @@ import (
 )
 
 type Cache struct {
-	logger *zap.Logger
+	EpsCh                 chan *discoveryv1.EndpointSlice
+	svcFqdnCacheUpdaterCh chan []string
+	svcFqdnCache          []string
+	upstreamSvcClient     v1.UpstreamServiceClient
+	mu                    sync.RWMutex
+	logger                *zap.Logger
 }
 
-func NewCache(logger *zap.Logger) *Cache {
+func NewCache(apiAddr string, logger *zap.Logger) *Cache {
 	return &Cache{
+		EpsCh:                 make(chan *discoveryv1.EndpointSlice, 5),
+		svcFqdnCacheUpdaterCh: make(chan []string, 5),
+		upstreamSvcClient: v1.NewUpstreamServiceClient(
+			http.DefaultClient,
+			apiAddr,
+		),
 		logger: logger,
 	}
 }
 
-func (c *Cache) Start() {
+func (c *Cache) Run() {
+	// start svc fqdn cacher
+	c.runUpstreamSvcFqdnCache()
+	// start upstream api syncer
+	c.RunUpstreamIPsSyncer()
+	// start endpointslice K8s informer
+	c.RunInformer()
+}
+
+func (c *Cache) RunUpstreamIPsSyncer() {
+	go func() {
+		for {
+			select {
+			case eps := <-c.EpsCh:
+				svcName := eps.Labels["kubernetes.io/service-name"]
+				if !c.shouldProtect(svcName) {
+					continue
+				}
+				req := &wafiev1.CreateUpstreamRequest{
+					Upstream: &wafiev1.Upstream{
+						SvcFqdn:      fmt.Sprintf("%s.%s.svc", svcName, eps.Namespace),
+						ContainerIps: c.ipAddressFromEndpointSlice(eps),
+					}}
+				if _, err := c.upstreamSvcClient.CreateUpstream(context.Background(), connect.NewRequest(req)); err != nil {
+					c.logger.Info("create upstream failed", zap.Error(err))
+				}
+			case c.svcFqdnCache = <-c.svcFqdnCacheUpdaterCh:
+				c.logger.Info("svc fqdn got updated")
+			}
+		}
+	}()
+}
+
+func (c *Cache) ipAddressFromEndpointSlice(eps *discoveryv1.EndpointSlice) (ips []string) {
+	for _, ep := range eps.Endpoints {
+		ips = append(ips, ep.Addresses...)
+	}
+	return ips
+}
+
+func (c *Cache) runUpstreamSvcFqdnCache() {
+	go func() {
+		for {
+			req := connect.NewRequest(&wafiev1.ListUpstreamsRequest{})
+			upstreams, err := c.upstreamSvcClient.ListUpstreams(context.Background(), req)
+			if err != nil {
+				c.logger.Error("error listing upstreams", zap.Error(err))
+			} else {
+				uc := make([]string, len(upstreams.Msg.Upstreams))
+				for i, u := range upstreams.Msg.Upstreams {
+					uc[i] = u.SvcFqdn
+				}
+				// update the cache
+				c.svcFqdnCacheUpdaterCh <- uc
+			}
+			time.Sleep(10 * time.Second)
+		}
+	}()
+}
+
+func (c *Cache) shouldProtect(svcName string) bool {
+	for _, cachedSvcName := range c.svcFqdnCache {
+		if cachedSvcName == svcName {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *Cache) RunInformer() {
 	go func() {
 		var informerStartError error
 		c.logger.Info("starting endpoints slice informer")
@@ -52,16 +137,10 @@ func (c *Cache) Start() {
 				AddEventHandler(
 					cache.ResourceEventHandlerFuncs{
 						AddFunc: func(obj interface{}) {
-							eps := obj.(*discoveryv1.EndpointSlice)
-							serviceName := eps.Labels["kubernetes.io/service-name"]
-							c.logger.Info("New EndpointSlice",
-								zap.String("service", serviceName), zap.Int("size", len(eps.Endpoints)))
+							c.EpsCh <- obj.(*discoveryv1.EndpointSlice)
 						},
 						UpdateFunc: func(oldObj, newObj interface{}) {
-							eps := newObj.(*discoveryv1.EndpointSlice)
-							serviceName := eps.Labels["kubernetes.io/service-name"]
-							c.logger.Info("update EndpointSlice",
-								zap.String("service", serviceName), zap.Int("size", len(eps.Endpoints)))
+							c.EpsCh <- newObj.(*discoveryv1.EndpointSlice)
 						},
 						DeleteFunc: func(obj interface{}) {
 							// TODO: implement delete logic

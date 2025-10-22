@@ -20,6 +20,15 @@ import (
 
 type IngressType = string
 
+type Cache struct {
+	ingressType       IngressType
+	normalizer        normalizer
+	notifier          chan struct{}
+	namespace         string
+	upstreamSvcClient v1.UpstreamServiceClient
+	logger            *zap.Logger
+}
+
 const (
 	VsIngressType    IngressType = "istio"
 	K8sIngressType   IngressType = "ingress"
@@ -44,15 +53,6 @@ func newParser(ingressType IngressType) normalizer {
 	return nil
 }
 
-type Cache struct {
-	ingressType       IngressType
-	normalizer        normalizer
-	notifier          chan struct{}
-	namespace         string
-	upstreamSvcClient v1.UpstreamServiceClient
-	logger            *zap.Logger
-}
-
 func NewIngressCache(ingressType IngressType, apiAddr string, logger *zap.Logger) *Cache {
 	cache := &Cache{
 		ingressType: ingressType,
@@ -68,7 +68,7 @@ func NewIngressCache(ingressType IngressType, apiAddr string, logger *zap.Logger
 	return cache
 }
 
-func (c *Cache) Start() {
+func (c *Cache) Run() {
 
 	go func() {
 		l := c.logger.With(zap.String("parser", c.ingressType))
