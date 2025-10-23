@@ -143,7 +143,7 @@ func (p *PortSlice) ToProto() []*wv1.Port {
 	return ports
 }
 
-func (s *UpstreamSvc) Save(u *Upstream, options *wv1.CreateUpstreamOptions) (*Upstream, error) {
+func (s *UpstreamSvc) Save(u *Upstream, options *wv1.UpdateRouteOptions) (*Upstream, error) {
 	// by default do not upsert container_ips
 	assigmentColumns := []string{
 		"svc_ports",
@@ -173,7 +173,7 @@ func (s *UpstreamSvc) Save(u *Upstream, options *wv1.CreateUpstreamOptions) (*Up
 	return u, nil
 }
 
-func (s *UpstreamSvc) List(options *wv1.ListUpstreamsOptions) (upstreams []*Upstream, err error) {
+func (s *UpstreamSvc) List(options *wv1.ListRoutesOptions) (upstreams []*Upstream, err error) {
 	query := s.db.Model(&Upstream{})
 	if options != nil && options.IncludeIngress != nil && *options.IncludeIngress {
 		query = query.

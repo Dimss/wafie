@@ -27,7 +27,7 @@ func (s *RouteService) CreateRoute(
 	ctx context.Context,
 	req *connect.Request[wv1.CreateRouteRequest]) (
 	*connect.Response[wv1.CreateRouteResponse], error) {
-	s.logger.Debug("create route running", zap.String("upstream", req.Msg.Upstream.SvcFqdn))
+	s.logger.Debug("create route", zap.String("upstream", req.Msg.Upstream.SvcFqdn))
 	if err := protovalidate.Validate(req.Msg); err != nil {
 		return connect.NewResponse(&wv1.CreateRouteResponse{}), connect.NewError(connect.CodeInternal, err)
 	}
@@ -43,4 +43,43 @@ func (s *RouteService) CreateRoute(
 	i.UpstreamID = u.ID // set upstream id
 	err = models.NewIngressModelSvc(nil, s.logger).Save(i)
 	return connect.NewResponse(&wv1.CreateRouteResponse{}), err
+}
+
+func (s *RouteService) UpdateRoute(
+	ctx context.Context,
+	req *connect.Request[wv1.UpdateRouteRequest]) (
+	*connect.Response[wv1.UpdateRouteResponse], error) {
+	s.logger.Debug("update route", zap.String("upstream", req.Msg.Upstream.SvcFqdn))
+	if err := protovalidate.Validate(req.Msg); err != nil {
+		return connect.NewResponse(&wv1.UpdateRouteResponse{}), connect.NewError(connect.CodeInternal, err)
+	}
+	_, err := models.NewUpstreamModelSvc(nil, s.logger).
+		Save(
+			models.NewUpstreamFromRequest(req.Msg.Upstream),
+			req.Msg.Options,
+		)
+	if err != nil {
+		return connect.NewResponse(&wv1.UpdateRouteResponse{}), connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(&wv1.UpdateRouteResponse{}), nil
+}
+
+func (s *RouteService) ListRoutes(
+	ctx context.Context,
+	req *connect.Request[wv1.ListRoutesRequest]) (
+	*connect.Response[wv1.ListRoutesResponse], error) {
+	if err := protovalidate.Validate(req.Msg); err != nil {
+		return connect.NewResponse(&wv1.ListRoutesResponse{}), connect.NewError(connect.CodeInternal, err)
+	}
+	upstreams, err := models.
+		NewUpstreamModelSvc(nil, s.logger).
+		List(req.Msg.Options)
+	if err != nil {
+		return connect.NewResponse(&wv1.ListRoutesResponse{}), connect.NewError(connect.CodeInternal, err)
+	}
+	var upstreamList = make([]*wv1.Upstream, len(upstreams))
+	for i, upstream := range upstreams {
+		upstreamList[i] = upstream.ToProto()
+	}
+	return connect.NewResponse(&wv1.ListRoutesResponse{Upstreams: upstreamList}), nil
 }
