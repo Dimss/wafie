@@ -42,7 +42,7 @@ FROM golang:1.24-bookworm AS builder
 WORKDIR /app
 COPY ../go.mod go.sum ./
 COPY ../Makefile ./
-COPY --from=protobuf-builder /app/api/ ./api/
+COPY --from=protobuf-builder /app/api ./api
 COPY apisrv apisrv
 COPY appsecgw ./appsecgw/
 COPY logger ./logger
@@ -60,13 +60,13 @@ RUN apt -y update \
         wget \
         logrotate \
     && rm -rf /var/lib/apt/lists/*
-COPY cmd/modsecfilter/config/ /config/
-COPY cmd/modsecfilter/include/ /usr/local/include/
+COPY modsecfilter/config/ /config
+COPY modsecfilter/include/ /usr/local/include
 COPY --from=libwafie /wafie/build/libwafie.so /usr/local/lib/libwafie.so
 COPY --from=modsecfilter-builder /go/src/wafie-modsec.so /usr/local/lib/wafie-modsec.so
 RUN ldconfig \
      && chown -R envoy:envoy /var/lib/logrotate
 USER envoy
-COPY ops/envoy/ /etc/envoy/
+COPY ops/envoy /etc/envoy
 COPY --from=builder /app/bin/appsecgw /usr/local/bin/appsecgw
 CMD ["/usr/local/bin/appsecgw", "start"]

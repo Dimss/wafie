@@ -189,7 +189,7 @@ func (s *state) clusters(protections []*cwafv1.Protection) (clusters []types.Res
 															Ingress[0].
 															Upstream.
 															ContainerPorts[0].
-															ProxyListeningPort,
+															Number,
 													},
 												},
 											},
