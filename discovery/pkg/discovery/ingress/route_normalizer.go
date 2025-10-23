@@ -1,7 +1,7 @@
 package ingress
 
 import (
-	cwafv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
+	wv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -15,6 +15,6 @@ func (r *route) gvr() schema.GroupVersionResource {
 		Resource: "routes",
 	}
 }
-func (r *route) normalize(obj *unstructured.Unstructured) (*cwafv1.Upstream, error) {
-	return nil, nil
+func (r *route) normalize(obj *unstructured.Unstructured) (*wv1.Upstream, *wv1.Ingress, error) {
+	return nil, nil, nil
 }

@@ -7,7 +7,6 @@ import (
 	"syscall"
 
 	hsrv "github.com/Dimss/wafie/apisrv/pkg/healthchecksrv"
-	"github.com/Dimss/wafie/discovery/pkg/discovery/endpointslice"
 	"github.com/Dimss/wafie/discovery/pkg/discovery/ingress"
 	applogger "github.com/Dimss/wafie/logger"
 	"github.com/spf13/cobra"
@@ -45,11 +44,11 @@ var startCmd = &cobra.Command{
 			viper.GetString("api-addr"),
 			applogger.NewLogger(),
 		).Run()
-		// run endpointslice cache
-		endpointslice.NewCache(
-			viper.GetString("api-addr"),
-			applogger.NewLogger(),
-		).Run()
+		//// run endpointslice cache
+		//endpointslice.NewCache(
+		//	viper.GetString("api-addr"),
+		//	applogger.NewLogger(),
+		//).Run()
 		// handle interrupts
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)

@@ -1,7 +1,6 @@
 syntax = "proto3";
 
-//import "wafie/v1/protection.proto";
-import "wafie/v1/ingress.proto";
+import "wafie/v1/route.proto";
 
 package wafie.v1;
 

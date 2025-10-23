@@ -3,7 +3,7 @@ package ingress
 import (
 	"fmt"
 
-	wafiev1 "github.com/Dimss/wafie/api/gen/wafie/v1"
+	wv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	applogger "github.com/Dimss/wafie/logger"
 	"go.uber.org/zap"
 	v1 "k8s.io/api/networking/v1"
@@ -31,76 +31,75 @@ func (i *ingress) gvr() schema.GroupVersionResource {
 	}
 }
 
-func (i *ingress) normalizedWithError(upstream *wafiev1.Upstream, err error) (*wafiev1.Upstream, error) {
-	if upstream == nil {
-		upstream = &wafiev1.Upstream{}
+func (i *ingress) normalizedWithError(u *wv1.Upstream, ing *wv1.Ingress, err error) (*wv1.Upstream, *wv1.Ingress, error) {
+	if u == nil {
+		u = &wv1.Upstream{}
 	}
-	if upstream.Ingresses == nil || len(upstream.Ingresses) == 0 {
-		upstream.Ingresses = []*wafiev1.Ingress{
-			{
-				DiscoveryStatus:  wafiev1.DiscoveryStatusType_DISCOVERY_STATUS_TYPE_INCOMPLETE,
-				DiscoveryMessage: err.Error(),
-			},
+	if ing == nil {
+		ing = &wv1.Ingress{
+			DiscoveryStatus:  wv1.DiscoveryStatusType_DISCOVERY_STATUS_TYPE_INCOMPLETE,
+			DiscoveryMessage: err.Error(),
 		}
-		return upstream, err
+	} else {
+		ing.DiscoveryStatus = wv1.DiscoveryStatusType_DISCOVERY_STATUS_TYPE_INCOMPLETE
+		ing.DiscoveryMessage = err.Error()
 	}
-	upstream.Ingresses[0].DiscoveryStatus = wafiev1.DiscoveryStatusType_DISCOVERY_STATUS_TYPE_INCOMPLETE
-	upstream.Ingresses[0].DiscoveryMessage = err.Error()
-	return upstream, err
+
+	return u, nil, err
 }
 
-func (i *ingress) normalize(obj *unstructured.Unstructured) (upstream *wafiev1.Upstream, err error) {
-	upstream = &wafiev1.Upstream{}
-	ingObj := &v1.Ingress{}
+func (i *ingress) normalize(obj *unstructured.Unstructured) (upstream *wv1.Upstream, ingress *wv1.Ingress, err error) {
+	upstream = &wv1.Upstream{}
+	ingress = &wv1.Ingress{}
+	k8sIngress := &v1.Ingress{}
 	if err := runtime.
 		DefaultUnstructuredConverter.
-		FromUnstructured(obj.Object, ingObj); err != nil {
-		return i.normalizedWithError(upstream, err)
+		FromUnstructured(obj.Object, k8sIngress); err != nil {
+		return i.normalizedWithError(upstream, ingress, err)
 	}
-
-	if len(ingObj.Spec.Rules) > 0 && len(ingObj.Spec.Rules[0].HTTP.Paths) > 0 {
+	if len(k8sIngress.Spec.Rules) > 0 && len(k8sIngress.Spec.Rules[0].HTTP.Paths) > 0 {
 		//TODO: check what will happen when the host will be empty, i.e ingress with wildcard scenario
-		if ingObj.Spec.Rules[0].Host == "" {
+		if k8sIngress.Spec.Rules[0].Host == "" {
 			i.logger.Info("skipping ingress due to wildcard '*' hostname",
-				zap.String("ingress", ingObj.Name+"."+ingObj.Namespace))
-			return nil, nil
+				zap.String("ingress", k8sIngress.Name+"."+k8sIngress.Namespace))
+			return nil, nil, nil
+		}
+		// set upstream service fqdn
+		upstream.SvcFqdn = fmt.Sprintf("%s.%s.svc",
+			k8sIngress.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name,
+			k8sIngress.Namespace)
+		// set upstream services ports
+		upstream.SvcPorts, err = i.discoverSvcPorts(k8sIngress)
+		if err != nil {
+			return i.normalizedWithError(upstream, ingress, err)
+		}
+		// set upstream containers port
+		upstream.ContainerPorts, err = i.discoverContainerPorts(k8sIngress)
+		if err != nil {
+			return i.normalizedWithError(upstream, ingress, err)
 		}
 		// set upstream ingress
-		upstream.Ingresses = append(upstream.Ingresses,
-			&wafiev1.Ingress{
-				Name:            ingObj.Name,
-				Namespace:       ingObj.Namespace,
-				Port:            80, // TODO: add support for TLS passthroughs and other protocols later on
-				Path:            ingObj.Spec.Rules[0].HTTP.Paths[0].Path,
-				Host:            ingObj.Spec.Rules[0].Host,
-				IngressType:     wafiev1.IngressType_INGRESS_TYPE_NGINX,
-				DiscoveryStatus: wafiev1.DiscoveryStatusType_DISCOVERY_STATUS_TYPE_SUCCESS,
-			},
-		)
-		upstream.SvcFqdn = fmt.Sprintf("%s.%s.svc",
-			ingObj.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name,
-			ingObj.Namespace)
-
-		upstream.SvcPorts, err = i.discoverSvcPorts(ingObj)
-		if err != nil {
-			return i.normalizedWithError(upstream, err)
+		ingress = &wv1.Ingress{
+			Name:            k8sIngress.Name,
+			Namespace:       k8sIngress.Namespace,
+			Port:            80, // TODO: add support for TLS passthroughs and other protocols later on
+			Path:            k8sIngress.Spec.Rules[0].HTTP.Paths[0].Path,
+			Host:            k8sIngress.Spec.Rules[0].Host,
+			IngressType:     wv1.IngressType_INGRESS_TYPE_NGINX,
+			DiscoveryStatus: wv1.DiscoveryStatusType_DISCOVERY_STATUS_TYPE_SUCCESS,
 		}
-		upstream.ContainerPorts, err = i.discoverContainerPorts(ingObj)
-		if err != nil {
-			return i.normalizedWithError(upstream, err)
-		}
-		return upstream, nil
+		return upstream, ingress, nil
 	}
-	return nil, nil
+	return nil, nil, nil
 }
 
 // discoverSvcPorts is in use when envoy making routing by virtual host
-func (i *ingress) discoverSvcPorts(ing *v1.Ingress) (ports []*wafiev1.Port, err error) {
+func (i *ingress) discoverSvcPorts(ing *v1.Ingress) (ports []*wv1.Port, err error) {
 	//
 	if ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number != 0 {
-		return append(ports, &wafiev1.Port{
+		return append(ports, &wv1.Port{
 			Number: uint32(ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number),
-			Status: wafiev1.PortStatusType_PORT_STATUS_TYPE_ENABLED,
+			Status: wv1.PortStatusType_PORT_STATUS_TYPE_ENABLED,
 		}), nil
 	}
 	// get service port number by service port name
@@ -111,16 +110,16 @@ func (i *ingress) discoverSvcPorts(ing *v1.Ingress) (ports []*wafiev1.Port, err 
 	); err != nil {
 		return nil, err
 	} else {
-		return append(ports, &wafiev1.Port{
+		return append(ports, &wv1.Port{
 			Number: uint32(port),
 			Name:   ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Name,
-			Status: wafiev1.PortStatusType_PORT_STATUS_TYPE_ENABLED,
+			Status: wv1.PortStatusType_PORT_STATUS_TYPE_ENABLED,
 		}), nil
 	}
 }
 
 // discoverContainerPorts in use when envoy making routing by listeners port
-func (i *ingress) discoverContainerPorts(ing *v1.Ingress) (ports []*wafiev1.Port, err error) {
+func (i *ingress) discoverContainerPorts(ing *v1.Ingress) (ports []*wv1.Port, err error) {
 	if portNumber, portName, err := getContainerPortBySvcPort(
 		intstr.IntOrString{
 			IntVal: ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number,
@@ -131,10 +130,10 @@ func (i *ingress) discoverContainerPorts(ing *v1.Ingress) (ports []*wafiev1.Port
 	); err != nil {
 		return nil, err
 	} else {
-		return append(ports, &wafiev1.Port{
+		return append(ports, &wv1.Port{
 			Number: uint32(portNumber),
 			Name:   portName,
-			Status: wafiev1.PortStatusType_PORT_STATUS_TYPE_ENABLED,
+			Status: wv1.PortStatusType_PORT_STATUS_TYPE_ENABLED,
 		}), nil
 	}
 }

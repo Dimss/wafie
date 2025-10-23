@@ -50,12 +50,6 @@ func (s *ApiServer) registerHandlers(mux *http.ServeMux) {
 		),
 	)
 	mux.Handle(
-		v1.NewIngressServiceHandler(
-			NewIngressService(s.logger),
-			compress1KB,
-		),
-	)
-	mux.Handle(
 		v1.NewProtectionServiceHandler(
 			NewProtectionService(s.logger),
 			compress1KB,
@@ -68,8 +62,8 @@ func (s *ApiServer) registerHandlers(mux *http.ServeMux) {
 		),
 	)
 	mux.Handle(
-		v1.NewUpstreamServiceHandler(
-			NewUpstreamService(s.logger),
+		v1.NewRouteServiceHandler(
+			NewRouteService(s.logger),
 			compress1KB,
 		),
 	)
@@ -77,13 +71,11 @@ func (s *ApiServer) registerHandlers(mux *http.ServeMux) {
 
 func (s *ApiServer) enableReflection(mux *http.ServeMux) {
 	reflector := grpcreflect.NewStaticReflector(
-		v1.IngressServiceName,
+		v1.RouteServiceName,
 		v1.AuthServiceName,
 		v1.ApplicationServiceName,
 		v1.ProtectionServiceName,
 		v1.DataVersionServiceName,
-		v1.EndpointSliceServiceName,
-		v1.UpstreamServiceName,
 	)
 	mux.Handle(grpcreflect.NewHandlerV1(reflector))
 	mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))

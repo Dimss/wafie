@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 import "wafie/v1/application.proto";
-import "wafie/v1/upstream.proto";
+import "wafie/v1/route.proto";
 
 package wafie.v1;
 

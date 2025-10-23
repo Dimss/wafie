@@ -2,11 +2,11 @@
 version: v2
 modules:
   - path: proto
+deps:
+  - buf.build/bufbuild/protovalidate
 lint:
   use:
     - STANDARD
 breaking:
   use:
     - FILE
-#deps:
-#  - buf.build/googleapis/googleapis

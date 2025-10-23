@@ -1,8 +1,10 @@
 syntax = "proto3";
 
+import "buf/validate/validate.proto";
+
 package wafie.v1;
 
-import "wafie/v1/ingress.proto";
+
 
 enum UpstreamRouteType {
   UPSTREAM_ROUTE_TYPE_UNSPECIFIED = 0;
@@ -14,6 +16,33 @@ enum PortStatusType {
   PORT_STATUS_TYPE_UNSPECIFIED = 0;
   PORT_STATUS_TYPE_ENABLED = 1;
   PORT_STATUS_TYPE_DISABLED = 2;
+}
+
+enum DiscoveryStatusType {
+  DISCOVERY_STATUS_TYPE_UNSPECIFIED = 0;
+  DISCOVERY_STATUS_TYPE_SUCCESS = 1;
+  DISCOVERY_STATUS_TYPE_INCOMPLETE = 2;
+  DISCOVERY_STATUS_TYPE_DISABLED = 3;
+}
+
+enum IngressType {
+  INGRESS_TYPE_UNSPECIFIED = 0;
+  INGRESS_TYPE_NGINX = 1;
+  INGRESS_TYPE_ISTIO = 2;
+  INGRESS_TYPE_OCP = 4;
+}
+
+message Ingress {
+  string name = 1;
+  string namespace = 2;
+  string host = 3;
+  int32 port = 4;
+  string path = 5;
+  int32 application_id = 6;
+  IngressType ingress_type = 7;
+  DiscoveryStatusType discovery_status = 8;
+  string discovery_message = 9;
+  optional Upstream upstream = 10;
 }
 
 message Port  {
@@ -28,8 +57,9 @@ message Upstream {
   repeated string container_ips = 2;
   repeated Port svc_ports = 3;
   repeated Port container_ports = 4;
-  repeated Ingress ingresses = 5;
+  repeated uint32 ingresses_ids = 5;
   UpstreamRouteType upstream_route_type = 6;
+  repeated Ingress ingresses = 7;
 }
 
 message CreateUpstreamOptions {
@@ -51,7 +81,25 @@ message ListUpstreamsResponse{
   repeated Upstream upstreams = 1;
 }
 
-service UpstreamService {
+message CreateIngressRequest {
+  Ingress ingress = 1;
+}
+
+message CreateIngressResponse {}
+
+message CreateRouteRequest {
+  Ingress ingress = 1;
+//  Ingress ingress = 1;
+  Upstream upstream = 2;
+  string test = 3 [(buf.validate.field).string.max_len = 1];
+}
+
+message CreateRouteResponse{
+}
+
+service RouteService {
+  rpc CreateRoute(CreateRouteRequest) returns(CreateRouteResponse);
+  rpc CreateIngress(CreateIngressRequest) returns (CreateIngressResponse);
   rpc CreateUpstream(CreateUpstreamRequest) returns(CreateUpstreamResponse);
   rpc ListUpstreams(ListUpstreamsRequest) returns(ListUpstreamsResponse);
 }

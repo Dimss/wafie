@@ -55,6 +55,7 @@ proto:
 	cd api \
 	&& buf dep update \
 	&& buf export buf.build/googleapis/googleapis --output vendor \
+	&& buf export buf.build/bufbuild/protovalidate --output vendor \
 	&& buf lint \
 	&& buf generate
 

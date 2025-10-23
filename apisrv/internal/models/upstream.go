@@ -143,7 +143,7 @@ func (p *PortSlice) ToProto() []*wv1.Port {
 	return ports
 }
 
-func (s *UpstreamSvc) Save(u *Upstream, options *wv1.CreateUpstreamOptions) error {
+func (s *UpstreamSvc) Save(u *Upstream, options *wv1.CreateUpstreamOptions) (*Upstream, error) {
 	// by default do not upsert container_ips
 	assigmentColumns := []string{
 		"svc_ports",
@@ -160,13 +160,17 @@ func (s *UpstreamSvc) Save(u *Upstream, options *wv1.CreateUpstreamOptions) erro
 			"updated_at",
 		}
 	}
-	if res := s.db.Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "svc_fqdn"}},
-		DoUpdates: clause.AssignmentColumns(assigmentColumns),
-	}).Omit("Ingresses").Create(&u); res.Error != nil {
-		return connect.NewError(connect.CodeUnknown, res.Error)
+	if res := s.db.Clauses(
+		clause.OnConflict{
+			Columns:   []clause.Column{{Name: "svc_fqdn"}},
+			DoUpdates: clause.AssignmentColumns(assigmentColumns),
+		},
+	).
+		Omit("Ingresses").
+		Create(&u); res.Error != nil {
+		return u, connect.NewError(connect.CodeUnknown, res.Error)
 	}
-	return nil
+	return u, nil
 }
 
 func (s *UpstreamSvc) List(options *wv1.ListUpstreamsOptions) (upstreams []*Upstream, err error) {
@@ -176,7 +180,6 @@ func (s *UpstreamSvc) List(options *wv1.ListUpstreamsOptions) (upstreams []*Upst
 			Joins("JOIN ingresses ON ingresses.upstream_id = upstreams.id").
 			Preload("Ingresses")
 	}
-
 	return upstreams, query.Find(&upstreams).Error
 }
 
@@ -198,19 +201,19 @@ func (u *Upstream) ToProto() *wv1.Upstream {
 	return wv1upstream
 }
 
-func (u *Upstream) AfterSave(tx *gorm.DB) error {
-	if u.Ingresses != nil {
-		// TODO: improve to batch operation
-		ingressModelSvc := NewIngressModelSvc(tx, nil)
-		for _, ing := range u.Ingresses {
-			ing.UpstreamID = u.ID
-			if err := ingressModelSvc.Save(&ing); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
+//func (u *Upstream) AfterSave(tx *gorm.DB) error {
+//if u.Ingresses != nil {
+//	// TODO: improve to batch operation
+//	ingressModelSvc := NewIngressModelSvc(tx, nil)
+//	for _, ing := range u.Ingresses {
+//		ing.UpstreamID = u.ID
+//		if err := ingressModelSvc.Save(&ing); err != nil {
+//			return err
+//		}
+//	}
+//}
+//return nil
+//}
 
 func (u *Upstream) BeforeCreate(tx *gorm.DB) error {
 	// set default upstream route type

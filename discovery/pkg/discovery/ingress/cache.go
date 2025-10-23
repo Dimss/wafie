@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	wafiev1 "github.com/Dimss/wafie/api/gen/wafie/v1"
+	wv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	v1 "github.com/Dimss/wafie/api/gen/wafie/v1/wafiev1connect"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
@@ -21,12 +21,12 @@ import (
 type IngressType = string
 
 type Cache struct {
-	ingressType       IngressType
-	normalizer        normalizer
-	notifier          chan struct{}
-	namespace         string
-	upstreamSvcClient v1.UpstreamServiceClient
-	logger            *zap.Logger
+	ingressType    IngressType
+	normalizer     normalizer
+	notifier       chan struct{}
+	namespace      string
+	routeSvcClient v1.RouteServiceClient
+	logger         *zap.Logger
 }
 
 const (
@@ -37,7 +37,7 @@ const (
 
 type normalizer interface {
 	gvr() schema.GroupVersionResource
-	normalize(*unstructured.Unstructured) (*wafiev1.Upstream, error)
+	normalize(*unstructured.Unstructured) (*wv1.Upstream, *wv1.Ingress, error)
 }
 
 func newParser(ingressType IngressType) normalizer {
@@ -60,7 +60,7 @@ func NewIngressCache(ingressType IngressType, apiAddr string, logger *zap.Logger
 		namespace:   "",
 		normalizer:  newParser(ingressType),
 		logger:      logger,
-		upstreamSvcClient: v1.NewUpstreamServiceClient(
+		routeSvcClient: v1.NewRouteServiceClient(
 			http.DefaultClient,
 			apiAddr,
 		),
@@ -131,14 +131,17 @@ func (c *Cache) Run() {
 }
 
 func (c *Cache) createUpstream(obj *unstructured.Unstructured) error {
-	upstream, normalizerErr := c.normalizer.normalize(obj)
-	if upstream == nil {
+	u, i, normalizerErr := c.normalizer.normalize(obj)
+	if u == nil {
 		return nil
 	}
-	_, upstreamCreateErr := c.upstreamSvcClient.CreateUpstream(
+	_, upstreamCreateErr := c.routeSvcClient.CreateRoute(
 		context.Background(),
 		connect.NewRequest(
-			&wafiev1.CreateUpstreamRequest{Upstream: upstream},
+			&wv1.CreateRouteRequest{
+				Upstream: u,
+				Ingress:  i,
+			},
 		),
 	)
 	return errors.Join(normalizerErr, upstreamCreateErr)
