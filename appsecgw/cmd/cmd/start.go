@@ -5,20 +5,22 @@ import (
 	"os/signal"
 	"syscall"
 
+	hsrv "github.com/Dimss/wafie/apisrv/pkg/healthchecksrv"
 	"github.com/Dimss/wafie/appsecgw/pkg/controlplane"
 	"github.com/Dimss/wafie/logger"
-	"go.uber.org/zap"
-
-	hsrv "github.com/Dimss/wafie/apisrv/pkg/healthchecksrv"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
 )
 
 func init() {
 	startCmd.PersistentFlags().StringP("api-addr", "a", "http://localhost:8080", "API address")
 	startCmd.PersistentFlags().StringP("namespace", "n", "default", "K8s namespace")
+	startCmd.PersistentFlags().BoolP("envoy-xds-srv-only", "e", false,
+		"Set to true to run only xds, without starting envoy instance")
 	viper.BindPFlag("api-addr", startCmd.PersistentFlags().Lookup("api-addr"))
 	viper.BindPFlag("namespace", startCmd.PersistentFlags().Lookup("namespace"))
+	viper.BindPFlag("envoy-xds-srv-only", startCmd.PersistentFlags().Lookup("envoy-xds-srv-only"))
 	rootCmd.AddCommand(startCmd)
 }
 
@@ -37,10 +39,14 @@ var startCmd = &cobra.Command{
 				viper.GetString("api-addr"),
 				viper.GetString("namespace"),
 			).Start()
-		// start envoy proxy and modsec (wafie-modsec.so) log rotation
-		go controlplane.
-			NewSupervisor(logger).
-			Start()
+
+		if !viper.GetBool("envoy-xds-srv-only") {
+			logger.Info("starting Envoy XDS server")
+			// start envoy proxy and modsec (wafie-modsec.so) log rotation
+			go controlplane.
+				NewSupervisor(logger).
+				Start()
+		}
 		// handle interrupts
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)

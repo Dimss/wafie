@@ -34,7 +34,6 @@ type EnvoyControlPlane struct {
 	cache                cache.SnapshotCache
 	logger               *zap.Logger
 	resourcesCh          chan map[resource.Type][]types.Resource
-	ingressPatcherCh     chan []*wafiev1.Protection
 	dataVersion          string
 	namespace            string
 	protectionSvcClient  wafiev1connect.ProtectionServiceClient
@@ -44,11 +43,10 @@ type EnvoyControlPlane struct {
 func NewEnvoyControlPlane(apiAddr, namespace string) *EnvoyControlPlane {
 
 	cp := &EnvoyControlPlane{
-		state:            newState(),
-		logger:           applogger.NewLogger(),
-		resourcesCh:      make(chan map[resource.Type][]types.Resource, 1),
-		ingressPatcherCh: make(chan []*wafiev1.Protection, 1),
-		namespace:        namespace,
+		state:       newState(),
+		logger:      applogger.NewLogger(),
+		resourcesCh: make(chan map[resource.Type][]types.Resource, 1),
+		namespace:   namespace,
 		cache: cache.NewSnapshotCache(
 			false, cache.IDHash{}, applogger.NewLogger().Sugar(),
 		),
@@ -138,14 +136,13 @@ func (p *EnvoyControlPlane) startApiIngressWatcher() {
 					IncludeApps:    &includeApps,
 				},
 			})
-			resp, err := p.protectionSvcClient.ListProtections(context.Background(), req)
+			listProtectionResp, err := p.protectionSvcClient.ListProtections(context.Background(), req)
 			if err != nil {
 				p.logger.Error("failed to list protections", zap.Error(err))
 				continue
 			}
 			p.logger.Info("data version has changed, building new resources")
-			p.ingressPatcherCh <- resp.Msg.Protections
-			p.resourcesCh <- p.state.buildResources(resp.Msg.Protections)
+			p.resourcesCh <- p.state.buildResources(listProtectionResp.Msg.Protections)
 
 		}
 	}()

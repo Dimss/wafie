@@ -133,7 +133,7 @@ func (s *state) listeners(protections []*cwafv1.Protection) []types.Resource {
 						Protocol: core.SocketAddress_TCP,
 						Address:  "0.0.0.0",
 						PortSpecifier: &core.SocketAddress_PortValue{
-							PortValue: uint32(protections[i].Application.Ingress[0].ProxyListenerPort),
+							PortValue: protections[i].Application.Ingress[0].Upstream.ContainerPorts[0].ProxyListeningPort,
 						},
 					},
 				},
@@ -162,7 +162,7 @@ func (s *state) clusters(protections []*cwafv1.Protection) (clusters []types.Res
 		}
 		clusters = append(clusters, &cluster.Cluster{
 			Name:                 protection.Application.Name,
-			ClusterDiscoveryType: &cluster.Cluster_Type{Type: cluster.Cluster_STRICT_DNS},
+			ClusterDiscoveryType: &cluster.Cluster_Type{Type: cluster.Cluster_STATIC},
 			ConnectTimeout:       durationpb.New(20 * time.Second),
 			LbPolicy:             cluster.Cluster_ROUND_ROBIN,
 			DnsLookupFamily:      cluster.Cluster_V4_ONLY,
@@ -178,11 +178,18 @@ func (s *state) clusters(protections []*cwafv1.Protection) (clusters []types.Res
 											Address: &core.Address_SocketAddress{
 												SocketAddress: &core.SocketAddress{
 													Protocol: core.SocketAddress_TCP,
-													Address:  protection.Application.Ingress[0].UpstreamHost,
+													Address: protection.
+														Application.
+														Ingress[0].
+														Upstream.
+														ContainerIps[0],
 													PortSpecifier: &core.SocketAddress_PortValue{
-														PortValue: uint32(
-															protection.Application.Ingress[0].UpstreamPort,
-														),
+														PortValue: protection.
+															Application.
+															Ingress[0].
+															Upstream.
+															ContainerPorts[0].
+															ProxyListeningPort,
 													},
 												},
 											},
