@@ -22,12 +22,12 @@ RUN wget "https://go.dev/dl/${GO_VERSION}" \
     && rm ${GO_VERSION} \
     && mkdir -p /go/bin \
     && go install github.com/go-delve/delve/cmd/dlv@latest
-COPY cmd/modsecfilter/include/ /usr/local/include/
+COPY modsecfilter/include/ /usr/local/include/
 COPY --from=libwafie /wafie/build/libwafie.so /usr/local/lib/libwafie.so
 ADD go.mod go.sum ./
-ADD cmd/modsecfilter ./cmd/modsecfilter/
-ADD internal/applogger ./internal/applogger/
-RUN go build -ldflags='-s -w' -o ./wafie-modsec.so -buildmode=c-shared ./cmd/modsecfilter
+ADD modsecfilter ./modsecfilter/
+ADD logger ./logger/
+RUN go build -ldflags='-s -w' -o ./wafie-modsec.so -buildmode=c-shared ./modsecfilter
 
 FROM bufbuild/buf AS protobuf-builder
 WORKDIR /app
@@ -43,11 +43,10 @@ WORKDIR /app
 COPY ../go.mod go.sum ./
 COPY ../Makefile ./
 COPY --from=protobuf-builder /app/api/ ./api/
-COPY cmd/ ./cmd/
-COPY ../internal ./internal/
-COPY ../pkg ./pkg/
+COPY apisrv apisrv
 COPY appsecgw ./appsecgw/
-RUN make build
+COPY logger ./logger
+RUN make build.appsecgw
 
 FROM envoyproxy/envoy:contrib-v1.34.1
 RUN apt -y update \
