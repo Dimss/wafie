@@ -94,6 +94,7 @@ func (i *Ingress) ToProto() *wv1.Ingress {
 		DiscoveryMessage: i.DiscoveryMessage,
 		DiscoveryStatus:  wv1.DiscoveryStatusType(i.DiscoveryStatus),
 		ApplicationId:    int32(i.ApplicationID),
+		Upstream:         i.Upstream.ToProto(),
 	}
 }
 

@@ -99,9 +99,12 @@ func (p *Protection) ToProto() *wv1.Protection {
 			ParanoiaLevel:  wv1.ParanoiaLevel(p.DesiredState.ModSec.ParanoiaLevel),
 		}},
 	}
-	if len(p.Application.Ingress) > 0 {
-		protection.Upstream = p.Application.Ingress[0].Upstream.ToProto()
-	}
+	//if len(p.Application.Ingress) > 0 {
+	//
+	//	protection.Upstream = p.Application.Ingress[0].Upstream.ToProto()
+	//
+	//	protection.Application.Ingress[0] = p.Application.Ingress[0].Upstream.ToProto()
+	//}
 	if p.Application.ID != 0 {
 		protection.Application = p.Application.ToProto()
 	}

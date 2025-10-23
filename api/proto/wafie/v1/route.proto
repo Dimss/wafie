@@ -48,8 +48,9 @@ message Ingress {
 message Port  {
   uint32 number = 1;
   string name = 2;
-  PortStatusType status = 3;
-  string description = 4;
+  uint32 proxy_listening_port = 3;
+  PortStatusType status = 4;
+  string description = 5;
 }
 
 message Upstream {

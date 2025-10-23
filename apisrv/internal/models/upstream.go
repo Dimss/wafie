@@ -75,10 +75,11 @@ func NewUpstreamFromRequest(upstreamReq *wv1.Upstream) *Upstream {
 
 func NewPortFromProto(port *wv1.Port) Port {
 	return Port{
-		PortNumber:  port.Number,
-		PortName:    port.Name,
-		Status:      uint32(port.Status),
-		Description: port.Description,
+		PortNumber:         port.Number,
+		PortName:           port.Name,
+		ProxyListeningPort: port.ProxyListeningPort,
+		Status:             uint32(port.Status),
+		Description:        port.Description,
 	}
 }
 
@@ -92,10 +93,11 @@ func NewPortsFromProto(ports []*wv1.Port) PortSlice {
 
 func (p *Port) ToProto() *wv1.Port {
 	return &wv1.Port{
-		Number:      p.PortNumber,
-		Name:        p.PortName,
-		Status:      wv1.PortStatusType(p.Status),
-		Description: p.Description,
+		Number:             p.PortNumber,
+		Name:               p.PortName,
+		ProxyListeningPort: p.ProxyListeningPort,
+		Status:             wv1.PortStatusType(p.Status),
+		Description:        p.Description,
 	}
 }
 
