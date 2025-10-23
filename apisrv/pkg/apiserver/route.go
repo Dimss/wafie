@@ -39,11 +39,8 @@ func (s *RouteService) CreateRoute(
 	if err != nil {
 		return connect.NewResponse(&wv1.CreateRouteResponse{}), connect.NewError(connect.CodeInternal, err)
 	}
-	if req.Msg.Ingress != nil {
-		i := models.NewIngressFromProto(req.Msg.Ingress)
-		i.UpstreamID = u.ID // set upstream id
-		err = models.NewIngressModelSvc(nil, s.logger).Save(i)
-	}
-
+	i := models.NewIngressFromProto(req.Msg.Ingress)
+	i.UpstreamID = u.ID // set upstream id
+	err = models.NewIngressModelSvc(nil, s.logger).Save(i)
 	return connect.NewResponse(&wv1.CreateRouteResponse{}), err
 }

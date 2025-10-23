@@ -88,10 +88,8 @@ message CreateIngressRequest {
 message CreateIngressResponse {}
 
 message CreateRouteRequest {
-  Ingress ingress = 1;
-//  Ingress ingress = 1;
-  Upstream upstream = 2;
-  string test = 3 [(buf.validate.field).string.max_len = 1];
+  Ingress ingress = 1 [(buf.validate.field).required = true];
+  Upstream upstream = 2 [(buf.validate.field).required = true];
 }
 
 message CreateRouteResponse{

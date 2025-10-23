@@ -31,21 +31,21 @@ func (i *ingress) gvr() schema.GroupVersionResource {
 	}
 }
 
-func (i *ingress) normalizedWithError(u *wv1.Upstream, ing *wv1.Ingress, err error) (*wv1.Upstream, *wv1.Ingress, error) {
-	if u == nil {
-		u = &wv1.Upstream{}
+func (i *ingress) normalizedWithError(upstream *wv1.Upstream, ingress *wv1.Ingress, err error) (*wv1.Upstream, *wv1.Ingress, error) {
+	if upstream == nil {
+		upstream = &wv1.Upstream{}
 	}
-	if ing == nil {
-		ing = &wv1.Ingress{
+	if ingress == nil {
+		ingress = &wv1.Ingress{
 			DiscoveryStatus:  wv1.DiscoveryStatusType_DISCOVERY_STATUS_TYPE_INCOMPLETE,
 			DiscoveryMessage: err.Error(),
 		}
 	} else {
-		ing.DiscoveryStatus = wv1.DiscoveryStatusType_DISCOVERY_STATUS_TYPE_INCOMPLETE
-		ing.DiscoveryMessage = err.Error()
+		ingress.DiscoveryStatus = wv1.DiscoveryStatusType_DISCOVERY_STATUS_TYPE_INCOMPLETE
+		ingress.DiscoveryMessage = err.Error()
 	}
 
-	return u, nil, err
+	return upstream, ingress, err
 }
 
 func (i *ingress) normalize(obj *unstructured.Unstructured) (upstream *wv1.Upstream, ingress *wv1.Ingress, err error) {
@@ -64,6 +64,16 @@ func (i *ingress) normalize(obj *unstructured.Unstructured) (upstream *wv1.Upstr
 				zap.String("ingress", k8sIngress.Name+"."+k8sIngress.Namespace))
 			return nil, nil, nil
 		}
+		// set upstream ingress
+		ingress = &wv1.Ingress{
+			Name:            k8sIngress.Name,
+			Namespace:       k8sIngress.Namespace,
+			Port:            80, // TODO: add support for TLS passthroughs and other protocols later on
+			Path:            k8sIngress.Spec.Rules[0].HTTP.Paths[0].Path,
+			Host:            k8sIngress.Spec.Rules[0].Host,
+			IngressType:     wv1.IngressType_INGRESS_TYPE_NGINX,
+			DiscoveryStatus: wv1.DiscoveryStatusType_DISCOVERY_STATUS_TYPE_SUCCESS,
+		}
 		// set upstream service fqdn
 		upstream.SvcFqdn = fmt.Sprintf("%s.%s.svc",
 			k8sIngress.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name,
@@ -78,16 +88,7 @@ func (i *ingress) normalize(obj *unstructured.Unstructured) (upstream *wv1.Upstr
 		if err != nil {
 			return i.normalizedWithError(upstream, ingress, err)
 		}
-		// set upstream ingress
-		ingress = &wv1.Ingress{
-			Name:            k8sIngress.Name,
-			Namespace:       k8sIngress.Namespace,
-			Port:            80, // TODO: add support for TLS passthroughs and other protocols later on
-			Path:            k8sIngress.Spec.Rules[0].HTTP.Paths[0].Path,
-			Host:            k8sIngress.Spec.Rules[0].Host,
-			IngressType:     wv1.IngressType_INGRESS_TYPE_NGINX,
-			DiscoveryStatus: wv1.DiscoveryStatusType_DISCOVERY_STATUS_TYPE_SUCCESS,
-		}
+
 		return upstream, ingress, nil
 	}
 	return nil, nil, nil
