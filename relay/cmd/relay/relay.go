@@ -5,6 +5,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	wv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	applogger "github.com/Dimss/wafie/logger"
 	"github.com/Dimss/wafie/relay/pkg/apisrv"
 	"github.com/Dimss/wafie/relay/pkg/relay"
@@ -29,7 +30,7 @@ var relayCmd = &cobra.Command{
 		socatRelay := relay.NewSocat(logger)
 		// start relay api server
 		apisrv.
-			NewServer("localhost:8081", logger, socatRelay).
+			NewServer("localhost:57812", logger, socatRelay).
 			Start()
 		shutdown(socatRelay)
 	},
@@ -46,7 +47,7 @@ func shutdown(s relay.Relay) {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	gracefullyExit := func(s relay.Relay, sig os.Signal) {
-		s.Stop()
+		s.Stop(&wv1.RelayOptions{})
 		logger.Info("shutting down, bye bye 👋", zap.String("signal", sig.String()))
 		if s, ok := sig.(syscall.Signal); ok {
 			os.Exit(128 + int(s))

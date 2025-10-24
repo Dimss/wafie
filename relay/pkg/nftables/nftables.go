@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	wv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	"sigs.k8s.io/knftables"
 )
 
@@ -12,14 +13,15 @@ type (
 )
 
 const (
-	WafieGatewayNatTable                  = "wafie-gateway"
+	WafieGatewayNatTable                  = "appsecgw"
 	WafieGatewayPreroutingChain           = "prerouting"
-	WafieOwnedComment                     = "wafie-owned-object"
+	WafieOwnedComment                     = "appsecgw-owned-object"
+	AppSecGwIpsSet                        = "appsecgw-ips-set"
 	AddOp                       operation = "add"
 	DeleteOp                    operation = "delete"
 )
 
-func Program(op operation) error {
+func Program(op operation, options *wv1.RelayOptions) error {
 	nft, err := knftables.New(knftables.InetFamily, WafieGatewayNatTable)
 	if err != nil {
 		return err
@@ -33,7 +35,7 @@ func Program(op operation) error {
 			return err
 		}
 		if !rulesApplied {
-			add(tx)
+			add(tx, options)
 		}
 	}
 	// delete nft rules
@@ -43,20 +45,34 @@ func Program(op operation) error {
 			return err
 		}
 		if rulesApplied {
-			delete(tx)
+			remove(tx)
 		}
 	}
 
-	x := &knftables.Set{
-		Family: "",
-		Table:  "table-1",
-		Name:   "allowed_ips",
-		Type:   "ipv4_addr",
-	}
-	
-	fmt.Println(x)
-
 	return nft.Run(context.Background(), tx)
+}
+func state(nft knftables.Interface) (obtained bool, err error) {
+	ruleState, err := rulesState(nft)
+	if err != nil {
+		return true, err // on error do nothing
+	}
+	setState, err := setsState(nft)
+	if err != nil {
+		return true, err // on error do nothing
+	}
+	// is desired state obtained
+	return ruleState && setState, nil
+}
+
+func setsState(nft knftables.Interface) (applied bool, err error) {
+	set, err := nft.ListElements(context.Background(), "set", AppSecGwIpsSet)
+	if err != nil {
+		return true, err
+	}
+	for _, e := range set {
+		fmt.Println(e.Key)
+	}
+	return false, err
 }
 
 func rulesState(nft knftables.Interface) (applied bool, err error) {
@@ -97,14 +113,40 @@ func rulesState(nft knftables.Interface) (applied bool, err error) {
 
 }
 
-func add(tx *knftables.Transaction) {
+func add(tx *knftables.Transaction, options *wv1.RelayOptions) {
+	// add table
 	tx.Add(table())
+	// add chain
 	tx.Add(chain())
-	tx.Add(rule())
+	// add set
+	tx.Add(set())
+	// add ips to set
+	for _, ip := range options.ProxyIps {
+		tx.Add(ipElement(ip))
+	}
+	// add rules
+	tx.Add(rule(options))
+
 }
 
-func delete(tx *knftables.Transaction) {
+func remove(tx *knftables.Transaction) {
 	tx.Delete(table())
+}
+
+func ipElement(ip string) *knftables.Element {
+	return &knftables.Element{
+		Set: AppSecGwIpsSet,
+		Key: []string{ip},
+	}
+}
+
+func set() *knftables.Set {
+	comment := WafieOwnedComment
+	return &knftables.Set{
+		Name:    AppSecGwIpsSet,
+		Type:    "ipv4_addr",
+		Comment: &comment,
+	}
 }
 
 func table() *knftables.Table {
@@ -130,19 +172,16 @@ func chain() *knftables.Chain {
 // iptables -t nat -A PREROUTING -p tcp --dport 80 ! -s 192.168.1.100 -j DNAT --to-destination 10.0.0.10:8080
 // nft replace rule inet nat prerouting ip saddr != 10.244.0.29 tcp dport 8080 redirect to :9090 comment "wafie-owned-object"
 
-func rule() *knftables.Rule {
-	//ingressPodIp := "10.244.0.7"
-	wafieGwIP := "172.16.0.101"
-	dstPort := "8080"
+func rule(options *wv1.RelayOptions) *knftables.Rule {
 	comment := WafieOwnedComment
 	return &knftables.Rule{
 		Table:   WafieGatewayNatTable,
 		Chain:   WafieGatewayPreroutingChain,
 		Comment: &comment,
 		Rule: knftables.Concat(
-			"ip saddr != ", wafieGwIP,
-			"tcp dport", dstPort,
-			"redirect to :9090",
+			"ip saddr != @", AppSecGwIpsSet,
+			"tcp dport", options.AppContainerPort,
+			"redirect to :", options.RelayPort,
 		),
 	}
 }
@@ -168,8 +207,3 @@ func rule() *knftables.Rule {
 //
 //# Create rule to drop traffic from blocked IPs
 //nft add rule inet filter input ip saddr @blocked_ips drop
-
-func element() {
-
-	fmt.Println(x)
-}

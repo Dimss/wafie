@@ -80,6 +80,7 @@ message UpdateRouteResponse {}
 // List routes
 message ListRoutesOptions{
   optional bool include_ingress = 1;
+  optional string svc_fqdn = 2;
 }
 message ListRoutesRequest {
   optional ListRoutesOptions options = 1;

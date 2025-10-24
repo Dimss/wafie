@@ -2,10 +2,12 @@ package relay
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"os/exec"
 
+	wv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	"go.uber.org/zap"
 )
 
@@ -21,18 +23,26 @@ func NewSocat(logger *zap.Logger) *Socat {
 	return &Socat{logger: logger}
 }
 
-func (r *Socat) Start() {
+func (r *Socat) Start(options *wv1.RelayOptions) {
 	// relay already running, do nothing
 	if r.cmd != nil && r.cmd.Process != nil && r.cmd.ProcessState == nil {
 		return
 	}
 	var ctx context.Context
 	ctx, r.cancel = context.WithCancel(context.Background())
+	if len(options.ProxyIps) < 1 {
+		r.logger.Error("can not start relay, appsecgw ips list is empty is empty")
+		return
+	}
 	r.cmd = exec.CommandContext(ctx,
 		"socat",
 		"-d",
-		"TCP-LISTEN:9090,reuseaddr,fork,backlog=2048,rcvbuf=262144,sndbuf=262144,keepalive,nodelay,quickack",
-		"TCP:172.16.0.101:52073,rcvbuf=262144,sndbuf=262144,keepalive,nodelay,quickack,connect-timeout=3",
+		fmt.Sprintf("TCP-LISTEN:%s,"+
+			"reuseaddr,fork,backlog=2048,rcvbuf=262144,sndbuf=262144,keepalive,nodelay,quickack",
+			options.RelayPort),
+		fmt.Sprintf("TCP:%s:%s,"+
+			"rcvbuf=262144,sndbuf=262144,keepalive,nodelay,quickack,connect-timeout=3",
+			options.ProxyIps[0], options.ProxyListeningPort),
 	)
 	go func() {
 		r.setupLogs()
@@ -45,7 +55,7 @@ func (r *Socat) Start() {
 	}()
 }
 
-func (r *Socat) Stop() {
+func (r *Socat) Stop(_ *wv1.RelayOptions) {
 	if r.cancel != nil {
 		r.cancel()
 	}

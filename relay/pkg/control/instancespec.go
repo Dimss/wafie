@@ -16,7 +16,7 @@ import (
 	"connectrpc.com/connect"
 	healthv1 "github.com/Dimss/wafie/api/gen/grpc/health/v1"
 	"github.com/Dimss/wafie/api/gen/grpc/health/v1/healthv1connect"
-	wafiev1 "github.com/Dimss/wafie/api/gen/wafie/v1"
+	wv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	"github.com/Dimss/wafie/api/gen/wafie/v1/wafiev1connect"
 	"github.com/containernetworking/plugins/pkg/ns"
 	"go.uber.org/zap"
@@ -33,22 +33,24 @@ const (
 )
 
 type RelayInstanceSpec struct {
-	containerId string
-	runtimeSock string
-	nodeName    string
-	netnsPath   string
-	logger      *zap.Logger
-	apiAddr     string
-	podName     string
+	containerId  string
+	runtimeSock  string
+	nodeName     string
+	netnsPath    string
+	logger       *zap.Logger
+	apiAddr      string
+	podName      string
+	relayOptions *wv1.RelayOptions
 }
 
-func NewRelayInstanceSpec(containerId, podName, nodeName string, logger *zap.Logger) (*RelayInstanceSpec, error) {
+func NewRelayInstanceSpec(containerId, podName, nodeName string, options *wv1.RelayOptions, logger *zap.Logger) (*RelayInstanceSpec, error) {
 	var err error
 	i := &RelayInstanceSpec{
-		logger:   logger.With(zap.String("podName", podName)),
-		nodeName: nodeName,
-		apiAddr:  InstanceApiAddr,
-		podName:  podName,
+		logger:       logger.With(zap.String("podName", podName)),
+		nodeName:     nodeName,
+		apiAddr:      InstanceApiAddr,
+		podName:      podName,
+		relayOptions: options,
 	}
 	// set container id
 	if i.containerId, i.runtimeSock, err = parseContainerId(containerId); err != nil {
@@ -71,7 +73,7 @@ func (s *RelayInstanceSpec) StopSpec() error {
 		return nil
 	}
 	_, err := wafiev1connect.NewRelayServiceClient(s.namespacedHttpClient(), s.apiAddr).
-		StopRelay(context.Background(), connect.NewRequest(&wafiev1.StopRelayRequest{}))
+		StopRelay(context.Background(), connect.NewRequest(&wv1.StopRelayRequest{}))
 	if err != nil {
 		return err
 	}
@@ -83,7 +85,11 @@ func (s *RelayInstanceSpec) startRelay() error {
 		return nil
 	}
 	_, err := wafiev1connect.NewRelayServiceClient(s.namespacedHttpClient(), s.apiAddr).
-		StartRelay(context.Background(), connect.NewRequest(&wafiev1.StartRelayRequest{}))
+		StartRelay(context.Background(),
+			connect.NewRequest(&wv1.StartRelayRequest{
+				Options: s.relayOptions,
+			}),
+		)
 	if err != nil {
 		return err
 	}

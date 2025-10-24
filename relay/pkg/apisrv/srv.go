@@ -7,7 +7,7 @@ import (
 	"connectrpc.com/connect"
 	"connectrpc.com/grpchealth"
 	"connectrpc.com/grpcreflect"
-	v1 "github.com/Dimss/wafie/api/gen/wafie/v1"
+	wv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	"github.com/Dimss/wafie/api/gen/wafie/v1/wafiev1connect"
 	"github.com/Dimss/wafie/relay/pkg/nftables"
 	"github.com/Dimss/wafie/relay/pkg/relay"
@@ -53,16 +53,16 @@ func (s *Server) Start() {
 
 func (s *Server) StartRelay(
 	ctx context.Context,
-	req *connect.Request[v1.StartRelayRequest]) (
-	*connect.Response[v1.StartRelayResponse], error) {
+	req *connect.Request[wv1.StartRelayRequest]) (
+	*connect.Response[wv1.StartRelayResponse], error) {
 	s.logger.Debug("starting relay instance")
-	if err := nftables.Program(nftables.AddOp); err != nil {
+	if err := nftables.Program(nftables.AddOp, req.Msg.Options); err != nil {
 		s.logger.Error("failed to program nftables", zap.Error(err),
 			zap.String("operation", string(nftables.AddOp)))
 	}
-	s.relay.Start()
+	s.relay.Start(req.Msg.Options)
 	resp := connect.NewResponse(
-		&v1.StartRelayResponse{
+		&wv1.StartRelayResponse{
 			TcpRelayStatus: "ok",
 			NftStatus:      "ok",
 		},
@@ -77,14 +77,14 @@ func (s *Server) Check(context.Context, *grpchealth.CheckRequest) (*grpchealth.C
 
 func (s *Server) StopRelay(
 	ctx context.Context,
-	req *connect.Request[v1.StopRelayRequest]) (
-	*connect.Response[v1.StopRelayResponse], error) {
+	req *connect.Request[wv1.StopRelayRequest]) (
+	*connect.Response[wv1.StopRelayResponse], error) {
 	s.logger.Debug("terminating relay instance")
-	if err := nftables.Program(nftables.DeleteOp); err != nil {
+	if err := nftables.Program(nftables.DeleteOp, &wv1.RelayOptions{}); err != nil {
 		s.logger.Error("failed to program nftables", zap.Error(err),
 			zap.String("operation", string(nftables.DeleteOp)))
 	}
-	s.relay.Stop()
+	s.relay.Stop(&wv1.RelayOptions{})
 	s.logger.Debug("relay instance terminated")
-	return connect.NewResponse(&v1.StopRelayResponse{}), nil
+	return connect.NewResponse(&wv1.StopRelayResponse{}), nil
 }

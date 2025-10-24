@@ -182,6 +182,9 @@ func (s *UpstreamSvc) List(options *wv1.ListRoutesOptions) (upstreams []*Upstrea
 			Joins("JOIN ingresses ON ingresses.upstream_id = upstreams.id").
 			Preload("Ingresses")
 	}
+	if options != nil && *options.SvcFqdn != "" {
+		query = query.Where("svc_fqdn = ?", options.SvcFqdn)
+	}
 	return upstreams, query.Find(&upstreams).Error
 }
 
