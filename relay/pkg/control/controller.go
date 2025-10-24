@@ -71,8 +71,8 @@ func (c *Controller) Run() {
 					l.Debug("app protection mode unspecified, skipping")
 				case wv1.ProtectionMode_PROTECTION_MODE_ON:
 					c.deployRelayInstances(specs)
-					//case wv1.ProtectionMode_PROTECTION_MODE_OFF:
-					//	c.destroyRelayInstances(specs)
+				case wv1.ProtectionMode_PROTECTION_MODE_OFF:
+					c.destroyRelayInstances(specs)
 				}
 			}
 		}
