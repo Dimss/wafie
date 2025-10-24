@@ -18,6 +18,10 @@ spec:
       containers:
         - name: gateway
           image: {{.Values.image.gateway}}
+          command:
+           - /usr/local/bin/appsecgw
+           - start
+           - --api-addr=http://wafie-control-plane.{{.Release.Namespace}}.svc
           imagePullPolicy: Always
           ports:
             - name: grpc-srv
