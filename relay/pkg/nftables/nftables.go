@@ -2,6 +2,7 @@ package nftables
 
 import (
 	"context"
+	"fmt"
 
 	"sigs.k8s.io/knftables"
 )
@@ -23,6 +24,7 @@ func Program(op operation) error {
 	if err != nil {
 		return err
 	}
+
 	tx := nft.NewTransaction()
 	// create nft rules
 	if op == AddOp {
@@ -44,6 +46,16 @@ func Program(op operation) error {
 			delete(tx)
 		}
 	}
+
+	x := &knftables.Set{
+		Family: "",
+		Table:  "table-1",
+		Name:   "allowed_ips",
+		Type:   "ipv4_addr",
+	}
+	
+	fmt.Println(x)
+
 	return nft.Run(context.Background(), tx)
 }
 
@@ -120,7 +132,7 @@ func chain() *knftables.Chain {
 
 func rule() *knftables.Rule {
 	//ingressPodIp := "10.244.0.7"
-	wafieGwIP := "172.16.0.71"
+	wafieGwIP := "172.16.0.101"
 	dstPort := "8080"
 	comment := WafieOwnedComment
 	return &knftables.Rule{
@@ -133,4 +145,31 @@ func rule() *knftables.Rule {
 			"redirect to :9090",
 		),
 	}
+}
+
+//
+//
+//# Create a set for allowed IPs
+//nft add set inet filter allowed_ips { type ipv4_addr\; }
+//
+//# Add IPs to the set
+//nft add element inet filter allowed_ips { 192.168.1.10, 192.168.1.20, 10.0.0.5 }
+//
+//# Create rule using the set
+//nft add rule inet filter input ip saddr @allowed_ips accept
+//
+//Create a set for blocked IPs:
+//
+//# Create set for blocked IPs
+//nft add set inet filter blocked_ips { type ipv4_addr\; }
+//
+//# Add IPs to the set
+//nft add element inet filter blocked_ips { 192.168.1.100, 192.168.1.101, 10.0.0.99 }
+//
+//# Create rule to drop traffic from blocked IPs
+//nft add rule inet filter input ip saddr @blocked_ips drop
+
+func element() {
+
+	fmt.Println(x)
 }

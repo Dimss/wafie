@@ -55,18 +55,10 @@ func (i *Informer) Start() {
 				AddEventHandler(
 					cache.ResourceEventHandlerFuncs{
 						AddFunc: func(obj interface{}) {
-							//eps := obj.(*discoveryv1.EndpointSlice)
 							i.epsCh <- obj.(*discoveryv1.EndpointSlice)
-							//serviceName := eps.Labels["kubernetes.io/service-name"]
-							//i.logger.Info("New EndpointSlice",
-							//	zap.String("service", serviceName), zap.Int("size", len(eps.Endpoints)))
 						},
 						UpdateFunc: func(oldObj, newObj interface{}) {
 							i.epsCh <- newObj.(*discoveryv1.EndpointSlice)
-							//eps := newObj.(*discoveryv1.EndpointSlice)
-							//serviceName := eps.Labels["kubernetes.io/service-name"]
-							//i.logger.Info("update EndpointSlice",
-							//	zap.String("service", serviceName), zap.Int("size", len(eps.Endpoints)))
 						},
 						DeleteFunc: func(obj interface{}) {
 							// TODO: implement delete logic

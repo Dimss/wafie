@@ -19,12 +19,12 @@ build:
 build.appsecgw:
 	go build \
 		-ldflags="-X 'github.com/Dimss/wafie/appsecgw/cmd.Build=$$(git rev-parse --short HEAD)'" \
-		-o bin/appsecgw appsecgw/cmd/main.go
+		-o .bin/appsecgw appsecgw/cmd/main.go
 
 build-api:
 	go build \
       -ldflags="-X 'github.com/Dimss/wafie/cmd/apiserver/cmd.Build=$$(git rev-parse --short HEAD)'" \
-      -o bin/api-server cmd/apiserver/main.go
+      -o .bin/api-server cmd/apiserver/main.go
 
 
 build.discovery:
@@ -34,10 +34,10 @@ build.discovery:
 
 
 build-cni:
-	go build -o bin/wafie-cni cni/cmd/wafie-cni/main.go
+	go build -o .bin/wafie-cni cni/cmd/wafie-cni/main.go
 
 build.relay:
-	go build -o bin/wafie-relay relay/cmd/main.go
+	go build -o .bin/wafie-relay relay/cmd/main.go
 
 docker.controlplane:
 	podman buildx build -t docker.io/dimssss/wafie-control-plane --platform linux/arm64 -f dockerfiles/controlplane/Dockerfile .

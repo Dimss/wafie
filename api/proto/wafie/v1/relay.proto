@@ -3,9 +3,9 @@ syntax = "proto3";
 package wafie.v1;
 
 message StartRelayRequest{
-  repeated string saddr = 1;
-  string dport = 2;
-  string wafie_gateway_svc_fqdn = 3;
+  repeated string appsecgw_ip = 1;
+  string appsecgw_listener_port = 2;
+  string app_listener_port = 3;
 }
 
 message StartRelayResponse{
