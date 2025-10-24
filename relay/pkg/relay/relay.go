@@ -2,8 +2,9 @@ package relay
 
 import wv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 
+type StartRelayFunc func()
+type StopRelayFunc func()
+
 type Relay interface {
-	Start(*wv1.RelayOptions)
-	Stop(*wv1.RelayOptions)
-	Status()
+	Configure(*wv1.RelayOptions) (StartRelayFunc, StopRelayFunc)
 }

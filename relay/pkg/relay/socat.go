@@ -27,39 +27,61 @@ func NewSocat(logger *zap.Logger) *SocatRelay {
 	return &SocatRelay{logger: logger}
 }
 
-func (r *SocatRelay) initOptions(options *wv1.RelayOptions) {
-	if r.options == nil {
-		r.options = options
-		r.setProxyIp()
+func (r *SocatRelay) shouldRestart(cfgOptions *wv1.RelayOptions) bool {
+	if cfgOptions == nil {
+		return false
 	}
+	return r.options.ProxyFqdn != cfgOptions.ProxyFqdn ||
+		r.options.AppContainerPort != cfgOptions.AppContainerPort ||
+		r.options.RelayPort != cfgOptions.RelayPort
+}
+
+func (r *SocatRelay) Configure(cfgOptions *wv1.RelayOptions) (StartRelayFunc, StopRelayFunc) {
+	// if options nil, meaning fresh start
+	if r.options == nil {
+		r.options = cfgOptions
+		r.setProxyIp()
+		return r.start, r.stop
+	}
+	// if options already set, meaning relay already running
+	// if start options changed from previous start,
+	// the options must re-initiated
+	// and relay must be restarted
+	if r.shouldRestart(cfgOptions) {
+		r.options = cfgOptions
+		r.setProxyIp()
+		r.stop()
+	}
+	return r.start, r.stop
 }
 
 func (r *SocatRelay) setProxyIp() {
-	ips, err := net.LookupHost(r.options.ProxyFqdn)
-	if err != nil {
-		r.logger.Error("failed to set proxy ip", zap.Error(err), zap.String("proxyFqdn", r.options.ProxyFqdn))
-		return
+	if r.options != nil && r.options.ProxyFqdn != "" {
+		ips, err := net.LookupHost(r.options.ProxyFqdn)
+		if err != nil {
+			r.logger.Error("failed to set proxy ip", zap.Error(err), zap.String("proxyFqdn", r.options.ProxyFqdn))
+			return
+		}
+		if len(ips) == 0 {
+			r.logger.Error("empty IPs for", zap.String("proxyFqdn", r.options.ProxyFqdn))
+			return
+		}
+		if len(ips) == 1 {
+			r.options.ProxyIp = ips[0]
+			return
+		}
+		rand.NewSource(time.Now().UnixNano())
+		// the r.options.ProxyFqdn is usually K8s headless svc
+		// which has behind multiple A records (pods IPs)
+		// thus, I am just implementing
+		// simple client side load balancing
+		r.options.ProxyIp = ips[rand.Intn(len(ips))]
+	} else {
+		r.logger.Debug("empty relay options, can not make dns lookup")
 	}
-	if len(ips) == 0 {
-		r.logger.Error("empty IPs for", zap.String("proxyFqdn", r.options.ProxyFqdn))
-		return
-	}
-	if len(ips) == 1 {
-		r.options.ProxyIp = ips[0]
-		return
-	}
-	rand.NewSource(time.Now().UnixNano())
-	// the r.options.ProxyFqdn is usually K8s headless svc
-	// which has behind multiple A records (pods IPs)
-	// thus, I am just implementing
-	// simple client side load balancing
-	r.options.ProxyIp = ips[rand.Intn(len(ips))]
 }
 
-func (r *SocatRelay) Start(options *wv1.RelayOptions) {
-	// set options
-	r.initOptions(options)
-	// relay already running, do nothing
+func (r *SocatRelay) start() {
 	if r.cmd != nil && r.cmd.Process != nil && r.cmd.ProcessState == nil {
 		return
 	}
@@ -93,7 +115,7 @@ func (r *SocatRelay) setupNetwork() error {
 	return ProgramNft(AddOp, r.options)
 }
 
-func (r *SocatRelay) Stop(_ *wv1.RelayOptions) {
+func (r *SocatRelay) stop() {
 	if r.cancel != nil {
 		r.cancel()
 	}

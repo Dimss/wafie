@@ -60,7 +60,8 @@ func (s *Server) StartRelay(
 	req *connect.Request[wv1.StartRelayRequest]) (
 	*connect.Response[wv1.StartRelayResponse], error) {
 	s.logger.Debug("starting relay instance")
-	s.relay.Start(req.Msg.Options)
+	startRelay, _ := s.relay.Configure(req.Msg.Options)
+	startRelay()
 	resp := connect.NewResponse(
 		&wv1.StartRelayResponse{
 			TcpRelayStatus: "ok",
@@ -84,7 +85,8 @@ func (s *Server) StopRelay(
 	//	s.logger.Error("failed to program nftables", zap.Error(err),
 	//		zap.String("operation", string(nftables.DeleteOp)))
 	//}
-	s.relay.Stop(&wv1.RelayOptions{})
+	_, stopRelay := s.relay.Configure(nil)
+	stopRelay()
 	s.logger.Debug("relay instance terminated")
 	return connect.NewResponse(&wv1.StopRelayResponse{}), nil
 }
