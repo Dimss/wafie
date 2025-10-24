@@ -3,10 +3,11 @@ syntax = "proto3";
 package wafie.v1;
 
 message RelayOptions{
-  repeated string proxy_ips = 1;
-  string proxy_listening_port = 2;
-  string app_container_port = 3;
-  string relay_port = 4;
+  string proxy_fqdn = 1;
+  string proxy_ip = 2;
+  string proxy_listening_port = 3;
+  string app_container_port = 4;
+  string relay_port = 5;
 }
 message StartRelayRequest{
   RelayOptions options = 1;

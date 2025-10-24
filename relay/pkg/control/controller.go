@@ -77,32 +77,13 @@ func (c *Controller) Run() {
 	}()
 }
 
-func (c *Controller) discoverRelayOptions(p *wv1.Protection) (*wv1.RelayOptions, error) {
+func (c *Controller) discoverRelayOptions(p *wv1.Protection) *wv1.RelayOptions {
 	if p.ProtectionMode == wv1.ProtectionMode_PROTECTION_MODE_OFF ||
 		p.ProtectionMode == wv1.ProtectionMode_PROTECTION_MODE_UNSPECIFIED {
-		return &wv1.RelayOptions{}, nil // if protection is off or unspecified, return empty options
+		return &wv1.RelayOptions{} // if protection is off or unspecified, return empty options
 	}
-	// TODO: make the AppSecGW svc fqdn configurable
-	appGwSvcFqdn := "wafie-control-plane.default.svc"
-	resp, err := c.routeClient.ListRoutes(context.Background(),
-		connect.NewRequest(
-			&wv1.ListRoutesRequest{
-				Options: &wv1.ListRoutesOptions{
-					SvcFqdn: &appGwSvcFqdn,
-				},
-			},
-		),
-	)
-	if err != nil {
-		return nil, err
-	}
-	upstreams := resp.Msg.Upstreams
-	if len(upstreams) == 0 {
-		return nil, fmt.Errorf("can not detect proxy ips")
-	}
-
 	return &wv1.RelayOptions{
-		ProxyIps: upstreams[0].ContainerIps,
+		ProxyFqdn: "appsecgw.default.svc", // TODO: parameterize this!
 		ProxyListeningPort: strconv.
 			Itoa(
 				int(
@@ -112,8 +93,8 @@ func (c *Controller) discoverRelayOptions(p *wv1.Protection) (*wv1.RelayOptions,
 			Itoa(
 				int(p.Application.Ingress[0].Upstream.ContainerPorts[0].Number),
 			),
-		RelayPort: "50010",
-	}, nil
+		RelayPort: "50010", // TODO: currently static-inline, must be configurable
+	}
 }
 
 func (c *Controller) getRelayInstanceSpecs(eps *discoveryv1.EndpointSlice, protection *wv1.Protection) (rInstances []*RelayInstanceSpec) {
@@ -128,16 +109,11 @@ func (c *Controller) getRelayInstanceSpecs(eps *discoveryv1.EndpointSlice, prote
 			c.logger.Warn("pod does not contain container status", zap.String("podName", pod.Name))
 			continue
 		}
-		relayOptions, err := c.discoverRelayOptions(protection)
-		if err != nil {
-			c.logger.Error(err.Error())
-			continue
-		}
 		i, err := NewRelayInstanceSpec(
 			pod.Status.ContainerStatuses[0].ContainerID,
 			pod.Name,
 			*ep.NodeName,
-			relayOptions,
+			c.discoverRelayOptions(protection),
 			c.logger,
 		)
 		if err != nil {

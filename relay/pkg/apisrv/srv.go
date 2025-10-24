@@ -10,7 +10,6 @@ import (
 	"connectrpc.com/grpcreflect"
 	wv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	"github.com/Dimss/wafie/api/gen/wafie/v1/wafiev1connect"
-	"github.com/Dimss/wafie/relay/pkg/nftables"
 	"github.com/Dimss/wafie/relay/pkg/relay"
 	"go.uber.org/zap"
 	"golang.org/x/net/http2"
@@ -61,10 +60,6 @@ func (s *Server) StartRelay(
 	req *connect.Request[wv1.StartRelayRequest]) (
 	*connect.Response[wv1.StartRelayResponse], error) {
 	s.logger.Debug("starting relay instance")
-	if err := nftables.Program(nftables.AddOp, req.Msg.Options); err != nil {
-		s.logger.Error("failed to program nftables", zap.Error(err),
-			zap.String("operation", string(nftables.AddOp)))
-	}
 	s.relay.Start(req.Msg.Options)
 	resp := connect.NewResponse(
 		&wv1.StartRelayResponse{
@@ -85,10 +80,10 @@ func (s *Server) StopRelay(
 	req *connect.Request[wv1.StopRelayRequest]) (
 	*connect.Response[wv1.StopRelayResponse], error) {
 	s.logger.Debug("terminating relay instance")
-	if err := nftables.Program(nftables.DeleteOp, &wv1.RelayOptions{}); err != nil {
-		s.logger.Error("failed to program nftables", zap.Error(err),
-			zap.String("operation", string(nftables.DeleteOp)))
-	}
+	//if err := nftables.ProgramNft(nftables.DeleteOp, &wv1.RelayOptions{}); err != nil {
+	//	s.logger.Error("failed to program nftables", zap.Error(err),
+	//		zap.String("operation", string(nftables.DeleteOp)))
+	//}
 	s.relay.Stop(&wv1.RelayOptions{})
 	s.logger.Debug("relay instance terminated")
 	return connect.NewResponse(&wv1.StopRelayResponse{}), nil
