@@ -18,6 +18,7 @@ import (
 	"github.com/Dimss/wafie/api/gen/grpc/health/v1/healthv1connect"
 	wv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	"github.com/Dimss/wafie/api/gen/wafie/v1/wafiev1connect"
+	"github.com/Dimss/wafie/relay/pkg/apisrv"
 	"github.com/containernetworking/plugins/pkg/ns"
 	"go.uber.org/zap"
 	"golang.org/x/sys/unix"
@@ -29,7 +30,6 @@ import (
 const (
 	ContainerdCRISock = "unix:///run/containerd/containerd.sock" // Adjust for your specific runtime
 	CRIoCRISock       = "unix:///var/run/crio/crio.sock"
-	InstanceApiAddr   = "http://127.0.0.1:8081"
 )
 
 type RelayInstanceSpec struct {
@@ -48,7 +48,7 @@ func NewRelayInstanceSpec(containerId, podName, nodeName string, options *wv1.Re
 	i := &RelayInstanceSpec{
 		logger:       logger.With(zap.String("podName", podName)),
 		nodeName:     nodeName,
-		apiAddr:      InstanceApiAddr,
+		apiAddr:      fmt.Sprintf("http://127.0.0.1:%d", apisrv.ApiListeningPort),
 		podName:      podName,
 		relayOptions: options,
 	}

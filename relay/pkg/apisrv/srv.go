@@ -2,6 +2,7 @@ package apisrv
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"connectrpc.com/connect"
@@ -16,6 +17,10 @@ import (
 	"golang.org/x/net/http2/h2c"
 )
 
+const (
+	ApiListeningPort = 57812
+)
+
 type Server struct {
 	wafiev1connect.UnimplementedRelayServiceHandler
 	logger     *zap.Logger
@@ -23,10 +28,10 @@ type Server struct {
 	relay      relay.Relay
 }
 
-func NewServer(listenAddr string, logger *zap.Logger, r relay.Relay) *Server {
+func NewServer(logger *zap.Logger, r relay.Relay) *Server {
 	return &Server{
 		logger:     logger,
-		listenAddr: listenAddr,
+		listenAddr: fmt.Sprintf("localhost:%d", ApiListeningPort),
 		relay:      r,
 	}
 }

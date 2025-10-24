@@ -30,7 +30,7 @@ var relayCmd = &cobra.Command{
 		socatRelay := relay.NewSocat(logger)
 		// start relay api server
 		apisrv.
-			NewServer("localhost:57812", logger, socatRelay).
+			NewServer(logger, socatRelay).
 			Start()
 		shutdown(socatRelay)
 	},
