@@ -21,7 +21,7 @@ spec:
           command:
            - /usr/local/bin/appsecgw
            - start
-           - --api-addr=http://wafie-control-plane.{{.Release.Namespace}}.svc
+           - --api-addr=http://wafie-control-plane.{{.Release.Namespace}}.svc:8080
           imagePullPolicy: Always
           ports:
             - name: grpc-srv
