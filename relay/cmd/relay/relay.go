@@ -44,9 +44,10 @@ func initLogger() *zap.Logger {
 
 func shutdown(s relay.Relay) {
 	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 	gracefullyExit := func(s relay.Relay, sig os.Signal) {
-		//s.Stop()
+		_, stop := s.Configure(nil)
+		stop()
 		logger.Info("shutting down, bye bye 👋", zap.String("signal", sig.String()))
 		if s, ok := sig.(syscall.Signal); ok {
 			os.Exit(128 + int(s))

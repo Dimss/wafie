@@ -20,12 +20,13 @@ import (
 type Controller struct {
 	logger           *zap.Logger
 	epsCh            chan *discoveryv1.EndpointSlice
+	nodeName         string
 	protectionClient v1.ProtectionServiceClient
 	routeClient      v1.RouteServiceClient
 	clientset        *kubernetes.Clientset
 }
 
-func NewController(apiAddr string, epsCh chan *discoveryv1.EndpointSlice, logger *zap.Logger) (*Controller, error) {
+func NewController(apiAddr, nodeName string, epsCh chan *discoveryv1.EndpointSlice, logger *zap.Logger) (*Controller, error) {
 	rc, err := config.GetConfig()
 	if err != nil {
 		return nil, err
@@ -35,8 +36,9 @@ func NewController(apiAddr string, epsCh chan *discoveryv1.EndpointSlice, logger
 		return nil, err
 	}
 	return &Controller{
-		logger: logger,
-		epsCh:  epsCh,
+		logger:   logger,
+		epsCh:    epsCh,
+		nodeName: nodeName,
 		protectionClient: v1.NewProtectionServiceClient(
 			http.DefaultClient,
 			apiAddr,
@@ -107,6 +109,11 @@ func (c *Controller) getRelayInstanceSpecs(eps *discoveryv1.EndpointSlice, prote
 		}
 		if len(pod.Status.ContainerStatuses) == 0 {
 			c.logger.Warn("pod does not contain container status", zap.String("podName", pod.Name))
+			continue
+		}
+		// if current relay instance manager
+		// running on different node from the endpoint, skip it
+		if *ep.NodeName != c.nodeName {
 			continue
 		}
 		i, err := NewRelayInstanceSpec(

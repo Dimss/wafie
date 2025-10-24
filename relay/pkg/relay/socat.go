@@ -24,7 +24,9 @@ type SocatRelay struct {
 }
 
 func NewSocat(logger *zap.Logger) *SocatRelay {
-	return &SocatRelay{logger: logger}
+	socatRelay := &SocatRelay{logger: logger}
+	socatRelay.runProxyHealthMonitor() // start proxy relay monitor
+	return socatRelay
 }
 
 func (r *SocatRelay) shouldRestart(cfgOptions *wv1.RelayOptions) bool {
@@ -33,7 +35,41 @@ func (r *SocatRelay) shouldRestart(cfgOptions *wv1.RelayOptions) bool {
 	}
 	return r.options.ProxyFqdn != cfgOptions.ProxyFqdn ||
 		r.options.AppContainerPort != cfgOptions.AppContainerPort ||
-		r.options.RelayPort != cfgOptions.RelayPort
+		r.options.RelayPort != cfgOptions.RelayPort ||
+		r.options.ProxyListeningPort != cfgOptions.ProxyListeningPort
+}
+
+func (r *SocatRelay) proxyOk() (ok bool) {
+	address := fmt.Sprintf("%s:%s", r.options.ProxyIp, r.options.ProxyListeningPort)
+	pingMaxAttempts := 2
+	for attempt := 0; attempt < pingMaxAttempts; attempt++ {
+		conn, err := net.DialTimeout("tcp", address, 5*time.Second)
+		if conn != nil {
+			conn.Close()
+		}
+		if err == nil {
+			return true
+		}
+	}
+	r.logger.Debug("proxy ping failed", zap.String("address", address))
+	return false
+}
+
+func (r *SocatRelay) runProxyHealthMonitor() {
+	r.logger.Info("starting proxy health monitor")
+	go func() {
+		proxyPingInterval := 2 * time.Second
+		for {
+			if r.options != nil && r.options.ProxyIp != "" {
+				if !r.proxyOk() {
+					r.stop()       // stop the proxy
+					r.setProxyIp() // lookup for the proxy IP
+					r.start()      // start proxy
+				}
+			}
+			time.Sleep(proxyPingInterval)
+		}
+	}()
 }
 
 func (r *SocatRelay) Configure(cfgOptions *wv1.RelayOptions) (StartRelayFunc, StopRelayFunc) {

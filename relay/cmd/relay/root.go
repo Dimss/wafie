@@ -26,6 +26,6 @@ func init() {
 	cobra.OnInitialize(func() {
 		viper.AutomaticEnv()
 		viper.SetEnvPrefix("WAFIE_RELAY")
-		viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+		viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	})
 }

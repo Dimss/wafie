@@ -15,7 +15,9 @@ import (
 
 func init() {
 	controllerCmd.PersistentFlags().StringP("api-addr", "a", "http://localhost:8080", "API address")
+	controllerCmd.PersistentFlags().StringP("node-name", "n", "", "K8s node name")
 	viper.BindPFlag("api-addr", controllerCmd.PersistentFlags().Lookup("api-addr"))
+	viper.BindPFlag("node-name", controllerCmd.PersistentFlags().Lookup("node-name"))
 	startCmd.AddCommand(controllerCmd)
 }
 
@@ -28,6 +30,7 @@ var controllerCmd = &cobra.Command{
 		// start relay controller
 		relayCtrl, err := control.NewController(
 			viper.GetString("api-addr"),
+			viper.GetString("node-name"),
 			epsCh,
 			applogger.NewLogger(),
 		)
@@ -40,14 +43,7 @@ var controllerCmd = &cobra.Command{
 			epsCh,
 			applogger.NewLogger(),
 		).Start()
-
-		//informer.NewInformer()
-
-		//protection := agent.NewProtections(
-		//	viper.GetString("api-addr"),
-		//	applogger.NewLogger(),
-		//)
-		//protection.StartSpec()
+		
 		controllerShutdown()
 	},
 }
