@@ -36,7 +36,7 @@ build.discovery:
 build-cni:
 	go build -o bin/wafie-cni cni/cmd/wafie-cni/main.go
 
-build-relay:
+build.relay:
 	go build -o bin/wafie-relay relay/cmd/main.go
 
 docker.controlplane:

@@ -197,9 +197,9 @@ func (s *ProtectionModelSvc) ListProtections(options *wv1.ListProtectionsOptions
 			Preload("Application.Ingress").
 			Preload("Application.Ingress.Upstream")
 
-		//if options.UpstreamHost != nil {
-		//	query = query.Where("ingresses.upstream_host = ?", options.UpstreamHost)
-		//}
+		if options.UpstreamHost != nil {
+			query = query.Where("upstreams.svc_fqdn = ?", options.UpstreamHost)
+		}
 	}
 	res := query.Find(&protections)
 	return protections, res.Error
