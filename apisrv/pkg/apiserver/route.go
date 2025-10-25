@@ -44,8 +44,8 @@ func (s *RouteService) CreateRoute(
 		return connect.NewResponse(&wv1.CreateRouteResponse{}), err
 	}
 	// save ports
-	err = models.NewPortModelSvc(nil, s.logger).
-		Save(models.NewPortsFromProto(req.Msg.Ports, u.ID))
+	err = models.NewPortModelSvc(u.ID, i.ID, nil, s.logger).
+		Save(models.NewPortsFromProto(req.Msg.Ports))
 	return connect.NewResponse(&wv1.CreateRouteResponse{}), err
 }
 
@@ -62,7 +62,7 @@ func (s *RouteService) UpdateRoute(
 	if err != nil {
 		return connect.NewResponse(&wv1.UpdateRouteResponse{}), connect.NewError(connect.CodeInternal, err)
 	}
-	models.NewPortModelSvc(nil, s.logger)
+	//models.NewPortModelSvc(nil, s.logger)
 	return connect.NewResponse(&wv1.UpdateRouteResponse{}), nil
 }
 
