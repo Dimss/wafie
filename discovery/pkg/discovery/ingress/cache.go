@@ -101,6 +101,7 @@ func (c *Cache) Run() {
 							zap.String("name", unstructuredIngress.GetName()),
 							zap.String("namespace", unstructuredIngress.GetNamespace()),
 						).Error("error creating ingress", zap.Error(err))
+						//l.Debug("error creating ingress", zap.Error(err))
 					}
 				},
 				DeleteFunc: func(obj interface{}) {

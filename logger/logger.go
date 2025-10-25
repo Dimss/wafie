@@ -15,6 +15,7 @@ func NewLogger() *zap.Logger {
 	config := zap.NewDevelopmentConfig()
 	//logger, err := zap.NewProduction()
 	config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	config.EncoderConfig.StacktraceKey = ""
 	logger, err := config.Build()
 	if err != nil {
 		panic(err)
