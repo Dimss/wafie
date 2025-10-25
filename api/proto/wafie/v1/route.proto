@@ -18,6 +18,12 @@ enum PortStatusType {
   PORT_STATUS_TYPE_DISABLED = 2;
 }
 
+enum PortType {
+  PORT_TYPE_UNSPECIFIED = 0;
+  PORT_TYPE_SVC_PORT = 1;
+  PORT_TYPE_CONTAINER_PORT = 2;
+}
+
 enum DiscoveryStatusType {
   DISCOVERY_STATUS_TYPE_UNSPECIFIED = 0;
   DISCOVERY_STATUS_TYPE_SUCCESS = 1;
@@ -42,39 +48,35 @@ message Ingress {
   IngressType ingress_type = 7;
   DiscoveryStatusType discovery_status = 8;
   string discovery_message = 9;
-  optional Upstream upstream = 10;
 }
 
 message Port  {
   uint32 number = 1;
   string name = 2;
   uint32 proxy_listening_port = 3;
-  PortStatusType status = 4;
-  string description = 5;
+  string description = 4;
+  PortStatusType status = 5;
+  PortType port_type = 6;
 }
 
 message Upstream {
   string svc_fqdn = 1 [(buf.validate.field).required = true];
   repeated string container_ips = 2;
-  repeated Port svc_ports = 3;
-  repeated Port container_ports = 4;
-  repeated uint32 ingresses_ids = 5;
-  UpstreamRouteType upstream_route_type = 6;
-  repeated Ingress ingresses = 7;
+  repeated Ingress ingresses = 3;
+  repeated Port ports = 4;
+  UpstreamRouteType upstream_route_type = 5;
 }
 // Create route
 message CreateRouteRequest {
   Ingress ingress = 1 [(buf.validate.field).required = true];
   Upstream upstream = 2 [(buf.validate.field).required = true];
+  repeated Port ports = 3;
 }
 message CreateRouteResponse{}
 // Update route
-message UpdateRouteOptions {
-  optional bool set_container_ips_only = 1;
-}
 message UpdateRouteRequest {
-  Upstream upstream = 1;
-  optional UpdateRouteOptions options = 2;
+  optional Upstream upstream = 1;
+  repeated Port ports = 2;
 }
 message UpdateRouteResponse {}
 // List routes

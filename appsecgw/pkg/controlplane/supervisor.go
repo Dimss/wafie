@@ -51,7 +51,6 @@ func (s *Supervisor) startLogRotationProcess() {
 		for {
 			select {
 			case <-ticker.C:
-				s.logger.Info("executing rotation")
 				s.runBackgroundCmd(
 					exec.Command(
 						s.logrotatePath, []string{"-f", s.logrotateConfigFile}...,

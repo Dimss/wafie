@@ -81,10 +81,6 @@ func (s *Server) StopRelay(
 	req *connect.Request[wv1.StopRelayRequest]) (
 	*connect.Response[wv1.StopRelayResponse], error) {
 	s.logger.Debug("terminating relay instance")
-	//if err := nftables.ProgramNft(nftables.DeleteOp, &wv1.RelayOptions{}); err != nil {
-	//	s.logger.Error("failed to program nftables", zap.Error(err),
-	//		zap.String("operation", string(nftables.DeleteOp)))
-	//}
 	_, stopRelay := s.relay.Configure(nil)
 	stopRelay()
 	s.logger.Debug("relay instance terminated")

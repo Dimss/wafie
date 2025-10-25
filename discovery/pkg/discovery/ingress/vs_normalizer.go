@@ -15,6 +15,6 @@ func (s *vs) gvr() schema.GroupVersionResource {
 		Resource: "virtualservices",
 	}
 }
-func (s *vs) normalize(obj *unstructured.Unstructured) (*wv1.Upstream, *wv1.Ingress, error) {
-	return nil, nil, nil
+func (s *vs) normalize(obj *unstructured.Unstructured) (*wv1.CreateRouteRequest, error) {
+	return nil, nil
 }

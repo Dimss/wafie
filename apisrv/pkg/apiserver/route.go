@@ -31,17 +31,21 @@ func (s *RouteService) CreateRoute(
 	if err := protovalidate.Validate(req.Msg); err != nil {
 		return connect.NewResponse(&wv1.CreateRouteResponse{}), connect.NewError(connect.CodeInternal, err)
 	}
+	// save upstream
 	u, err := models.NewUpstreamModelSvc(nil, s.logger).
-		Save(
-			models.NewUpstreamFromRequest(req.Msg.Upstream),
-			nil,
-		)
+		Save(models.NewUpstreamFromRequest(req.Msg.Upstream))
 	if err != nil {
 		return connect.NewResponse(&wv1.CreateRouteResponse{}), connect.NewError(connect.CodeInternal, err)
 	}
+	// save ingress
 	i := models.NewIngressFromProto(req.Msg.Ingress)
-	i.UpstreamID = u.ID // set upstream id
-	err = models.NewIngressModelSvc(nil, s.logger).Save(i)
+	i.UpstreamID = u.ID // set foreign key upstream id
+	if err := models.NewIngressModelSvc(nil, s.logger).Save(i); err != nil {
+		return connect.NewResponse(&wv1.CreateRouteResponse{}), err
+	}
+	// save ports
+	err = models.NewPortModelSvc(nil, s.logger).
+		Save(models.NewPortsFromProto(req.Msg.Ports, u.ID))
 	return connect.NewResponse(&wv1.CreateRouteResponse{}), err
 }
 
@@ -54,13 +58,11 @@ func (s *RouteService) UpdateRoute(
 		return connect.NewResponse(&wv1.UpdateRouteResponse{}), connect.NewError(connect.CodeInternal, err)
 	}
 	_, err := models.NewUpstreamModelSvc(nil, s.logger).
-		Save(
-			models.NewUpstreamFromRequest(req.Msg.Upstream),
-			req.Msg.Options,
-		)
+		Save(models.NewUpstreamFromRequest(req.Msg.Upstream))
 	if err != nil {
 		return connect.NewResponse(&wv1.UpdateRouteResponse{}), connect.NewError(connect.CodeInternal, err)
 	}
+	models.NewPortModelSvc(nil, s.logger)
 	return connect.NewResponse(&wv1.UpdateRouteResponse{}), nil
 }
 

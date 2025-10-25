@@ -6,12 +6,10 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	wv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	v1 "github.com/Dimss/wafie/api/gen/wafie/v1/wafiev1connect"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/dynamic/dynamicinformer"
 	cache2 "k8s.io/client-go/tools/cache"
@@ -27,17 +25,6 @@ type Cache struct {
 	namespace      string
 	routeSvcClient v1.RouteServiceClient
 	logger         *zap.Logger
-}
-
-const (
-	VsIngressType    IngressType = "istio"
-	K8sIngressType   IngressType = "ingress"
-	RouteIngressType IngressType = "openshift"
-)
-
-type normalizer interface {
-	gvr() schema.GroupVersionResource
-	normalize(*unstructured.Unstructured) (*wv1.Upstream, *wv1.Ingress, error)
 }
 
 func newParser(ingressType IngressType) normalizer {
@@ -131,18 +118,13 @@ func (c *Cache) Run() {
 }
 
 func (c *Cache) createUpstream(obj *unstructured.Unstructured) error {
-	u, i, normalizerErr := c.normalizer.normalize(obj)
-	if u == nil {
+	req, normalizerErr := c.normalizer.normalize(obj)
+	if req == nil {
 		return nil
 	}
 	_, upstreamCreateErr := c.routeSvcClient.CreateRoute(
 		context.Background(),
-		connect.NewRequest(
-			&wv1.CreateRouteRequest{
-				Upstream: u,
-				Ingress:  i,
-			},
-		),
+		connect.NewRequest(req),
 	)
 	return errors.Join(normalizerErr, upstreamCreateErr)
 

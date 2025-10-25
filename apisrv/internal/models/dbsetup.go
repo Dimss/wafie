@@ -66,6 +66,7 @@ func migrate(db *gorm.DB) error {
 		&Application{},
 		&Upstream{},
 		&Ingress{},
+		&Port{},
 		&Protection{},
 		&DataVersion{},
 	); err != nil {

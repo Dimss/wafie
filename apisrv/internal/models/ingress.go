@@ -42,10 +42,12 @@ type Ingress struct {
 	DiscoveryStatus  uint32
 	DiscoveryMessage string `gorm:"type:text"`
 	// Foreign key to Upstream
-	UpstreamID uint      `gorm:"not null;index"`
-	Upstream   Upstream  `gorm:"foreignKey:UpstreamID"`
-	CreatedAt  time.Time `gorm:"default:CURRENT_TIMESTAMP"`
-	UpdatedAt  time.Time `gorm:"default:CURRENT_TIMESTAMP"`
+	UpstreamID uint     `gorm:"not null;index"`
+	Upstream   Upstream `gorm:"foreignKey:UpstreamID"`
+	// One-to-many relationship
+	Ports     []Port    `gorm:"foreignKey:PortID"`
+	CreatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP"`
+	UpdatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP"`
 }
 
 func NewIngressFromProto(ingReq *wv1.Ingress) *Ingress {
@@ -94,7 +96,7 @@ func (i *Ingress) ToProto() *wv1.Ingress {
 		DiscoveryMessage: i.DiscoveryMessage,
 		DiscoveryStatus:  wv1.DiscoveryStatusType(i.DiscoveryStatus),
 		ApplicationId:    int32(i.ApplicationID),
-		Upstream:         i.Upstream.ToProto(),
+		//Upstream:         i.Upstream.ToProto(),
 	}
 }
 

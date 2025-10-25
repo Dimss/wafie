@@ -57,13 +57,12 @@ func (c *Cache) RunUpstreamIPsSyncer() {
 				if !c.shouldProtect(svcFqdn) {
 					continue
 				}
-				setContainerIpsOnly := true
+				//setContainerIpsOnly := true
 				req := &wv1.UpdateRouteRequest{
 					Upstream: &wv1.Upstream{
 						SvcFqdn:      svcFqdn,
 						ContainerIps: c.ipAddressFromEndpointSlice(eps),
 					},
-					Options: &wv1.UpdateRouteOptions{SetContainerIpsOnly: &setContainerIpsOnly},
 				}
 				if _, err := c.routeSvcClient.UpdateRoute(
 					context.Background(),
