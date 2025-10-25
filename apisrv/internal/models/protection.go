@@ -208,13 +208,3 @@ func (s *ProtectionModelSvc) ListProtections(options *wv1.ListProtectionsOptions
 func (s *ProtectionModelSvc) DeleteProtection(protectionId uint32) error {
 	return s.db.Delete(&Protection{ID: uint(protectionId)}).Error
 }
-
-func (p *Protection) AfterCreate(tx *gorm.DB) (err error) {
-	err = NewDataVersionModelSvc(tx, nil).UpdateProtectionVersion()
-	return err
-}
-
-func (p *Protection) AfterUpdate(tx *gorm.DB) (err error) {
-	err = NewDataVersionModelSvc(tx, nil).UpdateProtectionVersion()
-	return err
-}
