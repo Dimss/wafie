@@ -78,6 +78,14 @@ func (i *ingress) normalize(obj *unstructured.Unstructured) (createRouteReq *wv1
 		if err := i.discoverContainerPorts(k8sIngress, &createRouteReq.Ports); err != nil {
 			return i.normalizedWithError(createRouteReq, err)
 		}
+		// set upstream container IPs
+		if err := discoverIPsFromEndpointSlice(
+			k8sIngress.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name,
+			k8sIngress.Namespace,
+			&createRouteReq.Upstream.ContainerIps,
+		); err != nil {
+			return i.normalizedWithError(createRouteReq, err)
+		}
 		return createRouteReq, nil
 	}
 	return nil, nil

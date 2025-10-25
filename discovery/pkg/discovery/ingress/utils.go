@@ -69,6 +69,17 @@ func getContainerPortBySvcPort(kPort intstr.IntOrString, svcName, namespace stri
 	return 0, "", fmt.Errorf("can not find container port for service: %s", svcName)
 }
 
+func discoverIPsFromEndpointSlice(svcName, namespace string, ips *[]string) error {
+	ep, err := getEndpointSliceBySvcName(svcName, namespace)
+	if err != nil {
+		return err
+	}
+	for _, endpoint := range ep.Endpoints {
+		*ips = append(*ips, endpoint.Addresses...)
+	}
+	return nil
+}
+
 func getEndpointSliceBySvcName(svcName, namespace string) (*discoveryv1.EndpointSlice, error) {
 	rc, err := config.GetConfig()
 	if err != nil {

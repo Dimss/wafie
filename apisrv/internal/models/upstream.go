@@ -16,13 +16,12 @@ import (
 type Upstream struct {
 	ID                uint           `gorm:"primaryKey"`
 	SvcFqdn           string         `gorm:"uniqueIndex:idx_svc_fqdn"`
-	ContainerIps      pq.StringArray `gorm:"type:text[]"` // upstream IPS
+	ContainerIps      pq.StringArray `gorm:"type:text[]"` // upstream IPs
 	UpstreamRouteType uint32
-	// One-to-many relationship
-	Ingresses []Ingress `gorm:"foreignKey:UpstreamID"`
-	Ports     []Port    `gorm:"foreignKey:UpstreamID"`
-	CreatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP"`
-	UpdatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP"`
+	Ingresses         []Ingress `gorm:"foreignKey:UpstreamID"`
+	Ports             []Port    `gorm:"foreignKey:UpstreamID"`
+	CreatedAt         time.Time `gorm:"default:CURRENT_TIMESTAMP"`
+	UpdatedAt         time.Time `gorm:"default:CURRENT_TIMESTAMP"`
 }
 
 type UpstreamSvc struct {
@@ -58,6 +57,7 @@ func NewUpstreamFromRequest(upstreamReq *wv1.Upstream) *Upstream {
 func (s *UpstreamSvc) Save(u *Upstream) (*Upstream, error) {
 
 	assigmentColumns := []string{
+		"container_ips",
 		"upstream_route_type",
 		"created_at",
 		"updated_at",
@@ -70,7 +70,7 @@ func (s *UpstreamSvc) Save(u *Upstream) (*Upstream, error) {
 	).
 		Omit("Ingresses").
 		Omit("Ports").
-		Create(&u); res.Error != nil {
+		Save(&u); res.Error != nil {
 		return u, connect.NewError(connect.CodeUnknown, res.Error)
 	}
 	return u, nil
@@ -114,74 +114,21 @@ func (u *Upstream) ToProto() *wv1.Upstream {
 }
 
 func (u *Upstream) BeforeCreate(tx *gorm.DB) error {
-	// set default upstream route type
-	if u.UpstreamRouteType == uint32(wv1.UpstreamRouteType_UPSTREAM_ROUTE_TYPE_UNSPECIFIED) {
-		u.UpstreamRouteType = uint32(wv1.UpstreamRouteType_UPSTREAM_ROUTE_TYPE_PORT)
-	}
-	if err := u.allocateProxyListenerPort(tx); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (u *Upstream) updateCurrentProxyListeningPorts(tx *gorm.DB) error {
-	existingUpstream := &Upstream{}
-	if err := tx.Where("svc_fqdn = ?", u.SvcFqdn).First(existingUpstream).Error; err != nil {
+	currentUpstream := &Upstream{}
+	if err := tx.Where("svc_fqdn = ?", u.SvcFqdn).First(currentUpstream).Error; err != nil {
+		// set default upstream route type
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
 	}
-	//if existingUpstream.ContainerPorts != nil {
-	//	for _, currentPort := range existingUpstream.ContainerPorts {
-	//		if currentPort.ProxyListeningPort == 0 {
-	//			continue
-	//		}
-	//		for idx, newPort := range u.ContainerPorts {
-	//			if (currentPort.PortNumber != 0 && currentPort.PortNumber == newPort.PortNumber) ||
-	//				(currentPort.PortName != "" && currentPort.PortName == newPort.PortName) {
-	//				u.ContainerPorts[idx].ProxyListeningPort = currentPort.ProxyListeningPort
-	//				break
-	//			}
-	//		}
-	//	}
-	//}
-	return nil
-}
-
-// TODO: TEST THIS WITH UNIT TESTS!
-func (u *Upstream) allocateProxyListenerPort(tx *gorm.DB) error {
-	//if err := u.updateCurrentProxyListeningPorts(tx); err != nil {
-	//	return err
-	//}
-	//for idx, port := range u.ContainerPorts {
-	//	if port.ProxyListeningPort != 0 {
-	//		continue
-	//	}
-	//	allocationAttempts := 10
-	//	for allocationAttempts > 0 {
-	//		proxyListenerPort := func() int32 {
-	//			rand.NewSource(time.Now().UnixNano())
-	//			minPort := 49152
-	//			maxPort := 65535
-	//			return int32(rand.Intn(maxPort-minPort) + minPort)
-	//		}()
-	//		query := `SELECT (port ->> 'proxy_listening_port')::int as proxy_listening_port
-	//                    FROM upstreams,jsonb_array_elements(container_ports) as port
-	//                    where (port ->> 'proxy_listening_port')::int = ?`
-	//		var ports []string
-	//		if err := tx.Raw(query, proxyListenerPort).Pluck("jsonb_array_elements", &ports).Error; err != nil {
-	//			return err
-	//		}
-	//		if len(ports) == 0 {
-	//			u.ContainerPorts[idx].ProxyListeningPort = uint32(proxyListenerPort)
-	//			if err := NewDataVersionModelSvc(tx, nil).UpdateProtectionVersion(); err != nil {
-	//				return err
-	//			}
-	//			break
-	//		}
-	//		allocationAttempts--
-	//	}
-	//
-	//}
+	// set default upstream route type
+	if u.UpstreamRouteType == uint32(wv1.UpstreamRouteType_UPSTREAM_ROUTE_TYPE_UNSPECIFIED) {
+		u.UpstreamRouteType = uint32(wv1.UpstreamRouteType_UPSTREAM_ROUTE_TYPE_PORT)
+	}
+	// if new upstream has no IPs,
+	// use current upstream IPs
+	if len(u.ContainerIps) == 0 && len(currentUpstream.ContainerIps) != 0 {
+		u.ContainerIps = currentUpstream.ContainerIps
+	}
 	return nil
 }
