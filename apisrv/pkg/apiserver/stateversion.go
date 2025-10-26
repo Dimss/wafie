@@ -21,7 +21,7 @@ func NewStateVersionService(log *zap.Logger) *StateVersionService {
 	}
 }
 
-func (s *StateVersionService) GetDataVersion(
+func (s *StateVersionService) GetStateVersion(
 	ctx context.Context,
 	req *connect.Request[wv1.GetStateVersionRequest]) (
 	*connect.Response[wv1.GetStateVersionResponse], error) {
