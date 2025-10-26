@@ -48,7 +48,7 @@ COPY appsecgw ./appsecgw/
 COPY logger ./logger
 RUN make build.appsecgw
 
-FROM envoyproxy/envoy:contrib-v1.34.1
+FROM envoyproxy/envoy:contrib-v1.35.6
 RUN apt -y update \
     && apt -y install \
         libxml2-dev \
