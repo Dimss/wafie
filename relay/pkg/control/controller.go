@@ -194,39 +194,6 @@ func (c *Controller) deployRelayInstances(relayInstanceSpecs []*RelayInstanceSpe
 	}
 }
 
-func (c *Controller) appProtection(upstreamHost string) *wv1.Protection {
-	l := c.logger.With(zap.String("upstreamHost", upstreamHost))
-	includeApps := true
-	req := connect.NewRequest(&wv1.ListProtectionsRequest{
-		Options: &wv1.ListProtectionsOptions{
-			//ProtectionMode: &modeOn,
-			//ModSecMode:     &modeOn,
-			IncludeApps:  &includeApps,
-			UpstreamHost: &upstreamHost,
-		},
-	})
-	protections, err := c.protectionClient.ListProtections(context.Background(), req)
-	if err != nil {
-		l.Error(fmt.Sprintf("failed to list protections: %v", err))
-		return &wv1.Protection{ProtectionMode: wv1.ProtectionMode_PROTECTION_MODE_UNSPECIFIED}
-	}
-	if len(protections.Msg.Protections) == 0 {
-		l.Debug("no protections found")
-		return &wv1.Protection{ProtectionMode: wv1.ProtectionMode_PROTECTION_MODE_UNSPECIFIED}
-	}
-	l.Debug("protection enabled, relay injection required")
-	return protections.Msg.Protections[0]
-}
-
-func upstreamHostFromEndpointSlice(eps *discoveryv1.EndpointSlice) string {
-	if eps.ObjectMeta.OwnerReferences != nil &&
-		len(eps.ObjectMeta.OwnerReferences) > 0 &&
-		eps.ObjectMeta.OwnerReferences[0].Kind == "Service" {
-		return fmt.Sprintf("%s.%s.svc", eps.ObjectMeta.OwnerReferences[0].Name, eps.ObjectMeta.Namespace)
-	}
-	return ""
-}
-
 func protectionContainerPort(protection *wv1.Protection) (*wv1.Port, error) {
 	for _, port := range protection.Application.Ingress[0].Upstream.Ports {
 		if port.PortType == wv1.PortType_PORT_TYPE_CONTAINER_PORT {

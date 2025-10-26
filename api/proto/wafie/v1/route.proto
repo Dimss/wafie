@@ -70,9 +70,7 @@ message Endpoint {
 
 message Upstream {
   string svc_fqdn = 1 [(buf.validate.field).required = true];
-//  repeated string container_ips = 2;
   repeated Endpoint endpoints = 3;
-//  repeated Ingress ingresses = 3;
   repeated Port ports = 4;
   UpstreamRouteType upstream_route_type = 5;
 }

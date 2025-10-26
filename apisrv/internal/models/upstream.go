@@ -31,6 +31,16 @@ func NewEndpointFromRequest(ep *wv1.Endpoint) Endpoint {
 	}
 }
 
+func (e *Endpoint) ToProto(ip string) *wv1.Endpoint {
+	return &wv1.Endpoint{
+		Ip:        ip,
+		NodeName:  e.NodeName,
+		Kind:      e.Kind,
+		Name:      e.Name,
+		Namespace: e.Namespace,
+	}
+}
+
 type Endpoints map[string]Endpoint
 
 func (e Endpoints) Value() (driver.Value, error) {
@@ -146,16 +156,15 @@ func (s *UpstreamRepository) List(options *wv1.ListRoutesOptions) (upstreams []*
 
 func (u *Upstream) ToProto() *wv1.Upstream {
 	wv1upstream := &wv1.Upstream{
-		SvcFqdn: u.SvcFqdn,
-		//ContainerIps:      u.ContainerIps,
+		SvcFqdn:           u.SvcFqdn,
 		UpstreamRouteType: wv1.UpstreamRouteType(u.UpstreamRouteType),
 	}
-	//if u.Ingresses != nil {
-	//	wv1upstream.Ingresses = make([]*wv1.Ingress, len(u.Ingresses))
-	//	for idx, ingress := range u.Ingresses {
-	//		wv1upstream.Ingresses[idx] = ingress.ToProto()
-	//	}
-	//}
+	if u.Endpoints != nil {
+		for ip, ep := range u.Endpoints {
+			wv1upstream.Endpoints = append(wv1upstream.Endpoints, ep.ToProto(ip))
+		}
+	}
+
 	if u.Ports != nil {
 		wv1upstream.Ports = make([]*wv1.Port, len(u.Ports))
 		for idx, port := range u.Ports {
