@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	wv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	v1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -69,13 +70,23 @@ func getContainerPortBySvcPort(kPort intstr.IntOrString, svcName, namespace stri
 	return 0, "", fmt.Errorf("can not find container port for service: %s", svcName)
 }
 
-func discoverIPsFromEndpointSlice(svcName, namespace string, ips *[]string) error {
-	ep, err := getEndpointSliceBySvcName(svcName, namespace)
+func discoverEndpoints(svcName, namespace string, endpoints *[]*wv1.Endpoint) error {
+	eps, err := getEndpointSliceBySvcName(svcName, namespace)
 	if err != nil {
 		return err
 	}
-	for _, endpoint := range ep.Endpoints {
-		*ips = append(*ips, endpoint.Addresses...)
+	*endpoints = make([]*wv1.Endpoint, len(eps.Endpoints))
+	for idx, ep := range eps.Endpoints {
+		if len(ep.Addresses) == 0 {
+			continue
+		}
+		(*endpoints)[idx] = &wv1.Endpoint{
+			Ip:        ep.Addresses[0], // not sure yet what to do when CNI allocates more than one ip to container
+			NodeName:  *ep.NodeName,
+			Kind:      ep.TargetRef.Kind,
+			Name:      ep.TargetRef.Name,
+			Namespace: ep.TargetRef.Namespace,
+		}
 	}
 	return nil
 }

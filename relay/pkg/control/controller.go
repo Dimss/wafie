@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"connectrpc.com/connect"
 	wv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
@@ -18,12 +19,14 @@ import (
 
 // Controller is responsible for manging a lifecycle (start,stop,restart) of relay instances
 type Controller struct {
-	logger           *zap.Logger
-	epsCh            chan *discoveryv1.EndpointSlice
-	nodeName         string
-	protectionClient v1.ProtectionServiceClient
-	routeClient      v1.RouteServiceClient
-	clientset        *kubernetes.Clientset
+	logger             *zap.Logger
+	epsCh              chan *discoveryv1.EndpointSlice
+	nodeName           string
+	stateVersion       string
+	protectionClient   v1.ProtectionServiceClient
+	stateVersionClient v1.StateVersionServiceClient
+	routeClient        v1.RouteServiceClient
+	clientset          *kubernetes.Clientset
 }
 
 func NewController(apiAddr, nodeName string, epsCh chan *discoveryv1.EndpointSlice, logger *zap.Logger) (*Controller, error) {
@@ -47,6 +50,9 @@ func NewController(apiAddr, nodeName string, epsCh chan *discoveryv1.EndpointSli
 			http.DefaultClient,
 			apiAddr,
 		),
+		stateVersionClient: v1.NewStateVersionServiceClient(
+			http.DefaultClient, apiAddr,
+		),
 		clientset: clientset,
 	}, nil
 }
@@ -55,6 +61,35 @@ func (c *Controller) Run() {
 	go func() {
 		{
 			for {
+				time.Sleep(1 * time.Second)
+				if !c.stateVersionChanged() {
+					continue
+				}
+				mode := wv1.ProtectionMode_PROTECTION_MODE_ON
+				includeApps := true
+				req := connect.NewRequest(&wv1.ListProtectionsRequest{
+					Options: &wv1.ListProtectionsOptions{
+						ProtectionMode: &mode,
+						IncludeApps:    &includeApps,
+					},
+				})
+				protections, err := c.protectionClient.ListProtections(context.Background(), req)
+				if err != nil {
+					c.logger.Error("failed to list protections", zap.Error(err))
+					continue
+				}
+				for _, protection := range protections {
+					specs := c.getRelayInstanceSpecs(eps, protection)
+					switch protection.ProtectionMode {
+					case wv1.ProtectionMode_PROTECTION_MODE_UNSPECIFIED:
+						l.Debug("app protection mode unspecified, skipping")
+					case wv1.ProtectionMode_PROTECTION_MODE_ON:
+						c.deployRelayInstances(specs)
+					case wv1.ProtectionMode_PROTECTION_MODE_OFF:
+						c.destroyRelayInstances(specs)
+					}
+				}
+
 				eps := <-c.epsCh
 				l := c.logger.With(zap.String("endpointslicesname", eps.Name))
 				l.Debug("received endpoint slice")
@@ -77,6 +112,29 @@ func (c *Controller) Run() {
 			}
 		}
 	}()
+}
+
+func (c *Controller) stateVersionChanged() bool {
+	stateVersionResponse, err := c.stateVersionClient.GetStateVersion(
+		context.Background(),
+		connect.NewRequest(
+			&wv1.GetStateVersionRequest{
+				TypeId: wv1.StateTypeId_STATE_TYPE_ID_PROTECTION,
+			},
+		),
+	)
+	if err != nil {
+		c.logger.Error("failed to get protection state version", zap.Error(err))
+		return false
+	}
+	// check if the protection state has changed since last iteration
+	if stateVersionResponse.Msg.StateVersionId == c.stateVersion {
+		return false
+	}
+	c.logger.Info("protection state version has changed",
+		zap.String("versionId", stateVersionResponse.Msg.StateVersionId))
+	c.stateVersion = stateVersionResponse.Msg.StateVersionId
+	return true
 }
 
 func (c *Controller) discoverRelayOptions(p *wv1.Protection) *wv1.RelayOptions {

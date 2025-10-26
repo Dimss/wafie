@@ -121,7 +121,7 @@ func migrate(db *gorm.DB) error {
 		&Upstream{},
 		&Ingress{},
 		&Port{},
-		&DataVersion{},
+		&StateVersion{},
 	); err != nil {
 		return err
 	}
@@ -131,7 +131,7 @@ func migrate(db *gorm.DB) error {
 
 func seed(db *gorm.DB) error {
 
-	if err := db.FirstOrCreate(&DataVersion{TypeId: 1}).Error; err != nil {
+	if err := db.FirstOrCreate(&StateVersion{TypeId: 1}).Error; err != nil {
 		return err
 	}
 	rawSQL, err := sql.Triggers()

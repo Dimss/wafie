@@ -30,14 +30,14 @@ import (
 )
 
 type EnvoyControlPlane struct {
-	state                *state
-	cache                cache.SnapshotCache
-	logger               *zap.Logger
-	resourcesCh          chan map[resource.Type][]types.Resource
-	dataVersion          string
-	namespace            string
-	protectionSvcClient  wafiev1connect.ProtectionServiceClient
-	dataVersionSvcClient wafiev1connect.DataVersionServiceClient
+	state                 *state
+	cache                 cache.SnapshotCache
+	logger                *zap.Logger
+	resourcesCh           chan map[resource.Type][]types.Resource
+	stateVersion          string
+	namespace             string
+	protectionSvcClient   wafiev1connect.ProtectionServiceClient
+	stateVersionSvcClient wafiev1connect.StateVersionServiceClient
 }
 
 func NewEnvoyControlPlane(apiAddr, namespace string) *EnvoyControlPlane {
@@ -53,7 +53,7 @@ func NewEnvoyControlPlane(apiAddr, namespace string) *EnvoyControlPlane {
 		protectionSvcClient: wafiev1connect.NewProtectionServiceClient(
 			http.DefaultClient, apiAddr,
 		),
-		dataVersionSvcClient: wafiev1connect.NewDataVersionServiceClient(
+		stateVersionSvcClient: wafiev1connect.NewStateVersionServiceClient(
 			http.DefaultClient, apiAddr,
 		),
 	}
@@ -97,26 +97,26 @@ func (p *EnvoyControlPlane) Start() {
 	}
 }
 
-func (p *EnvoyControlPlane) dataVersionChanged() bool {
-	dataVersionResponse, err := p.dataVersionSvcClient.GetDataVersion(
+func (p *EnvoyControlPlane) stateVersionChanged() bool {
+	stateVersionResponse, err := p.stateVersionSvcClient.GetStateVersion(
 		context.Background(),
 		connect.NewRequest(
-			&wafiev1.GetDataVersionRequest{
-				TypeId: wafiev1.DataTypeId_DATA_TYPE_ID_PROTECTION,
+			&wafiev1.GetStateVersionRequest{
+				TypeId: wafiev1.StateTypeId_STATE_TYPE_ID_PROTECTION,
 			},
 		),
 	)
 	if err != nil {
-		p.logger.Error("failed to get protection data version", zap.Error(err))
+		p.logger.Error("failed to get protection state version", zap.Error(err))
 		return false
 	}
-	// check if the protection data version has changed since last iteration
-	if dataVersionResponse.Msg.VersionId == p.dataVersion {
+	// check if the protection state has changed since last iteration
+	if stateVersionResponse.Msg.StateVersionId == p.stateVersion {
 		return false
 	}
-	p.logger.Info("protection data version has changed",
-		zap.String("versionId", dataVersionResponse.Msg.VersionId))
-	p.dataVersion = dataVersionResponse.Msg.VersionId
+	p.logger.Info("protection state version has changed",
+		zap.String("versionId", stateVersionResponse.Msg.StateVersionId))
+	p.stateVersion = stateVersionResponse.Msg.StateVersionId
 	return true
 }
 
@@ -125,7 +125,7 @@ func (p *EnvoyControlPlane) startApiIngressWatcher() {
 	go func() {
 		for {
 			time.Sleep(1 * time.Second)
-			if !p.dataVersionChanged() {
+			if !p.stateVersionChanged() {
 				continue
 			}
 			mode := wafiev1.ProtectionMode_PROTECTION_MODE_ON

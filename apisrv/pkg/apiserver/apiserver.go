@@ -56,8 +56,8 @@ func (s *ApiServer) registerHandlers(mux *http.ServeMux) {
 		),
 	)
 	mux.Handle(
-		v1.NewDataVersionServiceHandler(
-			NewDataVersionService(s.logger),
+		v1.NewStateVersionServiceHandler(
+			NewStateVersionService(s.logger),
 			compress1KB,
 		),
 	)
@@ -75,7 +75,7 @@ func (s *ApiServer) enableReflection(mux *http.ServeMux) {
 		v1.AuthServiceName,
 		v1.ApplicationServiceName,
 		v1.ProtectionServiceName,
-		v1.DataVersionServiceName,
+		v1.StateVersionServiceName,
 	)
 	mux.Handle(grpcreflect.NewHandlerV1(reflector))
 	mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))

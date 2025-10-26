@@ -60,8 +60,8 @@ func (c *Cache) RunUpstreamIPsSyncer() {
 				//setContainerIpsOnly := true
 				req := &wv1.UpdateRouteRequest{
 					Upstream: &wv1.Upstream{
-						SvcFqdn:      svcFqdn,
-						ContainerIps: c.ipAddressFromEndpointSlice(eps),
+						SvcFqdn:   svcFqdn,
+						Endpoints: c.endpoints(eps),
 					},
 				}
 				if _, err := c.routeSvcClient.UpdateRoute(
@@ -69,7 +69,7 @@ func (c *Cache) RunUpstreamIPsSyncer() {
 					connect.NewRequest(req)); err != nil {
 					c.logger.Info("update route failed", zap.Error(err))
 				}
-				c.logger.Info("ips were updated", zap.String("svcFqdn", svcFqdn))
+				c.logger.Info("endpoints were updated", zap.String("svcFqdn", svcFqdn))
 
 			case c.svcFqdnCache = <-c.svcFqdnCacheUpdaterCh:
 				c.logger.Info("svc fqdn got updated")
@@ -78,11 +78,21 @@ func (c *Cache) RunUpstreamIPsSyncer() {
 	}()
 }
 
-func (c *Cache) ipAddressFromEndpointSlice(eps *discoveryv1.EndpointSlice) (ips []string) {
-	for _, ep := range eps.Endpoints {
-		ips = append(ips, ep.Addresses...)
+func (c *Cache) endpoints(eps *discoveryv1.EndpointSlice) (endpoints []*wv1.Endpoint) {
+	endpoints = make([]*wv1.Endpoint, len(eps.Endpoints))
+	for idx, ep := range eps.Endpoints {
+		if len(ep.Addresses) == 0 {
+			continue
+		}
+		endpoints[idx] = &wv1.Endpoint{
+			Ip:        ep.Addresses[0], // not sure yet what to do when CNI allocates more than one ip to container
+			NodeName:  *ep.NodeName,
+			Kind:      ep.TargetRef.Kind,
+			Name:      ep.TargetRef.Name,
+			Namespace: ep.TargetRef.Namespace,
+		}
 	}
-	return ips
+	return endpoints
 }
 
 func (c *Cache) runUpstreamSvcFqdnCache() {

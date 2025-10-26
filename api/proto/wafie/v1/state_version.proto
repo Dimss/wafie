@@ -1,0 +1,20 @@
+syntax = "proto3";
+package wafie.v1;
+
+enum StateTypeId{
+  STATE_TYPE_ID_UNSPECIFIED = 0;
+  STATE_TYPE_ID_PROTECTION = 1;
+}
+
+message GetStateVersionRequest{
+  StateTypeId type_id = 1;
+}
+
+message GetStateVersionResponse{
+  StateTypeId type_id = 1;
+  string state_version_id = 2;
+}
+
+service StateVersionService {
+  rpc GetStateVersion(GetStateVersionRequest) returns (GetStateVersionResponse);
+}

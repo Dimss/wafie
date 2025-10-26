@@ -15,14 +15,31 @@ SELECT CASE
 $$ LANGUAGE SQL IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION upstreams_update_trigger() RETURNS TRIGGER AS $$
+DECLARE
+    old_keys text[];
+    new_keys text[];
 BEGIN
-    IF OLD.container_ips IS DISTINCT FROM NEW.container_ips THEN
-        IF NOT array_compare_as_set(OLD.container_ips, NEW.container_ips) THEN
-            UPDATE data_versions set version_id=uuid_generate_v4(), updated_at=NOW() where type_id = 1;
+    IF OLD.endpoints IS DISTINCT FROM NEW.endpoints THEN
+        SELECT array_agg(key) INTO old_keys
+        FROM (SELECT jsonb_object_keys(COALESCE(OLD.endpoints, '{}'::jsonb)) AS key) keys_old;
+
+        SELECT array_agg(key) INTO new_keys
+        FROM (SELECT jsonb_object_keys(COALESCE(NEW.endpoints, '{}'::jsonb)) AS key) keys_new;
+
+        IF NOT array_compare_as_set(
+                COALESCE(old_keys, '{}'::text[]),
+                COALESCE(new_keys, '{}'::text[])
+               ) THEN
+            UPDATE state_versions
+            SET version_id = uuid_generate_v4(), updated_at = NOW()
+            WHERE type_id = 1;
         END IF;
     END IF;
+
     IF OLD.svc_fqdn IS DISTINCT FROM NEW.svc_fqdn THEN
-        UPDATE data_versions set version_id=uuid_generate_v4(), updated_at=NOW() where type_id = 1;
+        UPDATE state_versions
+        SET version_id = uuid_generate_v4(), updated_at = NOW()
+        WHERE type_id = 1;
     END IF;
     RETURN NEW;
 END;
@@ -42,11 +59,11 @@ CREATE OR REPLACE FUNCTION ports_insert_delete_trigger()
     RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
-        UPDATE data_versions set version_id=uuid_generate_v4(), updated_at=NOW() where type_id = 1;
+        UPDATE state_versions set version_id=uuid_generate_v4(), updated_at=NOW() where type_id = 1;
         RETURN NEW;
 
     ELSIF TG_OP = 'DELETE' THEN
-        UPDATE data_versions set version_id=uuid_generate_v4(), updated_at=NOW() where type_id = 1;
+        UPDATE state_versions set version_id=uuid_generate_v4(), updated_at=NOW() where type_id = 1;
         RETURN OLD;
     END IF;
 
@@ -67,13 +84,13 @@ CREATE OR REPLACE FUNCTION insert_update_delete_protection() RETURNS TRIGGER AS 
 BEGIN
     CASE TG_OP
         WHEN 'INSERT' THEN
-            UPDATE data_versions set version_id=uuid_generate_v4(), updated_at=NOW() where type_id = 1;
+            UPDATE state_versions set version_id=uuid_generate_v4(), updated_at=NOW() where type_id = 1;
             RETURN NEW;
         WHEN 'UPDATE' THEN
-            UPDATE data_versions set version_id=uuid_generate_v4(), updated_at=NOW() where type_id = 1;
+            UPDATE state_versions set version_id=uuid_generate_v4(), updated_at=NOW() where type_id = 1;
             RETURN NEW;
         WHEN 'DELETE' THEN
-            UPDATE data_versions set version_id=uuid_generate_v4(), updated_at=NOW() where type_id = 1;
+            UPDATE state_versions set version_id=uuid_generate_v4(), updated_at=NOW() where type_id = 1;
             RETURN OLD;
         END CASE;
     RETURN NULL;

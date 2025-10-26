@@ -4,29 +4,29 @@ import (
 	"context"
 
 	"connectrpc.com/connect"
-	wafiev1 "github.com/Dimss/wafie/api/gen/wafie/v1"
+	wv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	"github.com/Dimss/wafie/api/gen/wafie/v1/wafiev1connect"
 	"github.com/Dimss/wafie/apisrv/internal/models"
 	"go.uber.org/zap"
 )
 
-type DataVersionService struct {
-	wafiev1connect.UnimplementedDataVersionServiceHandler
+type StateVersionService struct {
+	wafiev1connect.UnimplementedStateVersionServiceHandler
 	logger *zap.Logger
 }
 
-func NewDataVersionService(log *zap.Logger) *DataVersionService {
-	return &DataVersionService{
+func NewStateVersionService(log *zap.Logger) *StateVersionService {
+	return &StateVersionService{
 		logger: log,
 	}
 }
 
-func (s *DataVersionService) GetDataVersion(
+func (s *StateVersionService) GetDataVersion(
 	ctx context.Context,
-	req *connect.Request[wafiev1.GetDataVersionRequest]) (
-	*connect.Response[wafiev1.GetDataVersionResponse], error) {
+	req *connect.Request[wv1.GetStateVersionRequest]) (
+	*connect.Response[wv1.GetStateVersionResponse], error) {
 	version, err := models.
-		NewDataVersionModelSvc(nil, s.logger).
+		NewStateRepository(nil, s.logger).
 		GetVersionByTypeId(uint32(req.Msg.TypeId))
 	if err != nil {
 		s.logger.Error("error getting protection version", zap.Error(err))

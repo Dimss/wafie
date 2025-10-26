@@ -32,7 +32,7 @@ func (s *RouteService) CreateRoute(
 		return connect.NewResponse(&wv1.CreateRouteResponse{}), connect.NewError(connect.CodeInternal, err)
 	}
 	// save upstream
-	u, err := models.NewUpstreamModelSvc(nil, s.logger).
+	u, err := models.NewUpstreamRepository(nil, s.logger).
 		Save(models.NewUpstreamFromRequest(req.Msg.Upstream))
 	if err != nil {
 		return connect.NewResponse(&wv1.CreateRouteResponse{}), connect.NewError(connect.CodeInternal, err)
@@ -57,7 +57,7 @@ func (s *RouteService) UpdateRoute(
 	if err := protovalidate.Validate(req.Msg); err != nil {
 		return connect.NewResponse(&wv1.UpdateRouteResponse{}), connect.NewError(connect.CodeInternal, err)
 	}
-	_, err := models.NewUpstreamModelSvc(nil, s.logger).
+	_, err := models.NewUpstreamRepository(nil, s.logger).
 		Save(models.NewUpstreamFromRequest(req.Msg.Upstream))
 	if err != nil {
 		return connect.NewResponse(&wv1.UpdateRouteResponse{}), connect.NewError(connect.CodeInternal, err)
@@ -74,7 +74,7 @@ func (s *RouteService) ListRoutes(
 		return connect.NewResponse(&wv1.ListRoutesResponse{}), connect.NewError(connect.CodeInternal, err)
 	}
 	upstreams, err := models.
-		NewUpstreamModelSvc(nil, s.logger).
+		NewUpstreamRepository(nil, s.logger).
 		List(req.Msg.Options)
 	if err != nil {
 		return connect.NewResponse(&wv1.ListRoutesResponse{}), connect.NewError(connect.CodeInternal, err)
