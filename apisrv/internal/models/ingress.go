@@ -36,14 +36,14 @@ type Ingress struct {
 	Host             string `gorm:"uniqueIndex:idx_ing_host"`
 	Port             int32
 	Path             string
-	ApplicationID    uint `gorm:"not null"`
-	Application      Application
+	ApplicationID    uint        `gorm:"not null"`
+	Application      Application `gorm:"foreignKey:ApplicationID"`
 	IngressType      uint32
 	DiscoveryStatus  uint32
 	DiscoveryMessage string `gorm:"type:text"`
 	// Foreign key to Upstream
 	UpstreamID uint      `gorm:"not null;index"`
-	Upstream   Upstream  `gorm:"foreignKey:UpstreamID"`
+	Upstream   Upstream  `gorm:"foreignKey:UpstreamID;references:ID"`
 	CreatedAt  time.Time `gorm:"default:CURRENT_TIMESTAMP"`
 	UpdatedAt  time.Time `gorm:"default:CURRENT_TIMESTAMP"`
 }
@@ -94,7 +94,7 @@ func (i *Ingress) ToProto() *wv1.Ingress {
 		DiscoveryMessage: i.DiscoveryMessage,
 		DiscoveryStatus:  wv1.DiscoveryStatusType(i.DiscoveryStatus),
 		ApplicationId:    int32(i.ApplicationID),
-		//Upstream:         i.Upstream.ToProto(),
+		Upstream:         i.Upstream.ToProto(),
 	}
 }
 
@@ -102,7 +102,7 @@ func (i *Ingress) createApplicationIfNotExists(tx *gorm.DB) error {
 	app := &Application{}
 	if err := tx.Where("name = ?", i.Host).First(app).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			appModelSvc := NewApplicationModelSvc(tx, nil)
+			appModelSvc := NewApplicationRepository(tx, nil)
 			newAppReq := &wv1.CreateApplicationRequest{Name: i.Host}
 			appId, err := appModelSvc.CreateApplication(newAppReq)
 			if err != nil {

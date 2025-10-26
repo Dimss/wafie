@@ -42,15 +42,15 @@ func NewUpstreamModelSvc(tx *gorm.DB, logger *zap.Logger) *UpstreamSvc {
 }
 
 func NewUpstreamFromRequest(upstreamReq *wv1.Upstream) *Upstream {
-	var ingresses = make([]Ingress, len(upstreamReq.Ingresses))
-	for idx, ing := range upstreamReq.Ingresses {
-		ingresses[idx] = *NewIngressFromProto(ing)
-	}
+	//var ingresses = make([]Ingress, len(upstreamReq.Ingresses))
+	//for idx, ing := range upstreamReq.Ingresses {
+	//	ingresses[idx] = *NewIngressFromProto(ing)
+	//}
 	return &Upstream{
 		SvcFqdn:           upstreamReq.SvcFqdn,
 		ContainerIps:      upstreamReq.ContainerIps,
 		UpstreamRouteType: uint32(upstreamReq.UpstreamRouteType),
-		Ingresses:         ingresses,
+		//Ingresses:         ingresses,
 	}
 }
 
@@ -98,12 +98,12 @@ func (u *Upstream) ToProto() *wv1.Upstream {
 		ContainerIps:      u.ContainerIps,
 		UpstreamRouteType: wv1.UpstreamRouteType(u.UpstreamRouteType),
 	}
-	if u.Ingresses != nil {
-		wv1upstream.Ingresses = make([]*wv1.Ingress, len(u.Ingresses))
-		for idx, ingress := range u.Ingresses {
-			wv1upstream.Ingresses[idx] = ingress.ToProto()
-		}
-	}
+	//if u.Ingresses != nil {
+	//	wv1upstream.Ingresses = make([]*wv1.Ingress, len(u.Ingresses))
+	//	for idx, ingress := range u.Ingresses {
+	//		wv1upstream.Ingresses[idx] = ingress.ToProto()
+	//	}
+	//}
 	if u.Ports != nil {
 		wv1upstream.Ports = make([]*wv1.Port, len(u.Ports))
 		for idx, port := range u.Ports {

@@ -27,7 +27,7 @@ func (s *ApplicationService) CreateApplication(
 		zap.String("name", req.Msg.Name)).
 		Info("creating new application entry")
 	defer s.logger.Info("application entry created")
-	applicationModelSvc := models.NewApplicationModelSvc(nil, s.logger)
+	applicationModelSvc := models.NewApplicationRepository(nil, s.logger)
 	if app, err := applicationModelSvc.CreateApplication(req.Msg); err != nil {
 		// ToDo: verify if the application already exists
 		return connect.NewResponse(&cwafv1.CreateApplicationResponse{}), err
@@ -42,7 +42,7 @@ func (s *ApplicationService) GetApplication(
 	s.logger.With(
 		zap.Uint32("id", req.Msg.GetId())).
 		Info("getting application entry")
-	applicationModelSvc := models.NewApplicationModelSvc(nil, s.logger)
+	applicationModelSvc := models.NewApplicationRepository(nil, s.logger)
 	app, err := applicationModelSvc.GetApplication(req.Msg)
 	if err != nil {
 		return connect.NewResponse(&cwafv1.GetApplicationResponse{}), err
@@ -57,7 +57,7 @@ func (s *ApplicationService) ListApplications(
 	*connect.Response[cwafv1.ListApplicationsResponse], error) {
 	s.logger.Info("start applications listing")
 	defer s.logger.Info("end applications listing")
-	applicationModelSvc := models.NewApplicationModelSvc(nil, s.logger)
+	applicationModelSvc := models.NewApplicationRepository(nil, s.logger)
 	apps, err := applicationModelSvc.ListApplications(req.Msg.Options)
 	if err != nil {
 		return nil, err
@@ -74,7 +74,7 @@ func (s *ApplicationService) PutApplication(
 	*connect.Response[cwafv1.PutApplicationResponse], error) {
 	var app *models.Application
 	var err error
-	applicationModelSvc := models.NewApplicationModelSvc(nil, s.logger)
+	applicationModelSvc := models.NewApplicationRepository(nil, s.logger)
 	if app, err = applicationModelSvc.UpdateApplication(req.Msg.Application); err != nil {
 		return connect.NewResponse(&cwafv1.PutApplicationResponse{}), err
 	}

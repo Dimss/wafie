@@ -28,8 +28,8 @@ func (s *ProtectionService) CreateProtection(
 	l := s.logger.With(zap.Uint32("applicationId", req.Msg.ApplicationId))
 	l.Info("creating new protection entry")
 	defer l.Info("protection entry created")
-	protectionModelSvc := models.NewProtectionModelSvc(nil, l)
-	protection, err := protectionModelSvc.CreateProtection(req.Msg)
+	repo := models.NewProtectionRepository(nil, l)
+	protection, err := repo.CreateProtection(req.Msg)
 	if err != nil {
 		l.Error("failed to create protection entry", zap.Error(err))
 		return connect.NewResponse(&wv1.CreateProtectionResponse{}), connect.NewError(connect.CodeInternal, err)
@@ -46,8 +46,8 @@ func (s *ProtectionService) GetProtection(
 	l := s.logger.With(zap.Uint32("protectionId", req.Msg.Id))
 	l.Info("getting protection entry")
 	defer l.Info("protection entry retrieved")
-	protectionModelSvc := models.NewProtectionModelSvc(nil, l)
-	protection, err := protectionModelSvc.GetProtection(req.Msg)
+	repo := models.NewProtectionRepository(nil, l)
+	protection, err := repo.GetProtection(req.Msg)
 	if err != nil {
 		l.Error("failed to get protection entry", zap.Error(err))
 		return connect.NewResponse(&wv1.GetProtectionResponse{}), err
@@ -64,8 +64,8 @@ func (s *ProtectionService) PutProtection(
 	l := s.logger.With(zap.Uint32("protectionId", req.Msg.Id))
 	l.Info("updating protection entry")
 	defer l.Info("protection entry updated")
-	protectionModelSvc := models.NewProtectionModelSvc(nil, l)
-	protection, err := protectionModelSvc.UpdateProtection(req.Msg)
+	repo := models.NewProtectionRepository(nil, l)
+	protection, err := repo.UpdateProtection(req.Msg)
 	if err != nil {
 		return connect.NewResponse(&wv1.PutProtectionResponse{}), err
 	}
@@ -80,8 +80,8 @@ func (s *ProtectionService) ListProtections(
 	*connect.Response[wv1.ListProtectionsResponse], error) {
 	s.logger.Info("listing protections")
 	defer s.logger.Info("protections listed")
-	protectionModelSvc := models.NewProtectionModelSvc(nil, s.logger)
-	protections, err := protectionModelSvc.ListProtections(req.Msg.Options)
+	repo := models.NewProtectionRepository(nil, s.logger)
+	protections, err := repo.ListProtections(req.Msg.Options)
 	if err != nil {
 		s.logger.Error("failed to list protections", zap.Error(err))
 		return connect.NewResponse(&wv1.ListProtectionsResponse{}), err
@@ -102,7 +102,7 @@ func (s *ProtectionService) DeleteProtection(
 	l := s.logger.With(zap.Uint32("protectionId", req.Msg.Id))
 	l.Info("deleting protection entry")
 	defer l.Info("protection entry deleted")
-	protectionModelSvc := models.NewProtectionModelSvc(nil, l)
+	protectionModelSvc := models.NewProtectionRepository(nil, l)
 	err := protectionModelSvc.DeleteProtection(req.Msg.Id)
 	if err != nil {
 		l.Error("failed to delete protection entry", zap.Error(err))

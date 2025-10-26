@@ -14,7 +14,7 @@ import (
 	"gorm.io/gorm"
 )
 
-type ProtectionModelSvc struct {
+type ProtectionRepository struct {
 	db         *gorm.DB
 	logger     *zap.Logger
 	Protection Protection
@@ -33,14 +33,14 @@ type Protection struct {
 	ID            uint                   `gorm:"primaryKey"`
 	Mode          uint32                 `gorm:"default:0"`
 	ApplicationID uint                   `gorm:"not null;uniqueIndex:idx_protection_app_id"`
-	Application   Application            `gorm:"foreignKey:ApplicationID"`
+	Application   Application            `gorm:"foreignKey:ApplicationID;references:ID"`
 	DesiredState  ProtectionDesiredState `gorm:"type:jsonb"`
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
 
-func NewProtectionModelSvc(tx *gorm.DB, logger *zap.Logger) *ProtectionModelSvc {
-	modelSvc := &ProtectionModelSvc{db: tx, logger: logger}
+func NewProtectionRepository(tx *gorm.DB, logger *zap.Logger) *ProtectionRepository {
+	modelSvc := &ProtectionRepository{db: tx, logger: logger}
 
 	if tx == nil {
 		modelSvc.db = db()
@@ -111,7 +111,7 @@ func (p *Protection) ToProto() *wv1.Protection {
 	return protection
 }
 
-func (s *ProtectionModelSvc) CreateProtection(req *wv1.CreateProtectionRequest) (*Protection, error) {
+func (s *ProtectionRepository) CreateProtection(req *wv1.CreateProtectionRequest) (*Protection, error) {
 	protection := &Protection{
 		ApplicationID: uint(req.ApplicationId),
 		Mode:          uint32(req.ProtectionMode),
@@ -123,7 +123,7 @@ func (s *ProtectionModelSvc) CreateProtection(req *wv1.CreateProtectionRequest) 
 	return protection, nil
 }
 
-func (s *ProtectionModelSvc) GetProtection(req *wv1.GetProtectionRequest) (*Protection, error) {
+func (s *ProtectionRepository) GetProtection(req *wv1.GetProtectionRequest) (*Protection, error) {
 	protection := &Protection{ID: uint(req.GetId())}
 	err := s.db.First(protection).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -134,7 +134,7 @@ func (s *ProtectionModelSvc) GetProtection(req *wv1.GetProtectionRequest) (*Prot
 	return protection, nil
 }
 
-func (s *ProtectionModelSvc) UpdateProtection(req *wv1.PutProtectionRequest) (*Protection, error) {
+func (s *ProtectionRepository) UpdateProtection(req *wv1.PutProtectionRequest) (*Protection, error) {
 	protection := &Protection{ID: uint(req.GetId())}
 	if req.ProtectionMode != nil {
 		protection.Mode = uint32(*req.ProtectionMode)
@@ -171,10 +171,11 @@ func (s *ProtectionModelSvc) UpdateProtection(req *wv1.PutProtectionRequest) (*P
 	return s.GetProtection(&wv1.GetProtectionRequest{Id: uint32(protection.ID)})
 }
 
-func (s *ProtectionModelSvc) ListProtections(options *wv1.ListProtectionsOptions) ([]*Protection, error) {
+func (s *ProtectionRepository) ListProtections(options *wv1.ListProtectionsOptions) ([]*Protection, error) {
 	if options == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("options are required"))
 	}
+	var err error
 	var protections []*Protection
 	query := s.db.Model(&Protection{})
 	if options.ProtectionMode != nil {
@@ -188,23 +189,31 @@ func (s *ProtectionModelSvc) ListProtections(options *wv1.ListProtectionsOptions
 			),
 		)
 	}
-	if options.IncludeApps != nil && *options.IncludeApps {
-		query = query.
-			Joins("JOIN applications ON protections.application_id = applications.id").
-			Joins("JOIN ingresses ON ingresses.application_id = applications.id").
-			Joins("JOIN upstreams ON upstreams.id = ingresses.upstream_id").
-			Preload("Application").
-			Preload("Application.Ingress").
-			Preload("Application.Ingress.Upstream")
 
-		if options.UpstreamHost != nil {
-			query = query.Where("upstreams.svc_fqdn = ?", options.UpstreamHost)
+	if options.IncludeApps != nil && *options.IncludeApps {
+		err = query.
+			Preload("Application.Ingresses.Upstream").
+			Find(&protections).Error
+		if err != nil {
+			return protections, err
 		}
+		for i := 0; i < len(protections); i++ {
+			for j := 0; j < len(protections[i].Application.Ingresses); j++ {
+				if err := s.db.
+					Where("upstream_id = ? and ingress_id = ?",
+						protections[i].Application.Ingresses[j].UpstreamID,
+						protections[i].Application.Ingresses[j].ID).
+					Find(&protections[i].Application.Ingresses[j].Upstream.Ports).Error; err != nil {
+					return protections, err
+				}
+			}
+		}
+	} else {
+		err = query.Find(&protections).Error
 	}
-	res := query.Find(&protections)
-	return protections, res.Error
+	return protections, err
 }
 
-func (s *ProtectionModelSvc) DeleteProtection(protectionId uint32) error {
+func (s *ProtectionRepository) DeleteProtection(protectionId uint32) error {
 	return s.db.Delete(&Protection{ID: uint(protectionId)}).Error
 }

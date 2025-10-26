@@ -117,10 +117,10 @@ func NewDb(cfg *DbCfg) (*gorm.DB, error) {
 func migrate(db *gorm.DB) error {
 	if err := db.AutoMigrate(
 		&Application{},
+		&Protection{},
 		&Upstream{},
 		&Ingress{},
 		&Port{},
-		&Protection{},
 		&DataVersion{},
 	); err != nil {
 		return err

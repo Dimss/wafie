@@ -12,7 +12,7 @@ import (
 	"gorm.io/gorm"
 )
 
-type ApplicationModelSvc struct {
+type ApplicationRepository struct {
 	db          *gorm.DB
 	logger      *zap.Logger
 	Application Application
@@ -21,13 +21,13 @@ type ApplicationModelSvc struct {
 type Application struct {
 	ID        uint      `gorm:"primaryKey"`
 	Name      string    `gorm:"uniqueIndex:idx_application_name"`
-	Ingress   []Ingress `gorm:"foreignKey:ApplicationID"`
+	Ingresses []Ingress `gorm:"foreignKey:ApplicationID;references:ID"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
-func NewApplicationModelSvc(tx *gorm.DB, logger *zap.Logger) *ApplicationModelSvc {
-	modelSvc := &ApplicationModelSvc{db: tx, logger: logger}
+func NewApplicationRepository(tx *gorm.DB, logger *zap.Logger) *ApplicationRepository {
+	modelSvc := &ApplicationRepository{db: tx, logger: logger}
 	if tx == nil {
 		modelSvc.db = db()
 	}
@@ -46,8 +46,8 @@ func (a *Application) FromProto(req *v1.CreateApplicationRequest) error {
 }
 
 func (a *Application) ToProto() *v1.Application {
-	applicationIngresses := make([]*v1.Ingress, len(a.Ingress))
-	for idx, ingress := range a.Ingress {
+	applicationIngresses := make([]*v1.Ingress, len(a.Ingresses))
+	for idx, ingress := range a.Ingresses {
 		applicationIngresses[idx] = ingress.ToProto()
 	}
 	return &v1.Application{
@@ -57,7 +57,7 @@ func (a *Application) ToProto() *v1.Application {
 	}
 }
 
-func (s *ApplicationModelSvc) GetApplication(req *v1.GetApplicationRequest) (*Application, error) {
+func (s *ApplicationRepository) GetApplication(req *v1.GetApplicationRequest) (*Application, error) {
 	app := &Application{ID: uint(req.GetId())}
 	err := s.db.Preload("Ingress").First(&app, req.GetId()).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -68,7 +68,7 @@ func (s *ApplicationModelSvc) GetApplication(req *v1.GetApplicationRequest) (*Ap
 	return app, nil
 }
 
-func (s *ApplicationModelSvc) CreateApplication(req *v1.CreateApplicationRequest) (*Application, error) {
+func (s *ApplicationRepository) CreateApplication(req *v1.CreateApplicationRequest) (*Application, error) {
 	app := &Application{}
 	if err := app.FromProto(req); err != nil {
 		return app, err
@@ -81,12 +81,12 @@ func (s *ApplicationModelSvc) CreateApplication(req *v1.CreateApplicationRequest
 	return app, nil
 }
 
-func (s *ApplicationModelSvc) ListApplications(options *v1.ListApplicationsOptions) ([]*Application, error) {
+func (s *ApplicationRepository) ListApplications(options *v1.ListApplicationsOptions) ([]*Application, error) {
 	var err error
 	var apps []*Application
 	if options.IncludeIngress {
-		err = s.db.Preload("Ingress").
-			Preload("Ingress.Upstream").
+		err = s.db.Preload("Ingresses").
+			Preload("Ingresses.Upstream").
 			Find(&apps).Error
 	} else {
 		err = s.db.Find(&apps).Error
@@ -97,7 +97,7 @@ func (s *ApplicationModelSvc) ListApplications(options *v1.ListApplicationsOptio
 	return apps, nil
 }
 
-func (s *ApplicationModelSvc) UpdateApplication(req *v1.Application) (*Application, error) {
+func (s *ApplicationRepository) UpdateApplication(req *v1.Application) (*Application, error) {
 	var app Application
 	// Prevent changing immutable fields
 	if req.GetName() != "" && app.Name != req.GetName() {

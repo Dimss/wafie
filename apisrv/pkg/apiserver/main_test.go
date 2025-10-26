@@ -61,7 +61,7 @@ func setupTest(t *testing.T) (testcontainers.Container, *gorm.DB, *zap.Logger) {
 }
 
 func createApp(db *gorm.DB, logger *zap.Logger) *models.Application {
-	appModelSvc := models.NewApplicationModelSvc(db, logger)
+	appModelSvc := models.NewApplicationRepository(db, logger)
 	app, _ := appModelSvc.CreateApplication(&wafiev1.CreateApplicationRequest{Name: "testapp"})
 	ingressModelSvc := models.NewIngressModelSvc(db, logger)
 	_ = ingressModelSvc.NewIngressFromRequest(&wafiev1.CreateIngressRequest{Ingress: &wafiev1.Ingress{

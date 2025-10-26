@@ -48,6 +48,7 @@ message Ingress {
   IngressType ingress_type = 7;
   DiscoveryStatusType discovery_status = 8;
   string discovery_message = 9;
+  optional Upstream upstream = 10;
 }
 
 message Port  {
@@ -62,7 +63,7 @@ message Port  {
 message Upstream {
   string svc_fqdn = 1 [(buf.validate.field).required = true];
   repeated string container_ips = 2;
-  repeated Ingress ingresses = 3;
+//  repeated Ingress ingresses = 3;
   repeated Port ports = 4;
   UpstreamRouteType upstream_route_type = 5;
 }
