@@ -15,17 +15,24 @@ import (
 )
 
 type SocatRelay struct {
-	cmd     *exec.Cmd
-	command string
-	args    []string
-	cancel  context.CancelFunc
-	logger  *zap.Logger
-	options *wv1.RelayOptions
+	cmd                 *exec.Cmd
+	command             string
+	args                []string
+	cancel              context.CancelFunc
+	logger              *zap.Logger
+	options             *wv1.RelayOptions
+	healthMonitorActive bool
+	startHealthMonitor  chan struct{}
+	stopHealthMonitor   chan struct{}
 }
 
 func NewSocat(logger *zap.Logger) *SocatRelay {
-	socatRelay := &SocatRelay{logger: logger}
-	socatRelay.runProxyHealthMonitor() // start proxy relay monitor
+	socatRelay := &SocatRelay{
+		logger:             logger,
+		startHealthMonitor: make(chan struct{}),
+		stopHealthMonitor:  make(chan struct{}),
+	}
+	socatRelay.runProxyHealthMonitor()
 	return socatRelay
 }
 
@@ -57,17 +64,27 @@ func (r *SocatRelay) proxyOk() (ok bool) {
 
 func (r *SocatRelay) runProxyHealthMonitor() {
 	r.logger.Info("starting proxy health monitor")
+	pingInterval := time.NewTicker(2 * time.Second)
+	healthMonitorActive := true // by default
+	defer r.logger.Debug("proxy health monitor terminated")
 	go func() {
-		proxyPingInterval := 2 * time.Second
 		for {
-			if r.options != nil && r.options.ProxyIp != "" {
-				if !r.proxyOk() {
-					r.stop()       // stop the proxy
-					r.setProxyIp() // lookup for the proxy IP
-					r.start()      // start proxy
+			select {
+			case <-pingInterval.C:
+				if r.options != nil && r.options.ProxyIp != "" && healthMonitorActive {
+					if !r.proxyOk() {
+						r.stopInternal()  // stop the proxy
+						r.setProxyIp()    // lookup for the proxy IP
+						r.startInternal() // start proxy
+					}
 				}
+			case <-r.startHealthMonitor:
+				r.logger.Info("starting health monitor")
+				healthMonitorActive = true
+			case <-r.stopHealthMonitor:
+				r.logger.Info("terminating health monitor")
+				healthMonitorActive = false
 			}
-			time.Sleep(proxyPingInterval)
 		}
 	}()
 }
@@ -117,7 +134,15 @@ func (r *SocatRelay) setProxyIp() {
 	}
 }
 
-func (r *SocatRelay) start() {
+func (r *SocatRelay) activateHealthMonitor() {
+	r.startHealthMonitor <- struct{}{}
+}
+
+func (r *SocatRelay) deactivateHealthMonitor() {
+	r.stopHealthMonitor <- struct{}{}
+}
+
+func (r *SocatRelay) startInternal() {
 	if r.cmd != nil && r.cmd.Process != nil && r.cmd.ProcessState == nil {
 		return
 	}
@@ -147,15 +172,26 @@ func (r *SocatRelay) start() {
 	}()
 }
 
+func (r *SocatRelay) start() {
+	r.activateHealthMonitor()
+	r.startInternal()
+}
+
 func (r *SocatRelay) setupNetwork() error {
 	return ProgramNft(AddOp, r.options)
 }
 
-func (r *SocatRelay) stop() {
+func (r *SocatRelay) stopInternal() {
+	// stop socat
 	if r.cancel != nil {
 		r.cancel()
 	}
+	// un-program nft
 	_ = ProgramNft(DeleteOp, r.options)
+}
+func (r *SocatRelay) stop() {
+	r.deactivateHealthMonitor()
+	r.stopInternal()
 }
 
 func (r *SocatRelay) Status() {}

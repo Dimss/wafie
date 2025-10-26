@@ -60,15 +60,16 @@ func NewRelayInstanceSpec(containerId, podName, nodeName string, options *wv1.Re
 		return nil, err
 	}
 	i.logger = logger.With(
+		zap.String("podName", podName),
+		zap.String("netNs", i.netnsPath),
 		zap.String("containerId", containerId),
 		zap.String("nodeName", nodeName),
-		zap.String("podName", podName),
 	)
-	i.logger.Debug(fmt.Sprintf("%+v", i))
 	return i, nil
 }
 
 func (s *RelayInstanceSpec) StopSpec() error {
+	s.logger.Debug("stopping relay")
 	if !s.relayRunning() {
 		return nil
 	}
@@ -99,6 +100,7 @@ func (s *RelayInstanceSpec) startRelay() error {
 // StartSpec idempotent method, will do nothing if instance already injected and running
 // otherwise will clean up previous instance and start a new one
 func (s *RelayInstanceSpec) StartSpec() error {
+	s.logger.Debug("starting relay", zap.Any("relayOptions", s.relayOptions.String()))
 	if !s.relayRunning() {
 		if err := s.runRelayBinary(); err != nil {
 			return err

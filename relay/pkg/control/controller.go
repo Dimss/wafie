@@ -65,12 +65,10 @@ func (c *Controller) Run() {
 				if !c.stateVersionChanged() {
 					continue
 				}
-				mode := wv1.ProtectionMode_PROTECTION_MODE_ON
 				includeApps := true
 				req := connect.NewRequest(&wv1.ListProtectionsRequest{
 					Options: &wv1.ListProtectionsOptions{
-						ProtectionMode: &mode,
-						IncludeApps:    &includeApps,
+						IncludeApps: &includeApps,
 					},
 				})
 				listResp, err := c.protectionClient.ListProtections(context.Background(), req)
