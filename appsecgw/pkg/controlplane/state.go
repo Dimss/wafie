@@ -166,7 +166,7 @@ func (s *state) clusters(protections []*wv1.Protection) (clusters []types.Resour
 			continue
 		}
 		var lbEndpoints []*endpoint.LbEndpoint
-		for _, ip := range protection.Application.Ingress[0].Upstream.ContainerIps {
+		for _, uep := range protection.Application.Ingress[0].Upstream.Endpoints {
 			for _, port := range protection.Application.Ingress[0].Upstream.Ports {
 				if port.PortType == wv1.PortType_PORT_TYPE_CONTAINER_PORT {
 					lbEndpoints = append(
@@ -178,7 +178,7 @@ func (s *state) clusters(protections []*wv1.Protection) (clusters []types.Resour
 										Address: &core.Address_SocketAddress{
 											SocketAddress: &core.SocketAddress{
 												Protocol: core.SocketAddress_TCP,
-												Address:  ip,
+												Address:  uep.Ip,
 												PortSpecifier: &core.SocketAddress_PortValue{
 													PortValue: port.Number,
 												},

@@ -73,16 +73,16 @@ func (c *Controller) Run() {
 						IncludeApps:    &includeApps,
 					},
 				})
-				protections, err := c.protectionClient.ListProtections(context.Background(), req)
+				listResp, err := c.protectionClient.ListProtections(context.Background(), req)
 				if err != nil {
 					c.logger.Error("failed to list protections", zap.Error(err))
 					continue
 				}
-				for _, protection := range protections {
-					specs := c.getRelayInstanceSpecs(eps, protection)
+				for _, protection := range listResp.Msg.Protections {
+					specs := c.getRelayInstanceSpecs(protection)
 					switch protection.ProtectionMode {
 					case wv1.ProtectionMode_PROTECTION_MODE_UNSPECIFIED:
-						l.Debug("app protection mode unspecified, skipping")
+						c.logger.Debug("app protection mode unspecified, skipping")
 					case wv1.ProtectionMode_PROTECTION_MODE_ON:
 						c.deployRelayInstances(specs)
 					case wv1.ProtectionMode_PROTECTION_MODE_OFF:
@@ -90,25 +90,6 @@ func (c *Controller) Run() {
 					}
 				}
 
-				eps := <-c.epsCh
-				l := c.logger.With(zap.String("endpointslicesname", eps.Name))
-				l.Debug("received endpoint slice")
-				// get upstream host from endpoint slice
-				upstreamHost := upstreamHostFromEndpointSlice(eps)
-				if upstreamHost == "" {
-					l.Debug("upstream host is empty")
-					continue
-				}
-				protection := c.appProtection(upstreamHost)
-				specs := c.getRelayInstanceSpecs(eps, protection)
-				switch protection.ProtectionMode {
-				case wv1.ProtectionMode_PROTECTION_MODE_UNSPECIFIED:
-					l.Debug("app protection mode unspecified, skipping")
-				case wv1.ProtectionMode_PROTECTION_MODE_ON:
-					c.deployRelayInstances(specs)
-				case wv1.ProtectionMode_PROTECTION_MODE_OFF:
-					c.destroyRelayInstances(specs)
-				}
 			}
 		}
 	}()
@@ -137,57 +118,63 @@ func (c *Controller) stateVersionChanged() bool {
 	return true
 }
 
-func (c *Controller) discoverRelayOptions(p *wv1.Protection) *wv1.RelayOptions {
+func (c *Controller) discoverRelayOptions(p *wv1.Protection) (*wv1.RelayOptions, error) {
 	if p.ProtectionMode == wv1.ProtectionMode_PROTECTION_MODE_OFF ||
 		p.ProtectionMode == wv1.ProtectionMode_PROTECTION_MODE_UNSPECIFIED {
-		return &wv1.RelayOptions{} // if protection is off or unspecified, return empty options
+		return &wv1.RelayOptions{}, nil // if protection is off or unspecified, return empty options
+	}
+	port, err := protectionContainerPort(p)
+	if err != nil {
+		return &wv1.RelayOptions{}, err
 	}
 	return &wv1.RelayOptions{
-		ProxyFqdn: "appsecgw.default.svc", // TODO: parameterize this!
-		ProxyListeningPort: strconv.
-			Itoa(
-				int(
-					p.Application.Ingress[0].Upstream.ContainerPorts[0].ProxyListeningPort),
-			),
-		AppContainerPort: strconv.
-			Itoa(
-				int(p.Application.Ingress[0].Upstream.ContainerPorts[0].Number),
-			),
-		RelayPort: "50010", // TODO: currently static-inline, must be configurable
-	}
+		ProxyFqdn:          "appsecgw.default.svc", // TODO: parameterize this!
+		ProxyListeningPort: strconv.Itoa(int(port.ProxyListeningPort)),
+		AppContainerPort:   strconv.Itoa(int(port.Number)),
+		RelayPort:          "50010", // TODO: currently static-inline, must be configurable
+	}, nil
 }
 
-func (c *Controller) getRelayInstanceSpecs(eps *discoveryv1.EndpointSlice, protection *wv1.Protection) (rInstances []*RelayInstanceSpec) {
-	podsClient := c.clientset.CoreV1().Pods(eps.Namespace)
-	for _, ep := range eps.Endpoints {
-		pod, err := podsClient.Get(context.Background(), ep.TargetRef.Name, metav1.GetOptions{})
-		if err != nil {
-			c.logger.Error(err.Error())
-			continue
+func (c *Controller) getRelayInstanceSpecs(protection *wv1.Protection) (rInstances []*RelayInstanceSpec) {
+	for _, i := range protection.Application.Ingress {
+		for _, ep := range i.Upstream.Endpoints {
+			podsClient := c.clientset.CoreV1().Pods(ep.Namespace)
+			pod, err := podsClient.Get(context.Background(), ep.Name, metav1.GetOptions{})
+			if err != nil {
+				c.logger.Error(err.Error())
+				continue
+			}
+			if len(pod.Status.ContainerStatuses) == 0 {
+				c.logger.Warn("pod does not contain container status", zap.String("podName", pod.Name))
+				continue
+			}
+			// if current relay instance manager
+			// running on different node from the endpoint, skip it
+			if ep.NodeName != c.nodeName {
+				continue
+			}
+			// discover relay options
+			relayOptions, err := c.discoverRelayOptions(protection)
+			if err != nil {
+				c.logger.Error("relay options discovery failed", zap.Error(err))
+				continue
+			}
+			i, err := NewRelayInstanceSpec(
+				pod.Status.ContainerStatuses[0].ContainerID,
+				pod.Name,
+				ep.NodeName,
+				relayOptions,
+				c.logger,
+			)
+			if err != nil {
+				// TODO: handle an error when container not found due to running on another node
+				c.logger.Error(err.Error())
+				continue
+			}
+			rInstances = append(rInstances, i)
 		}
-		if len(pod.Status.ContainerStatuses) == 0 {
-			c.logger.Warn("pod does not contain container status", zap.String("podName", pod.Name))
-			continue
-		}
-		// if current relay instance manager
-		// running on different node from the endpoint, skip it
-		if *ep.NodeName != c.nodeName {
-			continue
-		}
-		i, err := NewRelayInstanceSpec(
-			pod.Status.ContainerStatuses[0].ContainerID,
-			pod.Name,
-			*ep.NodeName,
-			c.discoverRelayOptions(protection),
-			c.logger,
-		)
-		if err != nil {
-			// TODO: handle an error when container not found due to running on another node
-			c.logger.Error(err.Error())
-			continue
-		}
-		rInstances = append(rInstances, i)
 	}
+
 	return rInstances
 }
 
@@ -238,4 +225,13 @@ func upstreamHostFromEndpointSlice(eps *discoveryv1.EndpointSlice) string {
 		return fmt.Sprintf("%s.%s.svc", eps.ObjectMeta.OwnerReferences[0].Name, eps.ObjectMeta.Namespace)
 	}
 	return ""
+}
+
+func protectionContainerPort(protection *wv1.Protection) (*wv1.Port, error) {
+	for _, port := range protection.Application.Ingress[0].Upstream.Ports {
+		if port.PortType == wv1.PortType_PORT_TYPE_CONTAINER_PORT {
+			return port, nil
+		}
+	}
+	return nil, fmt.Errorf("protectoin [%d] does not have container ports", protection.Id)
 }
