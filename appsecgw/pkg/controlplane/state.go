@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	cwafv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
+	wv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	applogger "github.com/Dimss/wafie/logger"
 	golangv3alpha "github.com/envoyproxy/go-control-plane/contrib/envoy/extensions/filters/http/golang/v3alpha"
 	accesslog "github.com/envoyproxy/go-control-plane/envoy/config/accesslog/v3"
@@ -66,7 +66,7 @@ func (s *state) httpFilters() []*hcm.HttpFilter {
 	return filters
 }
 
-func (s *state) httpConnectionManager(protection *cwafv1.Protection) *hcm.HttpConnectionManager {
+func (s *state) httpConnectionManager(protection *wv1.Protection) *hcm.HttpConnectionManager {
 	stdoutLogs, _ := anypb.New(&stream.StdoutAccessLog{})
 	return &hcm.HttpConnectionManager{
 		CodecType:  hcm.HttpConnectionManager_AUTO,
@@ -121,10 +121,15 @@ func (s *state) httpConnectionManager(protection *cwafv1.Protection) *hcm.HttpCo
 	}
 }
 
-func (s *state) listeners(protections []*cwafv1.Protection) []types.Resource {
+func (s *state) listeners(protections []*wv1.Protection) []types.Resource {
 	var listeners = make([]types.Resource, len(protections))
 	for i := 0; i < len(protections); i++ {
 		httpConnectionMgr, _ := anypb.New(s.httpConnectionManager(protections[i]))
+		port, err := protectionContainerPort(protections[i])
+		if err != nil {
+			s.logger.Error("unable detect proxy listening port", zap.Error(err))
+			continue
+		}
 		listeners[i] = &v3listener.Listener{
 			Name: fmt.Sprintf("listener-%d", i),
 			Address: &core.Address{
@@ -133,7 +138,7 @@ func (s *state) listeners(protections []*cwafv1.Protection) []types.Resource {
 						Protocol: core.SocketAddress_TCP,
 						Address:  "0.0.0.0",
 						PortSpecifier: &core.SocketAddress_PortValue{
-							PortValue: protections[i].Application.Ingress[0].Upstream.ContainerPorts[0].ProxyListeningPort,
+							PortValue: port.ProxyListeningPort,
 						},
 					},
 				},
@@ -154,11 +159,38 @@ func (s *state) listeners(protections []*cwafv1.Protection) []types.Resource {
 	return listeners
 }
 
-func (s *state) clusters(protections []*cwafv1.Protection) (clusters []types.Resource) {
+func (s *state) clusters(protections []*wv1.Protection) (clusters []types.Resource) {
 	clusters = make([]types.Resource, 0, len(protections))
 	for _, protection := range protections {
 		if shouldSkipProtection(protection) {
 			continue
+		}
+		var lbEndpoints []*endpoint.LbEndpoint
+		for _, ip := range protection.Application.Ingress[0].Upstream.ContainerIps {
+			for _, port := range protection.Application.Ingress[0].Upstream.Ports {
+				if port.PortType == wv1.PortType_PORT_TYPE_CONTAINER_PORT {
+					lbEndpoints = append(
+						lbEndpoints,
+						&endpoint.LbEndpoint{
+							HostIdentifier: &endpoint.LbEndpoint_Endpoint{
+								Endpoint: &endpoint.Endpoint{
+									Address: &core.Address{
+										Address: &core.Address_SocketAddress{
+											SocketAddress: &core.SocketAddress{
+												Protocol: core.SocketAddress_TCP,
+												Address:  ip,
+												PortSpecifier: &core.SocketAddress_PortValue{
+													PortValue: port.Number,
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					)
+				}
+			}
 		}
 		clusters = append(clusters, &cluster.Cluster{
 			Name:                 protection.Application.Name,
@@ -168,45 +200,14 @@ func (s *state) clusters(protections []*cwafv1.Protection) (clusters []types.Res
 			DnsLookupFamily:      cluster.Cluster_V4_ONLY,
 			LoadAssignment: &endpoint.ClusterLoadAssignment{
 				ClusterName: protection.Application.Name,
-				Endpoints: []*endpoint.LocalityLbEndpoints{
-					{
-						LbEndpoints: []*endpoint.LbEndpoint{
-							{
-								HostIdentifier: &endpoint.LbEndpoint_Endpoint{
-									Endpoint: &endpoint.Endpoint{
-										Address: &core.Address{
-											Address: &core.Address_SocketAddress{
-												SocketAddress: &core.SocketAddress{
-													Protocol: core.SocketAddress_TCP,
-													Address: protection.
-														Application.
-														Ingress[0].
-														Upstream.
-														ContainerIps[0],
-													PortSpecifier: &core.SocketAddress_PortValue{
-														PortValue: protection.
-															Application.
-															Ingress[0].
-															Upstream.
-															ContainerPorts[0].
-															Number,
-													},
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
+				Endpoints:   []*endpoint.LocalityLbEndpoints{{LbEndpoints: lbEndpoints}},
 			},
 		})
 	}
 	return clusters
 }
 
-func (s *state) buildResources(protections []*cwafv1.Protection) map[resource.Type][]types.Resource {
+func (s *state) buildResources(protections []*wv1.Protection) map[resource.Type][]types.Resource {
 	return map[resource.Type][]types.Resource{
 		resource.ListenerType: s.listeners(protections),
 		resource.ClusterType:  s.clusters(protections),
