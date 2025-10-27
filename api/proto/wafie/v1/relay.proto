@@ -8,6 +8,7 @@ message RelayOptions{
   string proxy_listening_port = 3;
   string app_container_port = 4;
   string relay_port = 5;
+  string netns = 6;
 }
 message StartRelayRequest{
   RelayOptions options = 1;

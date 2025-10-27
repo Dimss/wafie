@@ -54,15 +54,5 @@ func shutdown(s relay.Relay) {
 		}
 		os.Exit(1)
 	}
-	for {
-		select {
-		//case err := <-errChan:
-		//	if err != nil {
-		//		logger.Error("received an error on errChan", zap.Error(err))
-		//		gracefullyExit(s, os.Signal(syscall.SIGTERM))
-		//	}
-		case sig := <-sigCh:
-			gracefullyExit(s, sig)
-		}
-	}
+	gracefullyExit(s, <-sigCh)
 }

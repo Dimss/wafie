@@ -59,6 +59,10 @@ func NewRelayInstanceSpec(containerId, podName, nodeName string, options *wv1.Re
 	if err := i.discoverNetnsPath(); err != nil {
 		return nil, err
 	}
+	// add netns to relay options
+	// the netns will be used in relay instance
+	// as a part of health check procedure
+	i.relayOptions.Netns = i.netnsPath
 	i.logger = logger.With(
 		zap.String("podName", podName),
 		zap.String("netNs", i.netnsPath),
@@ -66,6 +70,23 @@ func NewRelayInstanceSpec(containerId, podName, nodeName string, options *wv1.Re
 		zap.String("nodeName", nodeName),
 	)
 	return i, nil
+}
+
+// StartSpec idempotent method, will do nothing if instance already injected and running
+// otherwise will clean up previous instance and start a new one
+func (s *RelayInstanceSpec) StartSpec() error {
+	s.logger.Debug("starting relay", zap.Any("relayOptions", s.relayOptions.String()))
+	if !s.relayRunning() {
+		if err := s.runRelayBinary(); err != nil {
+			return err
+		}
+		// this irrational sleep is here because
+		// I've no logic for waiting because
+		// I'm not yet implemented the status endpoint
+		// TODO: implement readiness endpoint instead
+		time.Sleep(2 * time.Second)
+	}
+	return s.startRelay()
 }
 
 func (s *RelayInstanceSpec) StopSpec() error {
@@ -95,18 +116,6 @@ func (s *RelayInstanceSpec) startRelay() error {
 		return err
 	}
 	return nil
-}
-
-// StartSpec idempotent method, will do nothing if instance already injected and running
-// otherwise will clean up previous instance and start a new one
-func (s *RelayInstanceSpec) StartSpec() error {
-	s.logger.Debug("starting relay", zap.Any("relayOptions", s.relayOptions.String()))
-	if !s.relayRunning() {
-		if err := s.runRelayBinary(); err != nil {
-			return err
-		}
-	}
-	return s.startRelay()
 }
 
 func (s *RelayInstanceSpec) runRelayBinary() error {
