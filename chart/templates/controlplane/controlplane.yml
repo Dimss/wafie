@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wafie-control-plane
+  namespace: {{.Release.Namespace}}
+  labels:
+    app: wafie-control-plane
+spec:
+  selector:
+    matchLabels:
+      app: wafie-control-plane
+  template:
+    metadata:
+      labels:
+        app: wafie-control-plane
+    spec:
+      serviceAccountName: wafie-control-plane
+      containers:
+        - name: api-server
+          image: {{.Values.controlPlane.image}}
+          imagePullPolicy: Always
+          command:
+            - /usr/local/bin/api-server
+            - start
+            - --db-host={{.Release.Name}}-postgresql
+          ports:
+            - name: api-server
+              containerPort: 8080
+          readinessProbe:
+            grpc:
+              port: 8080
+          livenessProbe:
+            grpc:
+              port: 8080
+        - name: discovery-agent
+          image: {{.Values.discoveryAgent.image}}
+          imagePullPolicy: Always
+          command:
+            - /usr/local/bin/discovery-agent
+            - start
+          readinessProbe:
+            grpc:
+              port: 8081
+          livenessProbe:
+            grpc:
+              port: 8081
+
+
+

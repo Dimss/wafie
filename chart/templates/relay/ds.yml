@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: wafie-relay
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: wafie-relay
+spec:
+  selector:
+    matchLabels:
+      app: wafie-relay
+  template:
+    metadata:
+      labels:
+        app: wafie-relay
+    spec:
+      tolerations:
+        - operator: Exists
+          effect: NoSchedule
+        - operator: Exists
+          effect: NoExecute
+      serviceAccountName: wafie-relay
+      hostPID: true
+      containers:
+        - name: wafie-relay
+          image: {{.Values.relay.image }}
+          command:
+            - /usr/local/bin/wafie-relay
+            - start
+            - relay-instance-controller
+            - -api-addr={{ .Values.config.apiAddr | default (printf "http://%s.%s.svc:%d" .Values.controlPlane.svc.name .Release.Namespace (.Values.controlPlane.svc.port | int)) }}
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+            privileged: true
+          volumeMounts:
+            - name: netns
+              mountPath: /var/run/netns
+              mountPropagation: HostToContainer
+              readOnly: true
+            - name: containerd
+              mountPath: /run/containerd/containerd.sock
+            - name: crio
+              mountPath: /var/run/crio/crio.sock
+      terminationGracePeriodSeconds: 15
+      volumes:
+        - name: netns
+          hostPath:
+            path: /var/run/netns
+        - name: containerd
+          hostPath:
+            path: /run/containerd/containerd.sock
+        - name: crio
+          hostPath:
+            path: /var/run/crio/crio.sock
