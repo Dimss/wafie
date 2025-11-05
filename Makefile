@@ -74,7 +74,7 @@ stop-test-postgres:
 	docker rm test-postgres
 
 .PHONY: chart
-install:
+install.controlplane:
 	cd chart && helm upgrade -i wafie .
 uninstall:
 	cd chart && helm delete wafie && kubectl delete pvc data-wafie-postgresql-0

@@ -1,15 +1,8 @@
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: wafie
-  namespace: default
----
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: wafie-relay
-  namespace: default
+  namespace: {{ .Release.Namespace }}
   labels:
     app: wafie-relay
 spec:
@@ -26,27 +19,36 @@ spec:
           effect: NoSchedule
         - operator: Exists
           effect: NoExecute
-      serviceAccountName: wafie
+      serviceAccountName: wafie-relay
       hostPID: true
       containers:
         - name: wafie-relay
-          image: docker.io/dimssss/wafie-relay:latest
+          image: {{.Values.image }}
           command:
-            - /bin/bash
-            - -c
-            - sleep inf
+            - /usr/local/bin/wafie-relay
+            - start
+            - relay-instance-controller
           securityContext:
+            runAsUser: 0
+            runAsGroup: 0
             privileged: true
           volumeMounts:
-            - name: procfs
-              mountPath: /host/proc
             - name: netns
-              mountPath: /host/var/run/netns
-      terminationGracePeriodSeconds: 10
+              mountPath: /var/run/netns
+              mountPropagation: HostToContainer
+              readOnly: true
+            - name: containerd
+              mountPath: /run/containerd/containerd.sock
+            - name: crio
+              mountPath: /var/run/crio/crio.sock
+      terminationGracePeriodSeconds: 15
       volumes:
-        - name: procfs
-          hostPath:
-            path: /proc
         - name: netns
           hostPath:
             path: /var/run/netns
+        - name: containerd
+          hostPath:
+            path: /run/containerd/containerd.sock
+        - name: crio
+          hostPath:
+            path: /var/run/crio/crio.sock

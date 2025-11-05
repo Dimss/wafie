@@ -1,5 +1,5 @@
 image:
-  api: dimssss/wafie-control-plane
+  api: dimssss/wafie-control-plane:latest
   gateway: dimssss/wafie-appsecgw:latest
 postgresql:
   global:
