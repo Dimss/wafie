@@ -4,3 +4,25 @@ kind: ServiceAccount
 metadata:
   name: wafie-relay
   namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: wafie-relay
+rules:
+  - apiGroups: [ "" ]
+    resources: [ "pods"]
+    verbs: [ "get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: wafie-relay
+subjects:
+  - kind: ServiceAccount
+    name: wafie-relay
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: wafie-relay
+  apiGroup: rbac.authorization.k8s.io

@@ -1,3 +1,0 @@
-image: docker.io/dimssss/wafie-relay:latest
-config:
-  apiAddr: http://wafie-control-plane.{{.Release.Namespace}}.svc:8080
