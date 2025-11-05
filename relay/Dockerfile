@@ -16,8 +16,7 @@ COPY relay/cmd/ relay/cmd
 COPY relay/pkg relay/pkg
 RUN make build.relay
 
-#FROM debian:bookworm-slim
-#COPY --from=builder /app/.bin/discovery-agent /usr/local/bin/discovery-agent
-#COPY --from=builder /app/.bin/api-server /usr/local/bin/api-server
+FROM debian:bookworm-slim
+COPY --from=builder /app/.bin/wafie-relay /usr/local/bin/wafie-relay
 
 
