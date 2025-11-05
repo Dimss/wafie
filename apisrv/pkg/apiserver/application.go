@@ -57,8 +57,8 @@ func (s *ApplicationService) ListApplications(
 	*connect.Response[cwafv1.ListApplicationsResponse], error) {
 	s.logger.Info("start applications listing")
 	defer s.logger.Info("end applications listing")
-	applicationModelSvc := models.NewApplicationRepository(nil, s.logger)
-	apps, err := applicationModelSvc.ListApplications(req.Msg.Options)
+	appRepository := models.NewApplicationRepository(nil, s.logger)
+	apps, err := appRepository.ListApplications(req.Msg.Options)
 	if err != nil {
 		return nil, err
 	}

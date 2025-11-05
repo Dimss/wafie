@@ -3,7 +3,7 @@ helm install wp oci://registry-1.docker.io/bitnamicharts/wordpress \
   --set mariadb.image.repository=bitnamilegacy/mariadb \
   --set global.security.allowInsecureImages=true \
   --set ingress.enabled=true \
-  --set ingress.hostname=wp.10.100.102.95.nip.io \
+  --set ingress.hostname=wp.10.100.102.110.nip.io \
   --set service.type=ClusterIP
 
 
