@@ -40,7 +40,7 @@ build.relay:
 	go build -o .bin/wafie-relay relay/cmd/main.go
 
 build.relay.image:
-	podman buildx build -t docker.io/dimssss/wafie-relay --platform linux/arm64 -f relay/Dockerfile .
+	podman buildx build -t docker.io/dimssss/wafie-relay --platform linux/arm64 -f relay/Containerfile .
 	podman push docker.io/dimssss/wafie-relay
 
 docker.controlplane:
