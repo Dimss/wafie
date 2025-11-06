@@ -18,7 +18,9 @@ RUN make build.relay
 
 FROM debian:bookworm-slim
 RUN apt -y update \
-    apt -y install socat nftables
+    && apt -y install \
+              socat \
+              nftables
 COPY --from=builder /app/.bin/wafie-relay /usr/local/bin/wafie-relay
 
 
