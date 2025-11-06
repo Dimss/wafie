@@ -43,6 +43,10 @@ build.relay.image:
 	podman buildx build -t docker.io/dimssss/wafie-relay --platform linux/arm64 -f relay/Containerfile .
 	podman push docker.io/dimssss/wafie-relay
 
+helm:
+	helm package chart
+	scp wafie-0.0.1.tgz charts:/var/www/charts
+
 docker.controlplane:
 	podman buildx build -t docker.io/dimssss/wafie-control-plane --platform linux/arm64 -f dockerfiles/controlplane/Dockerfile .
 	podman push docker.io/dimssss/wafie-control-plane
