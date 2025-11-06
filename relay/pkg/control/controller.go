@@ -65,6 +65,7 @@ func (c *Controller) Run() {
 				if !c.stateVersionChanged() {
 					continue
 				}
+				c.logger.Debug("listing protections")
 				includeApps := true
 				req := connect.NewRequest(&wv1.ListProtectionsRequest{
 					Options: &wv1.ListProtectionsOptions{
@@ -76,6 +77,7 @@ func (c *Controller) Run() {
 					c.logger.Error("failed to list protections", zap.Error(err))
 					continue
 				}
+				c.logger.Debug("got protection list", zap.Int("size", len(listResp.Msg.Protections)))
 				for _, protection := range listResp.Msg.Protections {
 					specs := c.getRelayInstanceSpecs(protection)
 					switch protection.ProtectionMode {
@@ -149,6 +151,10 @@ func (c *Controller) getRelayInstanceSpecs(protection *wv1.Protection) (rInstanc
 			// if current relay instance manager
 			// running on different node from the endpoint, skip it
 			if ep.NodeName != c.nodeName {
+				c.logger.Debug("pod name does not match",
+					zap.String("endpoint", ep.Name),
+					zap.String("endpointNodename", ep.NodeName),
+					zap.String("controllerNodename", c.nodeName))
 				continue
 			}
 			// discover relay options
