@@ -33,6 +33,11 @@ spec:
             runAsUser: 0
             runAsGroup: 0
             privileged: true
+          env:
+          - name: WAFIE_RELAY_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
           volumeMounts:
             - name: netns
               mountPath: /var/run/netns
