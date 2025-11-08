@@ -9,7 +9,7 @@ spec:
     app: wafie-control-plane
   ports:
     - name: api-server
-      port: 8080
+      port: 80
       targetPort: api-server
     - name: gwctrl-server
       port: 18000
