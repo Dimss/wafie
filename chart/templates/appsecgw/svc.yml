@@ -5,6 +5,7 @@ metadata:
   namespace: {{.Release.Namespace}}
 spec:
   type: ClusterIP
+  sessionAffinity: None
   clusterIP: None
   selector:
     app: appsecgw
