@@ -42,7 +42,8 @@ You should get WordPress website.
 Deploy wafie helm chart 
 ```bash
 helm repo add wafie https://charts.wafie.io
-helm install wafie wafie/wafie
+helm install wafie wafie/wafie \
+  --set ingress.host=wp.<YOUR-LOCAL-IP-GOES-HERE>.nip.io
 ```
 
 Check all wafie pods are running 

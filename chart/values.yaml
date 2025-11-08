@@ -17,6 +17,10 @@ appSecGw:
 relay:
   image: docker.io/dimssss/wafie-relay:latest
 
+# ingress setup
+ingress:
+  host: ""
+
 # Shared configurations
 config:
   apiAddr: ""

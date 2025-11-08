@@ -5,13 +5,13 @@ metadata:
   namespace: {{.Release.Namespace}}
 spec:
   rules:
-    - host: wafie-api.10.100.102.84.nip.io
+    - host: {{ .Values.ingress.host }}
       http:
         paths:
           - backend:
               service:
                 name: wafie-control-plane
                 port:
-                  name: http
+                  name: api-server
             path: /
             pathType: ImplementationSpecific

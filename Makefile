@@ -46,6 +46,7 @@ build.relay.image:
 helm:
 	helm package chart
 	scp wafie-0.0.1.tgz root@charts.wafie.io:/var/www/charts
+	rm wafie-0.0.1.tgz
 
 docker.controlplane:
 	podman buildx build -t docker.io/dimssss/wafie-control-plane --platform linux/arm64 -f dockerfiles/controlplane/Dockerfile .
