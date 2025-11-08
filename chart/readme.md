@@ -51,9 +51,28 @@ Check all wafie pods are running
 kubectl get pods -l 'app in (wafie-relay,appsecgw,wafie-control-plane)'
 ```
 
-List all discovered applications and enable protections
+List all discovered applications
 ```bash
-# here we've to talk. I have no API docs yet, and it's 
-# easiest to explain over a meeting about what's need to be done for 
-# enabling application protections  
+curl --location 'http://wafie-api.192.168.1.51.nip.io/wafie.v1.ApplicationService/ListApplications' \
+--header 'Content-Type: application/json' \
+--data '{
+    "options": {
+        "include_ingress": false
+    }
+}'
+```
+Enable protection for selected application 
+```bash
+curl --location 'http://wafie-api.192.168.1.51.nip.io/wafie.v1.ProtectionService/CreateProtection' \
+--header 'Content-Type: application/json' \
+--data '{
+    "application_id": 1,
+    "desired_state": {
+        "mode_sec": {
+            "paranoia_level": "PARANOIA_LEVEL_4",
+            "protection_mode": "PROTECTION_MODE_ON"
+        }
+    },
+    "protection_mode": "PROTECTION_MODE_ON"
+}'
 ```
