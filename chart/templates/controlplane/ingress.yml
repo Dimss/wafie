@@ -5,7 +5,7 @@ metadata:
   namespace: {{.Release.Namespace}}
 spec:
   rules:
-    - host: {{ .Values.ingress.host }}
+    - host: "wafie-control-plane-{{ .Values.baseHost }}"
       http:
         paths:
           - backend:

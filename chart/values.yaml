@@ -1,9 +1,14 @@
+
+# base host which will be used as a base domain
+# for different services
+baseHost: ""
+
 # Control Plane parameters
 controlPlane:
   image: dimssss/wafie-control-plane:latest
   svc:
     name: wafie-control-plane
-    port: 8080
+    port: 80
 
 # Discover Agent parameters
 discoveryAgent:
@@ -17,15 +22,11 @@ appSecGw:
 relay:
   image: docker.io/dimssss/wafie-relay:latest
 
-# ingress setup
-ingress:
-  host: ""
-
 # Shared configurations
 config:
   apiAddr: ""
 
-# PostgreSQL configurations
+# postgresql configurations
 postgresql:
   global:
     security:
@@ -42,3 +43,14 @@ postgresql:
       size: 20Gi
   volumePermissions:
     enabled: false
+
+opensearch:
+  singleNode: true
+  opensearch.yml: |
+    cluster.name: opensearch-cluster
+    network.host: 0.0.0.0
+  extraEnvs:
+    - name: OPENSEARCH_INITIAL_ADMIN_PASSWORD
+      value: 8NybEHCU81IzgWhx
+  persistence:
+    enabled: true
