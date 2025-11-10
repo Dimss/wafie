@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluent-bit-config
+  namespace: {{.Release.Namespace}}
+data:
+  fluent-bit.yaml: |
+    pipeline:
+      inputs:
+        - name: tail
+          path: /data/audit/modsec.log
+      outputs:
+        - name: opensearch
+          match: '*'
+          host: opensearch-cluster-master
+          port: 9200
+          index: wafie-gateway
+          http_user: admin
+          http_passwd: 8NybEHCU81IzgWhx
+          type: _doc
+          suppress_type_name: true
+          tls: On
+          tls.verify: Off

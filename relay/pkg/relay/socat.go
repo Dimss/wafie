@@ -1,3 +1,5 @@
+//go:build linux
+
 package relay
 
 import (
@@ -113,7 +115,13 @@ func (r *SocatRelay) runProxyHealthMonitor() {
 
 func (r *SocatRelay) Configure(cfgOptions *wv1.RelayOptions) (StartRelayFunc, StopRelayFunc) {
 	// if options nil, meaning fresh start
+	// in any case if proxy ip is not set, configure it
 	if r.options == nil {
+		r.options = cfgOptions
+		r.setProxyIp()
+		return r.start, r.stop
+	}
+	if r.options.ProxyIp == "" {
 		r.options = cfgOptions
 		r.setProxyIp()
 		return r.start, r.stop
@@ -151,6 +159,7 @@ func (r *SocatRelay) setProxyIp() {
 		// thus, I am just implementing
 		// simple client side load balancing
 		r.options.ProxyIp = ips[rand.Intn(len(ips))]
+		r.logger.Info("discovered proxy ip", zap.String("proxyIp", r.options.ProxyIp))
 	} else {
 		r.logger.Debug("empty relay options, can not make dns lookup")
 	}
