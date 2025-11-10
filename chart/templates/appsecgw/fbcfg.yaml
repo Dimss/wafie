@@ -5,16 +5,30 @@ metadata:
   namespace: {{.Release.Namespace}}
 data:
   fluent-bit.yaml: |
+    parsers:
+      - name: json_parser_with_timestamp
+        format: json
+        time_key: time_stamp
+        time_format: "%a %b %d %H:%M:%S %Y"  # Mon Nov 10 18:43:19 2025
+        time_keep: On
     pipeline:
       inputs:
         - name: tail
           path: /data/audit/modsec.log
+          tag: modsec.logs
+          refresh_interval: 5
+      filters:
+        - name: parser
+          match: modsec.logs
+          key_name: log
+          parser: json_parser_with_timestamp
+          reserve_data: On
       outputs:
         - name: opensearch
-          match: '*'
+          match: modsec.logs
           host: opensearch-cluster-master
           port: 9200
-          index: wafie-gateway
+          index: wafie-gateway-%Y.%m.%d
           http_user: admin
           http_passwd: 8NybEHCU81IzgWhx
           type: _doc
