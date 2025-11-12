@@ -33,16 +33,16 @@ This is how you can work with it:
 # Set terminal prompt
 export PS1="\[${COLOR_BLUE}\]devspace\[${COLOR_RESET}\] ./\W \[${COLOR_BLUE}\]\\$\[${COLOR_RESET}\] "
 if [ -z "$BASH" ]; then export PS1="$ "; fi
-export SRC_ROOT="/go/src/github.com/Dimss/cwaf"
-touch /a
+export SRC_ROOT="/go/src/github.com/Dimss/wafie"
+touch /tmp/a
 
-echo "alias discovery-agent=\"cd ${SRC_ROOT} && dlv debug --headless --listen=:2345 --api-version=2 --accept-multiclient cmd/agent/discovery/main.go -- start\"" >> /a
-echo "alias pcp=\"cd ${SRC_ROOT} && dlv debug --headless --listen=:2345 --api-version=2 --accept-multiclient cmd/proxycontrolplane/main.go -- start \"" >> /a
-echo "alias server=\"cd ${SRC_ROOT} && dlv debug --headless --listen=:2345 --api-version=2 --accept-multiclient cmd/apiserver/main.go -- start --db-host=wafy-postgresql \"" >> /a
-echo "alias run-envoy=\"envoy -c ops/envoy/envoy.yaml\"" >> /a
-echo "alias build-filter=\"go build -ldflags='-s -w' -o ./kubeguard-modsec.so -buildmode=c-shared ./cmd/modsecfilter\"" >> /a
+echo "alias discovery-agent=\"cd ${SRC_ROOT} && dlv debug --headless --listen=:2345 --api-version=2 --accept-multiclient cmd/agent/discovery/main.go -- start\"" >> /tmp/a
+echo "alias appsecgw=\"cd ${SRC_ROOT} && dlv debug --headless --listen=:2345 --api-version=2 --accept-multiclient appsecgw/cmd/main.go -- start \"" >> /tmp/a
+echo "alias server=\"cd ${SRC_ROOT} && dlv debug --headless --listen=:2345 --api-version=2 --accept-multiclient cmd/apiserver/main.go -- start --db-host=wafy-postgresql \"" >> /tmp/a
+echo "alias run-envoy=\"envoy -c ops/envoy/envoy.yaml\"" >> /tmp/a
+echo "alias build-filter=\"go build -ldflags='-s -w' -o ./kubeguard-modsec.so -buildmode=c-shared ./cmd/modsecfilter\"" >> /tmp/a
 # Include project's bin/ folder in PATH
 export PATH="./bin:$PATH"
 
 # Open shell
-bash --init-file /a
+bash --init-file /tmp/a

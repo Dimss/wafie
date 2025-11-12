@@ -2,12 +2,11 @@ version: v2beta1
 name: devspace
 dev:
   app:
-    workingDir: /go/src/github.com/Dimss/cwaf
+    workingDir: /go/src/github.com/Dimss/wafie
     labelSelector:
-      app: "wafie-control-plane"
+      app: "appsecgw"
     container: gateway
-#    devImage: dimssss/kubeguard-agent:latest
-    devImage: dimssss/wafie-gateway:latest
+    devImage: dimssss/wafie-appsecgw-dev:latest
     sync:
       - path: ./:./
         waitInitialSync: true
@@ -23,6 +22,11 @@ dev:
         path: spec.containers.name=gateway.readinessProbe
       - op: remove
         path: spec.containers.name=gateway.livenessProbe
+      - op: add
+        path: spec.securityContext
+        value:
+          runAsUser: 0
+          runAsGroup: 0
     terminal:
       command: ./devspace_start.sh
     ssh:

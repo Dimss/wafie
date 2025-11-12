@@ -44,6 +44,7 @@ You should get WordPress website.
 Deploy wafie helm chart 
 ```bash
 helm repo add wafie https://charts.wafie.io
+helm repo update 
 helm install wafie wafie/wafie \
   --set baseHost=$(ipconfig getifaddr en0).nip.io
 ```

@@ -23,6 +23,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 type state struct {
@@ -35,34 +36,37 @@ func newState() *state {
 	}
 }
 
-func (s *state) httpFilters() []*hcm.HttpFilter {
-	totalFilters := 2 // router + custom wafie
-	var filters = make([]*hcm.HttpFilter, totalFilters)
+func (s *state) httpFilters(protection *wv1.Protection) []*hcm.HttpFilter {
+	var filters []*hcm.HttpFilter
+	// wafie modsec filter
+	if protection.DesiredState.ModeSec.ProtectionMode == wv1.ProtectionMode_PROTECTION_MODE_ON {
+		wafieLibCfg, err := anypb.New(&golangv3alpha.Config{
+			LibraryId:   "wafie-v1",
+			LibraryPath: "/usr/local/lib/wafie-modsec.so",
+			PluginName:  "wafie",
+		})
+		if err != nil {
+			s.logger.Error("failed to create wafie config", zap.Error(err))
+		}
 
-	wafieLibCfg, err := anypb.New(&golangv3alpha.Config{
-		LibraryId:   "wafie-v1",
-		LibraryPath: "/usr/local/lib/wafie-modsec.so",
-		PluginName:  "wafie",
-	})
-	if err != nil {
-		s.logger.Error("failed to create wafie config", zap.Error(err))
+		filters = append(filters, &hcm.HttpFilter{
+			Name: "envoy.filters.http.golang",
+			ConfigType: &hcm.HttpFilter_TypedConfig{
+				TypedConfig: wafieLibCfg,
+			},
+		})
 	}
-	filters[0] = &hcm.HttpFilter{
-		Name: "envoy.filters.http.golang",
-		ConfigType: &hcm.HttpFilter_TypedConfig{
-			TypedConfig: wafieLibCfg,
-		},
-	}
+	// http filter
 	routerConfig, err := anypb.New(&router.Router{})
 	if err != nil {
 		s.logger.Error("failed to create router config", zap.Error(err))
 	}
-	filters[1] = &hcm.HttpFilter{
+	filters = append(filters, &hcm.HttpFilter{
 		Name: wellknown.Router,
 		ConfigType: &hcm.HttpFilter_TypedConfig{
 			TypedConfig: routerConfig,
 		},
-	}
+	})
 	return filters
 }
 
@@ -82,7 +86,7 @@ func (s *state) httpConnectionManager(protection *wv1.Protection) *hcm.HttpConne
 				},
 			},
 		},
-		HttpFilters: s.httpFilters(),
+		HttpFilters: s.httpFilters(protection),
 		UpgradeConfigs: []*hcm.HttpConnectionManager_UpgradeConfig{
 			{
 				UpgradeType: "websocket",
@@ -110,6 +114,12 @@ func (s *state) httpConnectionManager(protection *wv1.Protection) *hcm.HttpConne
 										ClusterSpecifier: &route.RouteAction_Cluster{
 											Cluster: protection.Application.Name,
 										},
+										HostRewriteSpecifier: &route.RouteAction_AutoHostRewrite{
+											AutoHostRewrite: &wrapperspb.BoolValue{Value: true},
+										},
+										//HostRewriteSpecifier: &route.RouteAction_HostRewriteLiteral{
+										//	HostRewriteLiteral: protection.Application.Ingress[0].Host,
+										//},
 									},
 								},
 							},

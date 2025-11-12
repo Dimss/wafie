@@ -2,7 +2,7 @@ FROM dimssss/modsec AS libwafie
 
 FROM envoyproxy/envoy:contrib-v1.35.6 AS modsecfilter-builder
 ARG ARCH
-ENV GO_VERSION="go1.24.4.linux-${ARCH}.tar.gz"
+ENV GO_VERSION="go1.25.4.linux-${ARCH}.tar.gz"
 ENV GOBIN="/go/bin"
 ENV PATH="${PATH}:${GOBIN}:/usr/local/go/bin"
 ENV GOPATH="/go"
@@ -19,9 +19,7 @@ RUN apt -y update \
       unzip
 RUN wget "https://go.dev/dl/${GO_VERSION}" \
     && tar -C /usr/local -xzf ${GO_VERSION} \
-    && rm ${GO_VERSION} \
-    && mkdir -p /go/bin \
-    && go install github.com/go-delve/delve/cmd/dlv@latest
+    && rm ${GO_VERSION}
 COPY modsecfilter/include/ /usr/local/include/
 COPY --from=libwafie /wafie/build/libwafie.so /usr/local/lib/libwafie.so
 ADD go.mod go.sum ./
@@ -38,7 +36,7 @@ RUN cd api \
     && buf lint \
     && buf generate
 
-FROM golang:1.24-bookworm AS builder
+FROM golang:1.25.4-bookworm AS builder
 WORKDIR /app
 COPY ../go.mod go.sum ./
 COPY ../Makefile ./

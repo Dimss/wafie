@@ -3,8 +3,6 @@ SHELL := /usr/bin/env bash
 shell:
 	@$(RUN) /bin/bash
 
-
-
 build:
 	# build api server
 	go build \
@@ -20,6 +18,14 @@ build.appsecgw:
 	go build \
 		-ldflags="-X 'github.com/Dimss/wafie/appsecgw/cmd.Build=$$(git rev-parse --short HEAD)'" \
 		-o .bin/appsecgw appsecgw/cmd/main.go
+
+build.appsecgw.image:
+	podman buildx build --build-arg ARCH=arm64 -t docker.io/dimssss/wafie-appsecgw --platform linux/arm64 -f appsecgw/Dockerfile .
+	podman push docker.io/dimssss/wafie-appsecgw
+
+build.appsecgw.image.dev:
+	podman buildx build --build-arg ARCH=arm64 -t docker.io/dimssss/wafie-appsecgw-dev --platform linux/arm64 -f appsecgw/Dockerfile.dev .
+	podman push docker.io/dimssss/wafie-appsecgw-dev
 
 build-api:
 	go build \
@@ -52,9 +58,7 @@ docker.controlplane:
 	podman buildx build -t docker.io/dimssss/wafie-control-plane --platform linux/arm64 -f dockerfiles/controlplane/Dockerfile .
 	podman push docker.io/dimssss/wafie-control-plane
 
-docker.appsecgw:
-	podman buildx build --build-arg ARCH=arm64 -t docker.io/dimssss/wafie-appsecgw --platform linux/arm64 -f appsecgw/Dockerfile .
-	podman push docker.io/dimssss/wafie-appsecgw
+
 
 docker-relay:
 	podman buildx build --build-arg ARCH=arm64 -t docker.io/dimssss/wafie-relay --platform linux/arm64 -f dockerfiles/relay/Dockerfile .

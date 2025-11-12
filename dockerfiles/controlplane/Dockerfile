@@ -7,7 +7,7 @@ RUN cd api \
     && buf lint \
     && buf generate
 
-FROM golang:1.24-bookworm AS builder
+FROM golang:1.25.4-bookworm AS builder
 WORKDIR /app
 COPY ../../logger ./logger
 COPY ../../go.mod go.sum ./
