@@ -36,7 +36,7 @@ BEGIN
         END IF;
     END IF;
 
-    IF OLD.svc_fqdn IS DISTINCT FROM NEW.svc_fqdn THEN
+    IF OLD.id IS DISTINCT FROM NEW.id THEN
         UPDATE state_versions
         SET version_id = uuid_generate_v4(), updated_at = NOW()
         WHERE type_id = 1;

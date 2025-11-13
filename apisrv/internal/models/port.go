@@ -22,9 +22,9 @@ type Port struct {
 	ProxyListeningPort uint32
 	PortType           uint32 `gorm:"uniqueIndex:port_number_uid_iid_port_type;not null"`
 	Description        string
-	UpstreamID         uint `gorm:"uniqueIndex:port_number_uid_iid_port_type;not null"`
-	Upstream           Upstream
-	IngressID          uint `gorm:"uniqueIndex:port_number_uid_iid_port_type;not null"`
+	UpstreamID         string   `gorm:"uniqueIndex:port_number_uid_iid_port_type;not null"`
+	Upstream           Upstream `gorm:"foreignKey:UpstreamID;references:ID"`
+	IngressID          uint     `gorm:"uniqueIndex:port_number_uid_iid_port_type;not null"`
 	Ingress            Ingress
 	CreatedAt          time.Time `gorm:"default:CURRENT_TIMESTAMP"`
 	UpdatedAt          time.Time `gorm:"default:CURRENT_TIMESTAMP"`
@@ -33,12 +33,12 @@ type Port struct {
 type PortSvc struct {
 	db         *gorm.DB
 	logger     *zap.Logger
-	upstreamId uint
+	upstreamId string
 	ingressId  uint
 	Port       Port
 }
 
-func NewPortModelSvc(uId, iId uint, tx *gorm.DB, logger *zap.Logger) *PortSvc {
+func NewPortModelSvc(uId string, iId uint, tx *gorm.DB, logger *zap.Logger) *PortSvc {
 	modelSvc := &PortSvc{
 		db:         tx,
 		logger:     logger,
@@ -206,7 +206,7 @@ func (p *Port) allocateProxyListenerPort(tx *gorm.DB) error {
 		}
 	}
 	if currentPort.ProxyListeningPort == 0 {
-		// allocat proxy port if its currently 0
+		// allocate proxy port if its currently 0
 		return p.proxyProtAllocator(tx)
 	} else {
 		// use the current port

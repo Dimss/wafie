@@ -40,12 +40,11 @@ type Ingress struct {
 	Application      Application `gorm:"foreignKey:ApplicationID"`
 	IngressType      uint32
 	DiscoveryStatus  uint32
-	DiscoveryMessage string `gorm:"type:text"`
-	// Foreign key to Upstream
-	UpstreamID uint      `gorm:"not null;index"`
-	Upstream   Upstream  `gorm:"foreignKey:UpstreamID;references:ID"`
-	CreatedAt  time.Time `gorm:"default:CURRENT_TIMESTAMP"`
-	UpdatedAt  time.Time `gorm:"default:CURRENT_TIMESTAMP"`
+	DiscoveryMessage string    `gorm:"type:text"`
+	UpstreamID       string    `gorm:"not null;index"`
+	Upstream         Upstream  `gorm:"foreignKey:UpstreamID;references:ID"`
+	CreatedAt        time.Time `gorm:"default:CURRENT_TIMESTAMP"`
+	UpdatedAt        time.Time `gorm:"default:CURRENT_TIMESTAMP"`
 }
 
 func NewIngressFromProto(ingReq *wv1.Ingress) *Ingress {

@@ -3,14 +3,12 @@ package models
 import (
 	"database/sql/driver"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"time"
-
 	wv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	applogger "github.com/Dimss/wafie/logger"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
+	"time"
 )
 
 type Endpoint struct {
@@ -119,8 +117,7 @@ type MirrorPolicy struct {
 }
 
 type Upstream struct {
-	ID                uint          `gorm:"primaryKey"`
-	SvcFqdn           string        `gorm:"uniqueIndex:idx_svc_fqdn"`
+	ID                string        `gorm:"primaryKey"` // svc fqdn acting as a primary key for Upstream
 	Endpoints         *Endpoints    `gorm:"type:jsonb"`
 	MirrorPolicy      *MirrorPolicy `gorm:"type:jsonb"`
 	UpstreamRouteType uint32
@@ -150,8 +147,7 @@ func NewUpstreamRepository(tx *gorm.DB, logger *zap.Logger) *UpstreamRepository 
 func NewUpstreamFromRequest(upstreamReq *wv1.Upstream) *Upstream {
 	mirrorPolicy := NewMirrorPolicyFromRequest(upstreamReq.MirrorPolicy)
 	u := &Upstream{
-		ID:                1,
-		SvcFqdn:           upstreamReq.SvcFqdn,
+		ID:                upstreamReq.SvcFqdn,
 		UpstreamRouteType: uint32(upstreamReq.UpstreamRouteType),
 		MirrorPolicy:      mirrorPolicy,
 	}
@@ -162,50 +158,20 @@ func NewUpstreamFromRequest(upstreamReq *wv1.Upstream) *Upstream {
 			(*u.Endpoints)[ep.Ip] = NewEndpointFromRequest(ep)
 		}
 	}
-
 	return u
 }
 
-func (s *UpstreamRepository) FindUpstreamBySvcFqdn(svcFqdn string) (uint, error) {
-	upstream := &Upstream{}
-	if err := s.db.Where("svc_fqdn = ?", svcFqdn).First(upstream).Error; err != nil {
-		// set default upstream route type
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return 0, err
-		}
-	}
-	return upstream.ID, nil
-}
-
 func (s *UpstreamRepository) Save(u *Upstream) (*Upstream, error) {
-
-	//if err := s.db.Where("svc_fqdn = ?", u.SvcFqdn).First(u.SvcFqdn).Error; err != nil {
-	//	// set default upstream route type
-	//	if !errors.Is(err, gorm.ErrRecordNotFound) {
-	//		return nil, err
-	//	}
-	//}
-	// check if upstream already exists
-	existingUpstreamId, err := s.FindUpstreamBySvcFqdn(u.SvcFqdn)
-	if err != nil {
-		return nil, err
-	}
-	if existingUpstreamId != 0 {
-		u.ID = existingUpstreamId
-	}
-
 	omitColumns := []string{"Ingresses", "Ports"}
-	if u.MirrorPolicy != nil {
+	if u.MirrorPolicy == nil {
 		omitColumns = append(omitColumns, "mirror_policy")
 	}
-	if u.Endpoints != nil {
+	if u.Endpoints == nil {
 		omitColumns = append(omitColumns, "endpoints")
 	}
-
 	return u, s.db.
 		Omit(omitColumns...).
 		Save(&u).Error
-
 }
 
 func (s *UpstreamRepository) List(options *wv1.ListRoutesOptions) (upstreams []*Upstream, err error) {
@@ -226,7 +192,7 @@ func (s *UpstreamRepository) List(options *wv1.ListRoutesOptions) (upstreams []*
 
 func (u *Upstream) ToProto() *wv1.Upstream {
 	wv1upstream := &wv1.Upstream{
-		SvcFqdn:           u.SvcFqdn,
+		SvcFqdn:           u.ID,
 		UpstreamRouteType: wv1.UpstreamRouteType(u.UpstreamRouteType),
 		MirrorPolicy:      u.MirrorPolicy.ToProto(),
 	}
@@ -246,13 +212,7 @@ func (u *Upstream) ToProto() *wv1.Upstream {
 }
 
 func (u *Upstream) BeforeSave(tx *gorm.DB) (err error) {
-	currentUpstream := &Upstream{}
-	if err := tx.Where("svc_fqdn = ?", u.SvcFqdn).First(currentUpstream).Error; err != nil {
-		// set default upstream route type
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return err
-		}
-	}
+
 	// set default upstream route type
 	if u.UpstreamRouteType == uint32(wv1.UpstreamRouteType_UPSTREAM_ROUTE_TYPE_UNSPECIFIED) {
 		u.UpstreamRouteType = uint32(wv1.UpstreamRouteType_UPSTREAM_ROUTE_TYPE_PORT)
