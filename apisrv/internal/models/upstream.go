@@ -117,7 +117,7 @@ type MirrorPolicy struct {
 }
 
 type Upstream struct {
-	ID                string        `gorm:"primaryKey"` // svc fqdn acting as a primary key for Upstream
+	ID                string        `gorm:"primaryKey;size:63"` // svc fqdn acting as a primary key for Upstream
 	Endpoints         *Endpoints    `gorm:"type:jsonb"`
 	MirrorPolicy      *MirrorPolicy `gorm:"type:jsonb"`
 	UpstreamRouteType uint32

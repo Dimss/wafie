@@ -41,7 +41,7 @@ type Ingress struct {
 	IngressType      uint32
 	DiscoveryStatus  uint32
 	DiscoveryMessage string    `gorm:"type:text"`
-	UpstreamID       string    `gorm:"not null;index"`
+	UpstreamID       string    `gorm:"size:63;not null;index"`
 	Upstream         Upstream  `gorm:"foreignKey:UpstreamID;references:ID"`
 	CreatedAt        time.Time `gorm:"default:CURRENT_TIMESTAMP"`
 	UpdatedAt        time.Time `gorm:"default:CURRENT_TIMESTAMP"`

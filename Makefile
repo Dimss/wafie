@@ -55,11 +55,9 @@ helm:
 	rm wafie-0.0.1.tgz
 	ssh root@charts.wafie.io "helm repo index /var/www/charts"
 
-docker.controlplane:
+build.cp.image:
 	podman buildx build -t docker.io/dimssss/wafie-control-plane --platform linux/arm64 -f dockerfiles/controlplane/Dockerfile .
 	podman push docker.io/dimssss/wafie-control-plane
-
-
 
 docker-relay:
 	podman buildx build --build-arg ARCH=arm64 -t docker.io/dimssss/wafie-relay --platform linux/arm64 -f dockerfiles/relay/Dockerfile .

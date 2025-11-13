@@ -22,7 +22,7 @@ type Port struct {
 	ProxyListeningPort uint32
 	PortType           uint32 `gorm:"uniqueIndex:port_number_uid_iid_port_type;not null"`
 	Description        string
-	UpstreamID         string   `gorm:"uniqueIndex:port_number_uid_iid_port_type;not null"`
+	UpstreamID         string   `gorm:"size:63;uniqueIndex:port_number_uid_iid_port_type;not null"`
 	Upstream           Upstream `gorm:"foreignKey:UpstreamID;references:ID"`
 	IngressID          uint     `gorm:"uniqueIndex:port_number_uid_iid_port_type;not null"`
 	Ingress            Ingress
