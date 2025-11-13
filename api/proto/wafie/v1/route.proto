@@ -38,6 +38,19 @@ enum IngressType {
   INGRESS_TYPE_OCP = 4;
 }
 
+enum MirrorPolicyStatus{
+  MIRROR_POLICY_STATUS_UNSPECIFIED = 0;
+  MIRROR_POLICY_STATUS_ENABLED = 1;
+  MIRROR_POLICY_STATUS_DISABLED = 2;
+}
+
+message MirrorPolicy {
+  MirrorPolicyStatus status = 1;
+  string ip = 2;
+  uint32 port = 3;
+  string dns = 4;
+}
+
 message Ingress {
   string name = 1;
   string namespace = 2;
@@ -73,6 +86,7 @@ message Upstream {
   repeated Endpoint endpoints = 3;
   repeated Port ports = 4;
   UpstreamRouteType upstream_route_type = 5;
+  optional MirrorPolicy mirror_policy = 6;
 }
 // Create route
 message CreateRouteRequest {

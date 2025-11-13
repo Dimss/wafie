@@ -7,12 +7,10 @@ import (
 	"fmt"
 	"time"
 
-	"connectrpc.com/connect"
 	wv1 "github.com/Dimss/wafie/api/gen/wafie/v1"
 	applogger "github.com/Dimss/wafie/logger"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 type Endpoint struct {
@@ -39,6 +37,45 @@ func (e *Endpoint) ToProto(ip string) *wv1.Endpoint {
 		Name:      e.Name,
 		Namespace: e.Namespace,
 	}
+}
+
+func NewMirrorPolicyFromRequest(mp *wv1.MirrorPolicy) *MirrorPolicy {
+	if mp == nil {
+		return nil
+	}
+	return &MirrorPolicy{
+		Status: uint32(mp.Status),
+		Ip:     mp.Ip,
+		Port:   int(mp.Port),
+		Dns:    mp.Dns,
+	}
+}
+
+func (p *MirrorPolicy) ToProto() *wv1.MirrorPolicy {
+	if p == nil {
+		return nil
+	}
+	return &wv1.MirrorPolicy{
+		Status: wv1.MirrorPolicyStatus(p.Status),
+		Ip:     p.Ip,
+		Port:   uint32(p.Port),
+		Dns:    p.Dns,
+	}
+}
+
+func (p *MirrorPolicy) Scan(value interface{}) error {
+	switch v := value.(type) {
+	case []byte:
+		return json.Unmarshal(v, p)
+	case string:
+		return json.Unmarshal([]byte(v), p)
+	default:
+		return fmt.Errorf("unsupported type for ProtectionDesiredState")
+	}
+}
+
+func (p *MirrorPolicy) Value() (driver.Value, error) {
+	return json.Marshal(p)
 }
 
 type Endpoints map[string]Endpoint
@@ -74,11 +111,18 @@ func (e *Endpoints) Scan(value interface{}) error {
 	return json.Unmarshal(jsonData, e)
 }
 
+type MirrorPolicy struct {
+	Status uint32 `json:"status"`
+	Ip     string `json:"ip"`
+	Port   int    `json:"port"`
+	Dns    string `json:"dns"`
+}
+
 type Upstream struct {
-	ID      uint   `gorm:"primaryKey"`
-	SvcFqdn string `gorm:"uniqueIndex:idx_svc_fqdn"`
-	//ContainerIps      pq.StringArray `gorm:"type:text[]"` // upstream IPs
-	Endpoints         Endpoints `gorm:"type:jsonb"`
+	ID                uint          `gorm:"primaryKey"`
+	SvcFqdn           string        `gorm:"uniqueIndex:idx_svc_fqdn"`
+	Endpoints         *Endpoints    `gorm:"type:jsonb"`
+	MirrorPolicy      *MirrorPolicy `gorm:"type:jsonb"`
 	UpstreamRouteType uint32
 	Ingresses         []Ingress `gorm:"foreignKey:UpstreamID"`
 	Ports             []Port    `gorm:"foreignKey:UpstreamID"`
@@ -104,38 +148,64 @@ func NewUpstreamRepository(tx *gorm.DB, logger *zap.Logger) *UpstreamRepository 
 }
 
 func NewUpstreamFromRequest(upstreamReq *wv1.Upstream) *Upstream {
+	mirrorPolicy := NewMirrorPolicyFromRequest(upstreamReq.MirrorPolicy)
 	u := &Upstream{
+		ID:                1,
 		SvcFqdn:           upstreamReq.SvcFqdn,
 		UpstreamRouteType: uint32(upstreamReq.UpstreamRouteType),
-		Endpoints:         make(Endpoints),
+		MirrorPolicy:      mirrorPolicy,
 	}
-	// set endpoints
-	for _, ep := range upstreamReq.Endpoints {
-		u.Endpoints[ep.Ip] = NewEndpointFromRequest(ep)
+	if upstreamReq.Endpoints != nil {
+		eps := make(Endpoints, len(upstreamReq.Endpoints))
+		u.Endpoints = &eps
+		for _, ep := range upstreamReq.Endpoints {
+			(*u.Endpoints)[ep.Ip] = NewEndpointFromRequest(ep)
+		}
 	}
+
 	return u
+}
+
+func (s *UpstreamRepository) FindUpstreamBySvcFqdn(svcFqdn string) (uint, error) {
+	upstream := &Upstream{}
+	if err := s.db.Where("svc_fqdn = ?", svcFqdn).First(upstream).Error; err != nil {
+		// set default upstream route type
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return 0, err
+		}
+	}
+	return upstream.ID, nil
 }
 
 func (s *UpstreamRepository) Save(u *Upstream) (*Upstream, error) {
 
-	assigmentColumns := []string{
-		"endpoints",
-		"upstream_route_type",
-		"created_at",
-		"updated_at",
+	//if err := s.db.Where("svc_fqdn = ?", u.SvcFqdn).First(u.SvcFqdn).Error; err != nil {
+	//	// set default upstream route type
+	//	if !errors.Is(err, gorm.ErrRecordNotFound) {
+	//		return nil, err
+	//	}
+	//}
+	// check if upstream already exists
+	existingUpstreamId, err := s.FindUpstreamBySvcFqdn(u.SvcFqdn)
+	if err != nil {
+		return nil, err
 	}
-	if res := s.db.Clauses(
-		clause.OnConflict{
-			Columns:   []clause.Column{{Name: "svc_fqdn"}},
-			DoUpdates: clause.AssignmentColumns(assigmentColumns),
-		},
-	).
-		Omit("Ingresses").
-		Omit("Ports").
-		Save(&u); res.Error != nil {
-		return u, connect.NewError(connect.CodeUnknown, res.Error)
+	if existingUpstreamId != 0 {
+		u.ID = existingUpstreamId
 	}
-	return u, nil
+
+	omitColumns := []string{"Ingresses", "Ports"}
+	if u.MirrorPolicy != nil {
+		omitColumns = append(omitColumns, "mirror_policy")
+	}
+	if u.Endpoints != nil {
+		omitColumns = append(omitColumns, "endpoints")
+	}
+
+	return u, s.db.
+		Omit(omitColumns...).
+		Save(&u).Error
+
 }
 
 func (s *UpstreamRepository) List(options *wv1.ListRoutesOptions) (upstreams []*Upstream, err error) {
@@ -158,9 +228,10 @@ func (u *Upstream) ToProto() *wv1.Upstream {
 	wv1upstream := &wv1.Upstream{
 		SvcFqdn:           u.SvcFqdn,
 		UpstreamRouteType: wv1.UpstreamRouteType(u.UpstreamRouteType),
+		MirrorPolicy:      u.MirrorPolicy.ToProto(),
 	}
 	if u.Endpoints != nil {
-		for ip, ep := range u.Endpoints {
+		for ip, ep := range *u.Endpoints {
 			wv1upstream.Endpoints = append(wv1upstream.Endpoints, ep.ToProto(ip))
 		}
 	}
@@ -174,7 +245,7 @@ func (u *Upstream) ToProto() *wv1.Upstream {
 	return wv1upstream
 }
 
-func (u *Upstream) BeforeCreate(tx *gorm.DB) error {
+func (u *Upstream) BeforeSave(tx *gorm.DB) (err error) {
 	currentUpstream := &Upstream{}
 	if err := tx.Where("svc_fqdn = ?", u.SvcFqdn).First(currentUpstream).Error; err != nil {
 		// set default upstream route type

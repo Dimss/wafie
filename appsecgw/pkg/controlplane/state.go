@@ -117,6 +117,15 @@ func (s *state) httpConnectionManager(protection *wv1.Protection) *hcm.HttpConne
 										HostRewriteSpecifier: &route.RouteAction_AutoHostRewrite{
 											AutoHostRewrite: &wrapperspb.BoolValue{Value: true},
 										},
+										RequestMirrorPolicies: []*route.RouteAction_RequestMirrorPolicy{
+											{
+												Cluster:                       "",
+												ClusterHeader:                 "",
+												RuntimeFraction:               nil,
+												TraceSampled:                  nil,
+												DisableShadowHostSuffixAppend: false,
+											},
+										},
 										//HostRewriteSpecifier: &route.RouteAction_HostRewriteLiteral{
 										//	HostRewriteLiteral: protection.Application.Ingress[0].Host,
 										//},
