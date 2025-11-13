@@ -1,0 +1,8 @@
+FROM golang:1.25.4-trixie AS builder
+WORKDIR /app
+COPY ops/traffic-mirror/main.go go.mod go.sum ./
+COPY ops/traffic-mirror/Makefile Makefile
+RUN make build
+
+FROM debian:trixie-slim
+COPY --from=builder /app/tm /usr/local/bin/tm

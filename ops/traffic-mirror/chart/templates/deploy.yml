@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wafie-traffic-mirror
+  namespace: {{.Release.Namespace}}
+  labels:
+    app: wafie-traffic-mirror
+spec:
+  selector:
+    matchLabels:
+      app: wafie-traffic-mirror
+  template:
+    metadata:
+      labels:
+        app: wafie-traffic-mirror
+    spec:
+      serviceAccountName: wafie-traffic-mirror
+      containers:
+        - name: http-server
+          image: {{.Values.image}}
+          imagePullPolicy: Always
+          command:
+            - /usr/local/bin/tm
+            - start
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              port: 8080
+          livenessProbe:
+            httpGet:
+              port: 8080
+
+
+

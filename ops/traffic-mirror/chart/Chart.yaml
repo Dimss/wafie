@@ -1,0 +1,6 @@
+apiVersion: v2
+name: wafie-traffic-mirror
+description: WAFie Traffic Mirror Sample App
+type: application
+version: 0.0.1
+appVersion: 0.0.1
