@@ -70,6 +70,45 @@ func (s *state) httpFilters(protection *wv1.Protection) []*hcm.HttpFilter {
 	return filters
 }
 
+func (s *state) mirroredClusterName(appName string) string {
+	return fmt.Sprintf("%s-mirrored", appName)
+}
+
+func (s *state) routes(protection *wv1.Protection) []*route.Route {
+	routes := make([]*route.Route, 0)
+	routeAction := &route.RouteAction{
+		Timeout: durationpb.New(0 * time.Second), // zero meaning disabled
+		ClusterSpecifier: &route.RouteAction_Cluster{
+			Cluster: protection.Application.Name,
+		},
+		HostRewriteSpecifier: &route.RouteAction_AutoHostRewrite{
+			AutoHostRewrite: &wrapperspb.BoolValue{Value: true},
+		},
+	}
+
+	mirrorPolicy := protection.Application.Ingress[0].Upstream.MirrorPolicy
+	if mirrorPolicy != nil && mirrorPolicy.Status == wv1.MirrorPolicyStatus_MIRROR_POLICY_STATUS_ENABLED {
+		routeAction.RequestMirrorPolicies = append(
+			routeAction.RequestMirrorPolicies,
+			&route.RouteAction_RequestMirrorPolicy{
+				Cluster: s.mirroredClusterName(protection.Application.Name),
+			},
+		)
+	}
+
+	return append(routes, &route.Route{
+		Name: protection.Application.Name,
+		Match: &route.RouteMatch{
+			PathSpecifier: &route.RouteMatch_Prefix{
+				Prefix: "/",
+			},
+		},
+		Action: &route.Route_Route{
+			Route: routeAction,
+		},
+	})
+}
+
 func (s *state) httpConnectionManager(protection *wv1.Protection) *hcm.HttpConnectionManager {
 	stdoutLogs, _ := anypb.New(&stream.StdoutAccessLog{})
 	return &hcm.HttpConnectionManager{
@@ -100,39 +139,7 @@ func (s *state) httpConnectionManager(protection *wv1.Protection) *hcm.HttpConne
 						Name: protection.Application.Name,
 						// TODO: when route by virtual host, real app domain should be used, i.e protection.Application.Ingress[0].Host
 						Domains: []string{"*"},
-						Routes: []*route.Route{
-							{
-								Name: protection.Application.Name,
-								Match: &route.RouteMatch{
-									PathSpecifier: &route.RouteMatch_Prefix{
-										Prefix: "/",
-									},
-								},
-								Action: &route.Route_Route{
-									Route: &route.RouteAction{
-										Timeout: durationpb.New(0 * time.Second), // zero meaning disabled
-										ClusterSpecifier: &route.RouteAction_Cluster{
-											Cluster: protection.Application.Name,
-										},
-										HostRewriteSpecifier: &route.RouteAction_AutoHostRewrite{
-											AutoHostRewrite: &wrapperspb.BoolValue{Value: true},
-										},
-										RequestMirrorPolicies: []*route.RouteAction_RequestMirrorPolicy{
-											{
-												Cluster:                       "",
-												ClusterHeader:                 "",
-												RuntimeFraction:               nil,
-												TraceSampled:                  nil,
-												DisableShadowHostSuffixAppend: false,
-											},
-										},
-										//HostRewriteSpecifier: &route.RouteAction_HostRewriteLiteral{
-										//	HostRewriteLiteral: protection.Application.Ingress[0].Host,
-										//},
-									},
-								},
-							},
-						},
+						Routes:  s.routes(protection),
 					},
 				},
 			},
@@ -178,50 +185,82 @@ func (s *state) listeners(protections []*wv1.Protection) []types.Resource {
 	return listeners
 }
 
+func (s *state) lbEndpoint(ip string, port uint32) *endpoint.LbEndpoint {
+	return &endpoint.LbEndpoint{
+		HostIdentifier: &endpoint.LbEndpoint_Endpoint{
+			Endpoint: &endpoint.Endpoint{
+				Address: &core.Address{
+					Address: &core.Address_SocketAddress{
+						SocketAddress: &core.SocketAddress{
+							Protocol: core.SocketAddress_TCP,
+							Address:  ip,
+							PortSpecifier: &core.SocketAddress_PortValue{
+								PortValue: port,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func (s *state) cluster(name string, lbep []*endpoint.LbEndpoint, t cluster.Cluster_DiscoveryType) *cluster.Cluster {
+	return &cluster.Cluster{
+		Name:                 name,
+		ClusterDiscoveryType: &cluster.Cluster_Type{Type: t},
+		ConnectTimeout:       durationpb.New(20 * time.Second),
+		LbPolicy:             cluster.Cluster_ROUND_ROBIN,
+		DnsLookupFamily:      cluster.Cluster_V4_ONLY,
+		LoadAssignment: &endpoint.ClusterLoadAssignment{
+			ClusterName: name,
+			Endpoints:   []*endpoint.LocalityLbEndpoints{{LbEndpoints: lbep}},
+		},
+	}
+}
+
+func (s *state) containerPortsEndpoints(
+	upstreamEp []*wv1.Endpoint, upstreamPorts []*wv1.Port) (lbEndpoints []*endpoint.LbEndpoint) {
+	for _, uep := range upstreamEp {
+		for _, port := range upstreamPorts {
+			if port.PortType == wv1.PortType_PORT_TYPE_CONTAINER_PORT {
+				lbEndpoints = append(lbEndpoints, s.lbEndpoint(uep.Ip, port.Number))
+			}
+		}
+	}
+	return lbEndpoints
+}
+
 func (s *state) clusters(protections []*wv1.Protection) (clusters []types.Resource) {
 	clusters = make([]types.Resource, 0, len(protections))
 	for _, protection := range protections {
+		// if protection disabled, skip it
 		if shouldSkipProtection(protection) {
 			continue
 		}
-		var lbEndpoints []*endpoint.LbEndpoint
-		for _, uep := range protection.Application.Ingress[0].Upstream.Endpoints {
-			for _, port := range protection.Application.Ingress[0].Upstream.Ports {
-				if port.PortType == wv1.PortType_PORT_TYPE_CONTAINER_PORT {
-					lbEndpoints = append(
-						lbEndpoints,
-						&endpoint.LbEndpoint{
-							HostIdentifier: &endpoint.LbEndpoint_Endpoint{
-								Endpoint: &endpoint.Endpoint{
-									Address: &core.Address{
-										Address: &core.Address_SocketAddress{
-											SocketAddress: &core.SocketAddress{
-												Protocol: core.SocketAddress_TCP,
-												Address:  uep.Ip,
-												PortSpecifier: &core.SocketAddress_PortValue{
-													PortValue: port.Number,
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					)
-				}
+		// first generate container port endpoints, a.k.a routing by dedicated listener port
+		lbEndpoints := s.containerPortsEndpoints(
+			protection.Application.Ingress[0].Upstream.Endpoints,
+			protection.Application.Ingress[0].Upstream.Ports,
+		)
+		clusters = append(clusters, s.cluster(protection.Application.Name, lbEndpoints, cluster.Cluster_STATIC))
+		// check for mirror policy, if enabled create a mirroring cluster
+		mirrorPolicy := protection.Application.Ingress[0].Upstream.MirrorPolicy
+		if mirrorPolicy != nil && mirrorPolicy.Status == wv1.MirrorPolicyStatus_MIRROR_POLICY_STATUS_ENABLED {
+			address := mirrorPolicy.Ip
+			// always use dns id set
+			if mirrorPolicy.Dns != "" {
+				address = mirrorPolicy.Dns
 			}
+			// mirrored endpoints
+			mirroEndpoints := []*endpoint.LbEndpoint{s.lbEndpoint(address, mirrorPolicy.Port)}
+			// mirrored cluster
+			mirroredCluster := s.cluster(s.mirroredClusterName(protection.Application.Name),
+				mirroEndpoints,
+				cluster.Cluster_STRICT_DNS,
+			)
+			clusters = append(clusters, mirroredCluster)
 		}
-		clusters = append(clusters, &cluster.Cluster{
-			Name:                 protection.Application.Name,
-			ClusterDiscoveryType: &cluster.Cluster_Type{Type: cluster.Cluster_STATIC},
-			ConnectTimeout:       durationpb.New(20 * time.Second),
-			LbPolicy:             cluster.Cluster_ROUND_ROBIN,
-			DnsLookupFamily:      cluster.Cluster_V4_ONLY,
-			LoadAssignment: &endpoint.ClusterLoadAssignment{
-				ClusterName: protection.Application.Name,
-				Endpoints:   []*endpoint.LocalityLbEndpoints{{LbEndpoints: lbEndpoints}},
-			},
-		})
 	}
 	return clusters
 }
