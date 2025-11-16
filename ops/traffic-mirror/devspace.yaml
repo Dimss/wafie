@@ -1,0 +1,37 @@
+version: v2beta1
+name: devspace
+dev:
+  app:
+    workingDir: /go/src/github.com/Dimss/wafie
+    labelSelector:
+      app: "wafie-traffic-mirror"
+    container: http-server
+    devImage: golang:1.25.4-trixie
+    sync:
+      - path: ../../:./
+        waitInitialSync: true
+        printLogs: true
+        polling: true
+        disableDownload: true
+    patches:
+      - op: remove
+        path: spec.containers.name=gateway.readinessProbe
+      - op: remove
+        path: spec.containers.name=gateway.livenessProbe
+      - op: add
+        path: spec.securityContext
+        value:
+          runAsUser: 0
+          runAsGroup: 0
+    terminal:
+      command: |
+        go install github.com/go-delve/delve/cmd/dlv@latest
+        echo "For remote debugging run:"
+        echo "dlv debug --headless --listen=:2345 --api-version=2 --accept-multiclient ops/traffic-mirror/main.go -- start"
+        bash
+    ssh:
+      enabled: true
+    ports:
+      - port: "2345"
+
+

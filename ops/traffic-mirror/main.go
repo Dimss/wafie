@@ -1,15 +1,25 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 )
+
+type RequestDump struct {
+	Proto   string              `json:"proto"`
+	Method  string              `json:"method"`
+	URL     string              `json:"url"`
+	Headers map[string][]string `json:"headers"`
+	Body    string              `json:"body,omitempty"` // omitempty to exclude if body is empty
+}
 
 func init() {
 	startCmd.PersistentFlags().IntP("port", "", 8080, "listening port")
@@ -43,20 +53,29 @@ var startCmd = &cobra.Command{
 
 // handler is the function that processes incoming HTTP requests.
 func handler(w http.ResponseWriter, r *http.Request) {
-	// Log the incoming request details
-	log.Printf("Received request: Method=%s, URL=%s, RemoteAddr=%s", r.Method, r.URL.Path, r.RemoteAddr)
-
-	// You can access request details like:
-	// r.Method (GET, POST, etc.)
-	// r.URL.Path (the requested path)
-	// r.URL.Query() (query parameters for GET requests)
-	// r.Body (request body for POST/PUT requests)
-	// r.Header (request headers)
-
-	// Example: Respond with a simple message including the requested path
-	//fmt.Fprintf(w, "Hello from Go HTTP server! You requested: %s\n", r.URL.Path)
-
-	w.WriteHeader(http.StatusOK) // This is the default if not explicitly set
+	dump := RequestDump{
+		Proto:   r.Proto,
+		Method:  r.Method,
+		URL:     r.URL.String(),
+		Headers: r.Header,
+	}
+	dump.Headers["Host"] = []string{r.Host} // add host header, since Go http server won't Host header in Header map
+	if r.Body != nil {
+		bodyBytes, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "Error reading request body", http.StatusInternalServerError)
+			return
+		}
+		dump.Body = string(bodyBytes)
+	}
+	// Marshal the struct to JSON
+	jsonBytes, err := json.MarshalIndent(dump, "", "  ") // Use MarshalIndent for pretty-printing
+	if err != nil {
+		http.Error(w, "Error marshaling JSON", http.StatusInternalServerError)
+		return
+	}
+	log.Println(string(jsonBytes))
+	_, _ = w.Write(jsonBytes)
 }
 
 func main() {

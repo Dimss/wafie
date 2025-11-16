@@ -17,16 +17,6 @@ static_resources:
               typed_config:
                 "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
                 stat_prefix: ingress_http
-                codec_type: AUTO
-                route_config:
-                  name: local_route
-                  virtual_hosts:
-                    - name: local_service
-                      domains: ["*"]
-                      routes:
-                        - match: { prefix: "/" }
-                          route: { cluster: wp_service }
-                use_remote_address: true
                 http_filters:
                   - name: envoy.filters.http.golang
                     typed_config:
@@ -37,6 +27,16 @@ static_resources:
                   - name: envoy.filters.http.router
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+                codec_type: AUTO
+                route_config:
+                  name: local_route
+                  virtual_hosts:
+                    - name: local_service
+                      domains: ["*"]
+                      routes:
+                        - match: { prefix: "/" }
+                          route: { cluster: wp_service }
+                use_remote_address: true
   clusters:
     - name: wp_service
       connect_timeout: 0.25s

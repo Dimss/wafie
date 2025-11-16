@@ -52,6 +52,14 @@ func (f *filter) newEvaluationRequest(headerMap api.RequestHeaderMap) {
 	f.evalRequest.headers = f.evaluationRequestHeaders(headerMap.GetAllHeaders())
 	f.evalRequest.body = nil
 	C.wafie_init_request_transaction(&f.evalRequest)
+	f.logger.Info("new evaluation request",
+		zap.String("client_ip", f.evalRequest.client_ip),
+		zap.String("uri", f.evalRequest.uri),
+		zap.String("method", f.evalRequest.http_method),
+		zap.String("version", f.evalRequest.http_version),
+		zap.String("headers_count", f.evalRequest.headers_count),
+		zap.String("headers", f.evalRequest.headers),
+	)
 }
 
 func (f *filter) freeEvaluationRequest() {
@@ -86,7 +94,7 @@ func (f *filter) DecodeHeaders(headerMap api.RequestHeaderMap, b bool) api.Statu
 	// evaluate request headers and connection (modsecurity: phase0, phase1)
 	if C.wafie_process_request_headers(&f.evalRequest) != 0 {
 		f.callbacks.DecoderFilterCallbacks().SendLocalReply(403,
-			"Opa opa, access denied!!!", nil, 0, "some details here")
+			"Access denied on headers processing", nil, 0, "some details here")
 		return api.LocalReply
 	}
 	f.logger.With(f.logCtx...).Info("request headers evaluation done")
@@ -97,7 +105,7 @@ func (f *filter) DecodeData(instance api.BufferInstance, b bool) api.StatusType 
 	f.evalRequest.body = C.CString(string(instance.Bytes()))
 	if C.wafie_process_request_body(&f.evalRequest) != 0 {
 		f.callbacks.DecoderFilterCallbacks().SendLocalReply(403,
-			"Opa opa, access denied!!!", nil, 0, "some details here")
+			"Access denied on body processing", nil, 0, "some details here")
 		return api.LocalReply
 	}
 	return api.Continue
